@@ -1,0 +1,43 @@
+name: Build LuckyTwitch
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows
+          - os: macos-14          # Apple Silicon
+            label: macos-arm64
+          - os: macos-15-intel    # Intel
+            label: macos-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: build_windows.bat
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: ./build_mac.sh
+      - name: Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/LuckyTwitch -DestinationPath dist/LuckyTwitch-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LuckyTwitch-${{ matrix.label }}
+          path: |
+            dist/LuckyTwitch-*.zip
