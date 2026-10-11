@@ -1,0 +1,23 @@
+# Secrets and personal settings (Twitch API credentials live here)
+config.json
+luckytwitch_settings.json
+
+# Downloads and tools fetched at runtime
+downloads/
+bin/
+
+# Build output
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
