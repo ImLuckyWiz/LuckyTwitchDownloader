@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build LuckyTwitch for macOS -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.zip)
+# Build LuckyTwitch for macOS -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.dmg)
 # Use Python from python.org (the Python bundled with macOS has an outdated Tk).
 # The result matches the Mac you build on: Apple Silicon -> arm64, Intel -> x86_64.
 set -euo pipefail
@@ -19,14 +19,23 @@ python3 -m PyInstaller --noconfirm --clean --windowed \
 codesign --force --deep --sign - dist/LuckyTwitch.app
 
 ARCH="$(uname -m)"
-ditto -c -k --keepParent dist/LuckyTwitch.app "dist/LuckyTwitch-macos-${ARCH}.zip"
-# Install into Applications (shows up in Finder, Launchpad and Spotlight).
-if [ -d "$HOME/Applications" ] || mkdir -p "$HOME/Applications" 2>/dev/null; then :; fi
-DEST="/Applications"
-[ -w "$DEST" ] || DEST="$HOME/Applications"
-rm -rf "$DEST/LuckyTwitch.app"
-ditto dist/LuckyTwitch.app "$DEST/LuckyTwitch.app"
-echo "Installed in $DEST/LuckyTwitch.app"
+# DMG: a disk image showing the app next to an "Applications" shortcut (drag to install).
+STAGE="$(mktemp -d)"
+ditto dist/LuckyTwitch.app "$STAGE/LuckyTwitch.app"
+ln -s /Applications "$STAGE/Applications"
+rm -f "dist/LuckyTwitch-macos-${ARCH}.dmg"
+hdiutil create -volname "LuckyTwitch" -srcfolder "$STAGE" -ov -format UDZO "dist/LuckyTwitch-macos-${ARCH}.dmg"
+rm -rf "$STAGE"
+
+# Also install straight into Applications on this Mac (Finder, Launchpad, Spotlight).
+# Skipped on GitHub Actions, where there is nobody to use it.
+if [ -z "${CI:-}" ]; then
+  DEST="/Applications"
+  [ -w "$DEST" ] || { DEST="$HOME/Applications"; mkdir -p "$DEST"; }
+  rm -rf "$DEST/LuckyTwitch.app"
+  ditto dist/LuckyTwitch.app "$DEST/LuckyTwitch.app"
+  echo "Installed in $DEST/LuckyTwitch.app"
+fi
 
 echo
-echo "Done: dist/LuckyTwitch.app  and  dist/LuckyTwitch-macos-${ARCH}.zip"
+echo "Done: dist/LuckyTwitch.app  and  dist/LuckyTwitch-macos-${ARCH}.dmg"

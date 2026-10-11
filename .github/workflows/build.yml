@@ -1,9 +1,13 @@
 name: Build LuckyTwitch
 
 on:
-  workflow_dispatch:
   push:
-    tags: ["v*"]
+    branches: [main, master]   # build on every push
+    tags: ["v*"]               # a tag like v1.2 also publishes a Release
+  workflow_dispatch:           # manual "Run workflow" button
+
+permissions:
+  contents: write              # needed to create the Release
 
 jobs:
   build:
@@ -25,19 +29,40 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Ensure Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") -and -not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup -y --no-progress
+          }
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: cmd
-        run: build_windows.bat
+        run: build_windows.bat ${{ github.ref_type == 'tag' && github.ref_name || '1.0' }}
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: ./build_mac.sh
-      - name: Zip (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path dist/LuckyTwitch -DestinationPath dist/LuckyTwitch-windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: LuckyTwitch-${{ matrix.label }}
           path: |
-            dist/LuckyTwitch-*.zip
+            dist/LuckyTwitch-Setup.exe
+            dist/LuckyTwitch-*.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: LuckyTwitch-*
+          merge-multiple: true
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.dmg
+          generate_release_notes: true

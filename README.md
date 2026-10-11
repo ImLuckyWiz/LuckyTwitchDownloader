@@ -19,7 +19,7 @@ PyInstaller cannot cross-compile: build each OS on that OS.
 
 ## Build both automatically
 Push this folder to GitHub and run the **Build LuckyTwitch** workflow (Actions tab).
-It produces a Windows zip plus macOS Apple Silicon and Intel zips as downloadable artifacts.
+It produces a Windows installer (LuckyTwitch-Setup.exe) plus macOS Apple Silicon and Intel .dmg files as downloadable artifacts.
 
 ## macOS first launch
 The app is ad-hoc signed, not notarized. First time: right-click the app → **Open** → **Open**
