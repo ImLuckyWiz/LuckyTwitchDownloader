@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Callable
+from xml.sax.saxutils import escape
 
 import requests
 
@@ -565,6 +566,94 @@ def ffmetadata(chapters: list[Chapter], tags: dict[str, str] | None = None) -> s
 
 
 # --------------------------------------------------------------------------- #
+# Premiere Pro export (Final Cut Pro 7 XML with sequence markers)
+# --------------------------------------------------------------------------- #
+def _timebase(fps: float) -> tuple[int, bool]:
+    """Frame rate -> (timebase, ntsc) the way FCP7 XML wants it: 59.94 -> (60, True)."""
+    tb = max(1, round(fps))
+    if abs(fps - tb) < 0.01:
+        return tb, False
+    if abs(fps - tb * 1000 / 1001) < 0.01:
+        return tb, True
+    return tb, False
+
+
+def probe_video(path: Path) -> tuple[float, int, int] | None:
+    """(fps, width, height) of the first video stream, or None if ffprobe is missing / fails."""
+    ffprobe = find_tool("ffprobe")
+    if not ffprobe:
+        return None
+    try:
+        out = subprocess.run(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=r_frame_rate,width,height", "-of", "json", str(path)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, env=_tool_env(), creationflags=_NO_WINDOW, timeout=60,
+        ).stdout
+        st = json.loads(out)["streams"][0]
+        num, _, den = str(st["r_frame_rate"]).partition("/")
+        fps = float(num) / float(den or 1)
+        if fps <= 0:
+            return None
+        return fps, int(st.get("width") or 1920), int(st.get("height") or 1080)
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, IndexError, TypeError, ZeroDivisionError):
+        return None
+
+
+def premiere_markers_xml(
+    name: str, chapters: list[Chapter], duration: float, fps: float, width: int = 1920, height: int = 1080
+) -> str:
+    """
+    FCP7 XML (xmeml) with one empty sequence and one sequence marker per chapter.
+    Premiere imports it through File > Import. Marker times are relative to the part.
+    """
+    tb, ntsc = _timebase(fps)
+    real_rate = tb * 1000 / 1001 if ntsc else float(tb)
+    rate = f"<rate><timebase>{tb}</timebase><ntsc>{'TRUE' if ntsc else 'FALSE'}</ntsc></rate>"
+    total = max(1, math.ceil(duration * real_rate))
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<!DOCTYPE xmeml>",
+        '<xmeml version="4">',
+        '<sequence id="sequence-1">',
+        f"<duration>{total}</duration>",
+        rate,
+        f"<name>{escape(name)}</name>",
+        "<media><video><format><samplecharacteristics>",
+        rate,
+        f"<width>{width}</width><height>{height}</height>",
+        "<anamorphic>FALSE</anamorphic><pixelaspectratio>square</pixelaspectratio><fielddominance>none</fielddominance>",
+        "</samplecharacteristics></format>",
+        "<track><enabled>TRUE</enabled><locked>FALSE</locked></track>",
+        "</video></media>",
+        f"<timecode>{rate}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>",
+    ]
+    for ch in chapters:
+        comment = " | ".join(
+            f"{c.get('creator_name', '')} · {c.get('view_count', 0)} views · {c.get('url', '')}" for c in ch.clips
+        )
+        frame = min(max(int(round(ch.start * real_rate)), 0), total - 1)
+        lines += [
+            "<marker>",
+            f"<comment>{escape(comment)}</comment>",
+            f"<name>{escape(ch.title)}</name>",
+            f"<in>{frame}</in>",
+            "<out>-1</out>",
+            "</marker>",
+        ]
+    lines += ["</sequence>", "</xmeml>"]
+    return "\n".join(lines) + "\n"
+
+
+def write_premiere_xml(dest: Path, chapters: list[Chapter], duration: float, fps: float,
+                       width: int = 1920, height: int = 1080) -> Path:
+    """Write <part name>.markers.xml next to the part file."""
+    out = dest.with_name(dest.stem + ".markers.xml")
+    out.write_text(premiere_markers_xml(dest.stem, chapters, duration, fps, width, height), encoding="utf-8")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Source info (yt-dlp)
 # --------------------------------------------------------------------------- #
 @dataclass
@@ -657,6 +746,7 @@ class JobOptions:
     subfolders: bool = True  # out_dir/<streamer>/<stream>/parts
     folder_template: str = "{date} - {title} - {id}"  # name of the per-stream folder
     clip_name_template: str = "{clip_title}"  # file name when a single clip is downloaded
+    premiere_xml: bool = False  # also write a Premiere Pro XML (clips as markers) next to each part
 
 
 @dataclass
@@ -1596,7 +1686,7 @@ def cut_exact(ctx: Ctx, full: Path, part: Part, container: str, workdir: Path) -
 # Running a job
 # --------------------------------------------------------------------------- #
 def _load_chapters(ctx: Ctx, job: Job) -> list[Chapter]:
-    if not job.opts.chapters:
+    if not (job.opts.chapters or job.opts.premiere_xml):
         return []
     clips = job.clips
     if clips is None:
@@ -1639,9 +1729,9 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     results: list[Path] = []
 
     def finish(part: Part, file: Path, real_start: float, real_end: float, copy: bool = False) -> None:
-        chs = chapters_for_part(chapters_all, real_start, real_end)
-        n_clip_chapters = len(chs)
-        chs = fill_gaps(chs, real_end - real_start, opts.clip_filter.gap_title)
+        clip_chs = chapters_for_part(chapters_all, real_start, real_end)
+        n_clip_chapters = len(clip_chs) if opts.chapters else 0
+        chs = fill_gaps(clip_chs, real_end - real_start, opts.clip_filter.gap_title) if opts.chapters else []
         stem = final_dir / part_stem(src, opts, part, total_parts, job.single_clip)
         t = dict(tags)
         if job.single_clip:
@@ -1653,6 +1743,13 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
+        if opts.premiere_xml and clip_chs:
+            probe = probe_video(dest)
+            if probe is None:
+                ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere XML.")
+            fps, w, h = probe or (30.0, 1920, 1080)
+            xml = write_premiere_xml(dest, clip_chs, real_end - real_start, fps, w, h)
+            ctx.log(f"✔ {xml.name}  ({len(clip_chs)} markers for Premiere Pro, {fps:g} fps)")
         results.append(dest)
 
     if plan.strategy == "full":

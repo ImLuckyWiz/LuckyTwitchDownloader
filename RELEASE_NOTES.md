@@ -1,3 +1,14 @@
+## v1.2
+
+### New
+- **Export clips to Premiere Pro.** New option (Options > Chapter details > *Also export the clips as markers for Premiere Pro*) saves a `.markers.xml` next to each part, with one marker per clip. In Premiere: File > Import the XML, then drop the part's video into the new sequence at 0:00.
+- Marker names follow your chapter title template, and the comment holds the creator, views and clip link.
+- It works independently of "Add clips as chapters", so you can embed chapters, export the XML, or both. It uses the same clip filters and needs the Twitch sign-in, like chapters.
+- Frame rate and resolution are read from the video with ffprobe (59.94 and 29.97 included).
+
+### Notes
+- The window is slightly taller by default (1020x910) to fit the new option.
+
 # LuckyTwitch v1.0
 
 Download Twitch VODs (or any yt-dlp supported link) and cut them into parts by timestamps, with optional Twitch clip chapters.

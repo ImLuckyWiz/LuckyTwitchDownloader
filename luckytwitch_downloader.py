@@ -102,6 +102,7 @@ DEFAULTS = {
     "title_tpl": "{title} ({creator}, {views} views)",
     "gap_title": "Stream",
     "sidecar": False,
+    "premiere_xml": False,
     "subfolders": True,
     "folder_template": "{date} - {title} - {id}",
     "clip_name_template": "{clip_title}",
@@ -277,7 +278,7 @@ class App:
         self.tools_ctx: Ctx | None = None
 
         root.title("LuckyTwitch Downloader")
-        root.geometry("1020x880")
+        root.geometry("1020x910")
         root.minsize(900, 760)
         self.build_ui()
         root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -329,6 +330,7 @@ class App:
             chapters=bool(v["chapters"].get()),
             clip_filter=self.build_filter(),
             sidecar=bool(v["sidecar"].get()),
+            premiere_xml=bool(v["premiere_xml"].get()),
             subfolders=bool(v["subfolders"].get()),
             folder_template=v["folder_template"].get().strip() or DEFAULTS["folder_template"],
             clip_name_template=v["clip_name_template"].get().strip() or DEFAULTS["clip_name_template"],
@@ -543,6 +545,10 @@ class App:
                   style="Muted.TLabel").pack(side="left")
         ttk.Checkbutton(chf, text="Also save a .clips.json next to each part (clip titles, creators, links)",
                         variable=self.var("sidecar")).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        ttk.Checkbutton(chf, text="Also export the clips as markers for Premiere Pro (.markers.xml next to each part, "
+                                  "works even if chapters are off)",
+                        variable=self.var("premiere_xml"), command=self.refresh_clips).grid(
+            row=5, column=0, columnspan=2, sticky="w")
 
         clf = ttk.LabelFrame(t, text="Single clip downloads (button «Download only selected clip»)", padding=10)
         clf.grid(row=2, column=0, sticky="ew", pady=(10, 0))
@@ -916,7 +922,7 @@ class App:
             msg = f"{len(included)} of {len(self.clips)} clips pass the filter → {len(chapters)} chapters"
             if placed < len(self.clips):
                 msg += f"  ({len(self.clips) - placed} can't be placed: no offset)"
-            if not self.vars["chapters"].get():
+            if not (self.vars["chapters"].get() or self.vars["premiere_xml"].get()):
                 msg += "  [chapters are OFF]"
         self.clips_lbl.set(msg)
 
@@ -996,7 +1002,7 @@ class App:
                 cut = clip_cut_text(clip, self.source.duration, before, after)
                 # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
                 opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
-                               keep_full=False, sidecar=False)
+                               keep_full=False, sidecar=False, premiere_xml=False)
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
                 messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")
