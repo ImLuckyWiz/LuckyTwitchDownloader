@@ -744,6 +744,50 @@ def write_premiere_xml(dest: Path, chapters: list[Chapter], duration: float, fps
 # Source info (yt-dlp)
 # --------------------------------------------------------------------------- #
 @dataclass
+class GameSegment:
+    """One stretch of a VOD streamed under one game / category (Twitch "chapters")."""
+
+    start: float  # seconds from the start of the VOD
+    end: float
+    title: str  # the game's name; the same game can appear in several segments
+
+
+@dataclass
+class Storyboard:
+    """Twitch's preview thumbnails: a few big "sprite sheet" JPEGs, each a grid of small frames.
+
+    Frame i shows the VOD at i * interval seconds. Only the first `count` tiles are real frames:
+    the last sheet can be padded with unused tiles.
+    """
+
+    urls: list[str]  # the sheets, in order; the sheets are public (no token needed)
+    tile_w: int
+    tile_h: int
+    columns: int
+    rows: int  # tile rows per sheet
+    interval: float  # seconds between two frames (1 / yt-dlp's "fps")
+    count: int  # number of real frames
+
+    @property
+    def per_sheet(self) -> int:
+        return self.columns * self.rows
+
+    def frame_time(self, index: int) -> float:
+        return index * self.interval
+
+    def frame_index_at(self, seconds: float) -> int:
+        """Index of the frame closest at or before `seconds` (clamped to the real frames)."""
+        return max(0, min(self.count - 1, int(seconds // self.interval)))
+
+    def tile_box(self, index: int) -> tuple[int, tuple[int, int, int, int]]:
+        """(sheet number, (left, top, right, bottom) in pixels) of frame `index`."""
+        sheet, pos = divmod(index, self.per_sheet)
+        row, col = divmod(pos, self.columns)
+        x, y = col * self.tile_w, row * self.tile_h
+        return sheet, (x, y, x + self.tile_w, y + self.tile_h)
+
+
+@dataclass
 class SourceInfo:
     url: str
     id: str
@@ -752,6 +796,8 @@ class SourceInfo:
     duration: float
     date: str  # YYYY-MM-DD or ""
     twitch_vod_id: str | None
+    segments: list[GameSegment] = field(default_factory=list)  # game changes; [] when yt-dlp gives none
+    storyboard: Storyboard | None = None  # None when the site has no preview thumbnails
 
 
 def normalize_url(text: str) -> str:
@@ -798,8 +844,14 @@ def get_source_info(text: str) -> SourceInfo:
         info = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
         raise EngineError("yt-dlp returned unreadable data for that URL.") from e
+    return parse_source_info(info, url)
+
+
+def parse_source_info(info: dict, url: str) -> SourceInfo:
+    """Turn yt-dlp's --dump-single-json output into a SourceInfo (no I/O, so it is easy to test)."""
     if not info.get("duration"):
         raise EngineError("yt-dlp did not report the video length for that URL.")
+    duration = float(info["duration"])
     d = info.get("upload_date") or ""
     date = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else ""
     return SourceInfo(
@@ -807,10 +859,116 @@ def get_source_info(text: str) -> SourceInfo:
         id=str(info.get("id", "")),
         title=info.get("title", "") or "",
         uploader=info.get("uploader") or info.get("channel") or "",
-        duration=float(info["duration"]),
+        duration=duration,
         date=date,
         twitch_vod_id=twitch_vod_id(url),
+        segments=parse_game_segments(info.get("chapters"), duration),
+        storyboard=parse_storyboard(info.get("formats"), duration),
     )
+
+
+def parse_game_segments(chapters, duration: float) -> list[GameSegment]:
+    """yt-dlp "chapters" -> game segments. Tolerates a missing / null / odd list; drops empty or broken entries.
+
+    Segments are NOT merged by title: a streamer can go Just Chatting -> a game -> Just Chatting again.
+    """
+    if not isinstance(chapters, list):
+        return []
+    out: list[GameSegment] = []
+    for c in chapters:
+        if not isinstance(c, dict):
+            continue
+        try:
+            start, end = float(c["start_time"]), float(c["end_time"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        start, end = max(0.0, start), min(end, duration)
+        if not (end > start):  # also drops NaN
+            continue
+        out.append(GameSegment(start, end, str(c.get("title") or "").strip()))
+    out.sort(key=lambda g: g.start)
+    return out
+
+
+def parse_storyboard(formats, duration: float, prefer: str = "low") -> Storyboard | None:
+    """Pick the preview-thumbnail "format" of yt-dlp's list. prefer="low" = smallest tiles (fewest downloads).
+
+    Frame timing comes from the format's "fps" (frames per second, e.g. 0.2 = one every 5 s), NOT from the
+    fragments' "duration": those just split the VOD evenly between sheets, while the last sheet is only
+    partly filled. Returns None if nothing usable is there.
+    """
+    if not isinstance(formats, list) or duration <= 0:
+        return None
+    best = None
+    for f in formats:
+        if not isinstance(f, dict) or f.get("format_note") != "storyboard":
+            continue
+        try:
+            w, h = int(f["width"]), int(f["height"])
+            cols, rows = int(f["columns"]), int(f["rows"])
+            fps = float(f["fps"])
+            urls = [str(fr["url"]) for fr in f["fragments"]]
+        except (KeyError, TypeError, ValueError):
+            continue
+        if min(w, h, cols, rows) <= 0 or not (fps > 0) or not urls or not all(urls):
+            continue
+        count = min(math.ceil(duration * fps - 1e-6), len(urls) * cols * rows)  # never beyond what the sheets hold
+        if count < 1:
+            continue
+        sb = Storyboard(urls=urls, tile_w=w, tile_h=h, columns=cols, rows=rows, interval=1 / fps, count=count)
+        key = w * h
+        if best is None or (key > best[0] if prefer == "high" else key < best[0]):
+            best = (key, sb)
+    return best[1] if best else None
+
+
+def fetch_storyboard_sheet(url: str) -> Path | None:
+    """Download one sprite sheet once into the per-user cache and return its path (None on failure)."""
+    if not url:
+        return None
+    path = user_data_dir() / "cache" / "storyboards" / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".jpg")
+    try:
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+        r = requests.get(url, timeout=30, headers={"User-Agent": USER_AGENT})
+        r.raise_for_status()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_bytes(r.content)
+        os.replace(tmp, path)
+        return path
+    except (requests.RequestException, OSError):
+        return None
+
+
+def load_storyboard_frames(sb: Storyboard, fetch: Callable[[str], Path | None] = fetch_storyboard_sheet) -> list:
+    """Download the sheets and cut them into frames: a list of `sb.count` PIL images (None = unavailable).
+
+    Slow (network): call it from a background thread. Needs Pillow; without it (or without any sheet) the
+    frames are all None, so callers just show no thumbnails.
+    """
+    frames: list = [None] * sb.count
+    try:
+        from PIL import Image
+    except ImportError:
+        return frames
+    sheets: dict[int, object] = {}
+    for n, url in enumerate(sb.urls):
+        path = fetch(url)
+        if path is None:
+            continue
+        try:
+            with Image.open(path) as im:
+                sheets[n] = im.convert("RGB")
+        except (OSError, ValueError):
+            continue
+    for i in range(sb.count):
+        n, box = sb.tile_box(i)
+        im = sheets.get(n)
+        if im is None or box[2] > im.width or box[3] > im.height:  # sheet missing or smaller than expected
+            continue
+        frames[i] = im.crop(box)
+    return frames
 
 
 # --------------------------------------------------------------------------- #
