@@ -56,6 +56,7 @@ from luckytwitch_engine import (
     make_chapters,
     make_plan,
     run_job,
+    stream_dir,
     user_data_dir,
 )
 
@@ -124,6 +125,20 @@ ACCENT = "#9146ff"
 def bmp(text) -> str:
     """Drop characters outside the Basic Multilingual Plane (emoji): some Windows Tk builds choke on them."""
     return "".join(ch for ch in str(text) if ord(ch) <= 0xFFFF)
+
+
+def open_in_file_manager(path: Path, select: bool = False) -> None:
+    """Open a folder in Explorer / Finder / the file manager. With select=True and a file, highlight that file."""
+    path = Path(path)
+    if sys.platform == "win32":
+        if select and path.is_file():
+            subprocess.Popen(["explorer", f"/select,{path}"])
+        else:
+            os.startfile(str(path if path.is_dir() else path.parent))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", str(path)] if select and path.is_file() else ["open", str(path)])
+    else:
+        subprocess.Popen(["xdg-open", str(path if path.is_dir() else path.parent)])
 
 
 # --------------------------------------------------------------------------- #
@@ -479,7 +494,10 @@ class App:
         out.columnconfigure(1, weight=1)
         ttk.Label(out, text="Folder:").grid(row=0, column=0, sticky="e", pady=3)
         ttk.Entry(out, textvariable=self.var("out_dir")).grid(row=0, column=1, sticky="ew", padx=6)
-        ttk.Button(out, text="Browse…", command=self.pick_folder).grid(row=0, column=2)
+        fbtns = ttk.Frame(out)
+        fbtns.grid(row=0, column=2)
+        ttk.Button(fbtns, text="Browse…", command=self.pick_folder).pack(side="left")
+        ttk.Button(fbtns, text="Open folder", command=lambda: self.open_output_folder()).pack(side="left", padx=(6, 0))
 
         ttk.Label(out, text="Format:").grid(row=1, column=0, sticky="e", pady=3)
         row = ttk.Frame(out)
@@ -603,6 +621,7 @@ class App:
         self.cancel_btn.pack(side="left", padx=6)
         ttk.Button(btns, text="Remove selected", command=self.remove_selected).pack(side="left")
         ttk.Button(btns, text="Clear finished", command=self.clear_finished).pack(side="left", padx=6)
+        ttk.Button(btns, text="Open folder", command=self.open_queue_folder).pack(side="right")
         lf = ttk.LabelFrame(t, text="Log", padding=4)
         lf.grid(row=2, column=0, sticky="nsew")
         lf.columnconfigure(0, weight=1)
@@ -1045,6 +1064,7 @@ class App:
                 self.q.put(("item", it["iid"], "running…"))
                 try:
                     results = run_job(it["job"], ctx)
+                    it["files"] = list(results)
                     self.q.put(("item", it["iid"], f"done ({len(results)} files)"))
                 except Cancelled:
                     self.q.put(("item", it["iid"], "cancelled"))
@@ -1057,6 +1077,39 @@ class App:
 
         self.worker = threading.Thread(target=work, daemon=True)
         self.worker.start()
+
+    def open_output_folder(self, path: Path | None = None, select: bool = False):
+        """Open the output folder (created if missing), or `path` when given."""
+        target = Path(path) if path else Path(self.vars["out_dir"].get().strip() or DEFAULTS["out_dir"])
+        try:
+            if not select:
+                target.mkdir(parents=True, exist_ok=True)
+            open_in_file_manager(target, select)
+        except OSError as e:
+            messagebox.showinfo("Open folder", f"Could not open:\n{target}\n\n{e}")
+
+    def open_queue_folder(self):
+        """Open where the selected queue item was saved (highlighting its first file); else the last
+        finished item; else the output folder."""
+        sel = self.qtree.selection()
+        item = next((i for i in self.items if sel and i["iid"] == sel[0]), None)
+        if item is None:
+            item = next((i for i in reversed(self.items) if i.get("files")), None)
+        if item:
+            files = [Path(f) for f in item.get("files", []) if Path(f).exists()]
+            if files:
+                self.open_output_folder(files[0], select=True)
+                return
+            try:  # not finished yet: its stream folder if it exists
+                folder = stream_dir(item["job"].source, item["job"].opts)
+                if folder.is_dir():
+                    self.open_output_folder(folder)
+                    return
+            except Exception:  # noqa: BLE001
+                pass
+            self.open_output_folder(Path(item["job"].opts.out_dir))
+            return
+        self.open_output_folder()
 
     def cancel_current(self):
         if self.ctx:
