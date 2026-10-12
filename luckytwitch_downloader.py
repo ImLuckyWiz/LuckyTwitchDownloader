@@ -27,6 +27,7 @@ import threading
 import time
 import tkinter as tk
 import webbrowser
+from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -46,6 +47,7 @@ from luckytwitch_engine import (
     describe_tools,
     device_login_poll,
     device_login_start,
+    clip_cut_text,
     ensure_tools,
     fetch_clips_for_vod,
     fmt_hms,
@@ -102,6 +104,9 @@ DEFAULTS = {
     "sidecar": False,
     "subfolders": True,
     "folder_template": "{date} - {title} - {id}",
+    "clip_name_template": "{clip_title}",
+    "clip_pad_before": "3",
+    "clip_pad_after": "3",
     "auto_update": True,
 }
 
@@ -272,8 +277,8 @@ class App:
         self.tools_ctx: Ctx | None = None
 
         root.title("LuckyTwitch Downloader")
-        root.geometry("1020x780")
-        root.minsize(900, 700)
+        root.geometry("1020x880")
+        root.minsize(900, 760)
         self.build_ui()
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.after(100, self.poll_queue)
@@ -326,6 +331,7 @@ class App:
             sidecar=bool(v["sidecar"].get()),
             subfolders=bool(v["subfolders"].get()),
             folder_template=v["folder_template"].get().strip() or DEFAULTS["folder_template"],
+            clip_name_template=v["clip_name_template"].get().strip() or DEFAULTS["clip_name_template"],
         )
 
     def save_settings(self):
@@ -437,7 +443,7 @@ class App:
         num_field("Lead-in (s)", "pad_before", 4)
 
         cols = ("at", "views", "dur", "title", "creator", "chap")
-        self.tree = ttk.Treeview(chf, columns=cols, show="headings", selectmode="browse", height=6)
+        self.tree = ttk.Treeview(chf, columns=cols, show="headings", selectmode="extended", height=6)
         for col, text, width, anchor in [
             ("at", "At", 80, "center"), ("views", "Views", 70, "center"), ("dur", "Dur", 60, "center"),
             ("title", "Title", 380, "w"), ("creator", "Creator", 140, "w"), ("chap", "Chapter", 70, "center"),
@@ -453,6 +459,7 @@ class App:
         brow = ttk.Frame(chf)
         brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         ttk.Button(brow, text="Split at selected clip", command=self.split_at_clip).pack(side="left")
+        ttk.Button(brow, text="Download only selected clip", command=self.download_clips).pack(side="left", padx=(6, 0))
         ttk.Label(brow, textvariable=self.clips_lbl, style="Muted.TLabel").pack(side="left", padx=10)
 
         # --- add buttons --- #
@@ -537,8 +544,25 @@ class App:
         ttk.Checkbutton(chf, text="Also save a .clips.json next to each part (clip titles, creators, links)",
                         variable=self.var("sidecar")).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
+        clf = ttk.LabelFrame(t, text="Single clip downloads (button «Download only selected clip»)", padding=10)
+        clf.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        clf.columnconfigure(1, weight=1)
+        ttk.Label(clf, text="File name:").grid(row=0, column=0, sticky="e", pady=3)
+        ttk.Entry(clf, textvariable=self.var("clip_name_template")).grid(row=0, column=1, sticky="ew", padx=6)
+        ttk.Label(clf, text="Tokens: {clip_title} {creator} {views} {clip_id} {clip_duration}   and also   "
+                            "{streamer} {date} {id} {title} {start} {end}   ({id} and {title} are the VOD's)",
+                  style="Muted.TLabel", wraplength=900, justify="left").grid(row=1, column=1, sticky="w", padx=6)
+        ttk.Label(clf, text="Extra time:").grid(row=2, column=0, sticky="e", pady=3)
+        row = ttk.Frame(clf)
+        row.grid(row=2, column=1, sticky="w", padx=6)
+        ttk.Label(row, text="before").pack(side="left")
+        ttk.Spinbox(row, textvariable=self.var("clip_pad_before"), from_=0, to=600, width=5).pack(side="left", padx=4)
+        ttk.Label(row, text="s      after").pack(side="left")
+        ttk.Spinbox(row, textvariable=self.var("clip_pad_after"), from_=0, to=600, width=5).pack(side="left", padx=4)
+        ttk.Label(row, text="s      seconds added around the clip", style="Muted.TLabel").pack(side="left")
+
         tools = ttk.LabelFrame(t, text="Tools (yt-dlp and ffmpeg)", padding=10)
-        tools.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        tools.grid(row=3, column=0, sticky="ew", pady=(10, 0))
         tools.columnconfigure(0, weight=1)
         self.tools_info = tk.StringVar(value="Checking…")
         ttk.Label(tools, textvariable=self.tools_info, style="Muted.TLabel", justify="left").grid(
@@ -906,6 +930,9 @@ class App:
         if not sel:
             messagebox.showinfo("Select a clip", "Select a clip in the table first.")
             return
+        if len(sel) > 1:
+            messagebox.showinfo("Select one clip", "Splitting works with a single clip: select just one.")
+            return
         if not self.source:
             messagebox.showinfo("No VOD", "Press «Get info» first.")
             return
@@ -938,14 +965,50 @@ class App:
         job = Job(self.source, opts, clips=self.clips if self.clips_loaded else None, client=self.client)
         label = bmp(f"{self.source.uploader} · {self.source.title}")[:70]
         strat = {"full": "full VOD + split", "sections": "only the parts"}[plan.strategy]
-        iid = self.qtree.insert("", "end", values=(len(self.items) + 1, label, len(plan.parts), strat, "queued"))
-        self.items.append({"job": job, "iid": iid, "status": "queued"})
+        self.enqueue(job, label, len(plan.parts), strat)
         self.save_settings()
-        self.log(f"Queued: {label} ({len(plan.parts)} parts, {strat})")
         if start:
             self.start_queue()
         else:
             self.set_status(f"Added to queue ({len(self.items)} item(s)).")
+
+    def enqueue(self, job: Job, label: str, n_parts: int, strat: str):
+        iid = self.qtree.insert("", "end", values=(len(self.items) + 1, label, n_parts, strat, "queued"))
+        self.items.append({"job": job, "iid": iid, "status": "queued"})
+        self.log(f"Queued: {label} ({n_parts} parts, {strat})")
+
+    def download_clips(self):
+        """Queue each selected clip as its own download (just that clip, named after the clip)."""
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Select a clip", "Select a clip in the table first.")
+            return
+        if not self.source:
+            messagebox.showinfo("No VOD", "Press «Get info» first.")
+            return
+        base = self.build_options()
+        before, after = self.num("clip_pad_before", float, 3), self.num("clip_pad_after", float, 3)
+        added = 0
+        for iid in sel:
+            clip = self.clips[int(iid)]
+            title = clip.get("title") or "Clip"
+            try:
+                cut = clip_cut_text(clip, self.source.duration, before, after)
+                # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
+                opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
+                               keep_full=False, sidecar=False)
+                make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
+            except EngineError as e:
+                messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")
+                continue
+            job = Job(self.source, opts, single_clip=clip)
+            label = bmp(f"{self.source.uploader} · Clip: {title}")[:70]
+            self.enqueue(job, label, 1, "only the clip")
+            added += 1
+        if added:
+            self.save_settings()
+            self.set_status(f"Added {added} clip(s) to the queue ({len(self.items)} item(s)). "
+                            "Open «Queue & log» and press «Start queue».")
 
     def set_item_status(self, iid: str, status: str):
         for it in self.items:

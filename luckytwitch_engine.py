@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import math
 import os
 import platform
 import re
@@ -467,6 +468,23 @@ def _chapter_title(clip: dict, tpl: str) -> str:
         return data["title"]
 
 
+def clip_cut_text(
+    clip: dict, duration: float | None, pad_before: float = 3, pad_after: float = 3
+) -> str:
+    """Cut text ('H:MM:SS - H:MM:SS') that covers just one clip (plus a little context)."""
+    off = clip.get("vod_offset")
+    if off is None:
+        raise PlanError("That clip has no position in the VOD.")
+    start = max(0.0, float(off) - pad_before)
+    end = float(off) + float(clip.get("duration") or 0) + pad_after
+    if duration:
+        end = min(end, duration)
+    a, b = math.floor(start), math.ceil(end)
+    if b <= a:
+        raise PlanError("That clip is outside the VOD.")
+    return f"{fmt_hms(a)} - {fmt_hms(b)}"
+
+
 def make_chapters(clips: list[dict], flt: ClipFilter) -> list[Chapter]:
     """Filtered clips -> chapters in absolute VOD time. Overlapping clips are merged."""
     chapters: list[Chapter] = []
@@ -638,6 +656,7 @@ class JobOptions:
     sidecar: bool = False  # write a .clips.json next to each part
     subfolders: bool = True  # out_dir/<streamer>/<stream>/parts
     folder_template: str = "{date} - {title} - {id}"  # name of the per-stream folder
+    clip_name_template: str = "{clip_title}"  # file name when a single clip is downloaded
 
 
 @dataclass
@@ -646,6 +665,7 @@ class Job:
     opts: JobOptions
     clips: list[dict] | None = None  # pre-fetched clips (otherwise fetched at run time)
     client: TwitchClient | None = None
+    single_clip: dict | None = None  # set when the job only downloads this one clip
 
 
 # --------------------------------------------------------------------------- #
@@ -1066,6 +1086,7 @@ class Ctx:
         self.cancel_event = threading.Event()
         self.proc: subprocess.Popen | None = None
         self._lo, self._hi, self._label = 0.0, 1.0, ""
+        self._log_step, self._log_t = -1, float("-inf")
 
     # -- logging / progress -- #
     def log(self, msg: str) -> None:
@@ -1073,15 +1094,28 @@ class Ctx:
 
     def stage(self, lo: float, hi: float, label: str) -> None:
         self._lo, self._hi, self._label = lo, hi, label
+        self._log_step, self._log_t = -1, float("-inf")
         self._progress(lo, label)
 
     def report(self, frac: float | None, extra: str = "") -> None:
-        text = self._label + (f" {extra}" if extra else "")
+        text = self._label + (f"  ·  {extra}" if extra else "")
         if frac is None:
             self._progress(-1, text)
         else:
             frac = min(max(frac, 0.0), 1.0)
             self._progress(self._lo + frac * (self._hi - self._lo), text)
+
+    def log_progress(self, frac: float | None, extra: str = "") -> None:
+        """Write a progress line to the log: every 10% (or every 30 s if there is no percentage)."""
+        now = time.monotonic()
+        step = int(min(max(frac, 0.0), 1.0) * 10) if frac is not None else None
+        if (step is not None and step > self._log_step) or now - self._log_t >= 30:
+            if step is not None:
+                self._log_step = max(self._log_step, step)
+            self._log_t = now
+            pct = f"{min(max(frac, 0.0), 1.0) * 100:.0f}%" if frac is not None else ""
+            body = " · ".join(x for x in (pct, extra) if x)
+            self._log(f"{self._label}: {body}" if body else self._label)
 
     # -- cancel -- #
     def cancel(self) -> None:
@@ -1168,10 +1202,8 @@ def parse_progress(line: str) -> tuple[float | None, str] | None:
         frac = (f_idx or 0) / f_cnt
     elif total or est:
         frac = (dl or 0) / (total or est)  # type: ignore[operator]
-    bits = []
-    if frac is not None:
-        bits.append(f"{frac * 100:.0f}%")
-    elif dl:
+    bits = []  # the percentage is shown by the GUI itself
+    if dl:
         bits.append(f"{dl / 1048576:.0f} MiB")
     if speed:
         bits.append(f"{speed / 1048576:.1f} MiB/s")
@@ -1180,13 +1212,84 @@ def parse_progress(line: str) -> tuple[float | None, str] | None:
     return frac, " · ".join(bits)
 
 
+# Sections are downloaded by ffmpeg (yt-dlp hands the job over) and yt-dlp reports nothing
+# while it does, so we read ffmpeg's own stats lines:  "size=  1234KiB time=00:01:23.45 ... speed=12.3x"
+_FF_TIME = re.compile(r"\btime=(\d+):(\d\d):(\d\d(?:\.\d+)?)")
+_FF_SIZE = re.compile(r"\bL?size=\s*(\d+(?:\.\d+)?)\s*([kKMG]i?B)\b")
+_FF_SPEED = re.compile(r"\bspeed=\s*(\d+(?:\.\d+)?)x")
+
+
+def parse_ffmpeg_stats(line: str, total: float | None) -> tuple[float | None, str] | None:
+    """One ffmpeg stats line -> (fraction of `total` seconds, text), or None if it is not one."""
+    m = _FF_TIME.search(line)
+    if not m:
+        return None
+    t = int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3])
+    frac = min(t / total, 1.0) if total else None
+    bits = []
+    if frac is None:
+        bits.append(fmt_hms(t))
+    ms = _FF_SIZE.search(line)
+    if ms:
+        value, unit = float(ms[1]), ms[2].lower()
+        mib = value / 1024 if unit.startswith("k") else value * 1024 if unit.startswith("g") else value
+        bits.append(f"{mib:.1f} MiB" if mib < 10 else f"{mib:.0f} MiB")
+    mp = _FF_SPEED.search(line)
+    if mp:
+        speed = float(mp[1])
+        bits.append(f"{speed:.1f}x")
+        if total and speed > 0:
+            bits.append(f"ETA {fmt_hms(max(total - t, 0) / speed)}")
+    return frac, " · ".join(bits)
+
+
 def _out_template(folder: Path, stem: str) -> str:
     """yt-dlp output template; '%' in the folder name must be escaped."""
     return str(folder).replace("%", "%%") + os.sep + stem + ".%(ext)s"
 
 
-def run_ytdlp(ctx: Ctx, args: list[str], threads: int) -> None:
-    """Run the yt-dlp binary, forwarding progress to ctx. Cancel kills the whole process tree."""
+def _folder_size(folder: Path) -> int:
+    total = 0
+    try:
+        for p in folder.rglob("*"):
+            try:
+                if p.is_file():
+                    total += p.stat().st_size
+            except OSError:
+                pass
+    except OSError:
+        pass
+    return total
+
+
+def _watch_folder(ctx: Ctx, folder: Path, stop: threading.Event, last_real: list[float]) -> None:
+    """Fallback progress: if the downloader reports nothing for a while, show how much has landed on disk."""
+    samples: list[tuple[float, int]] = []
+    while not stop.wait(1.0):
+        now = time.monotonic()
+        size = _folder_size(folder)
+        samples = (samples + [(now, size)])[-8:]
+        if now - last_real[0] < 5 or size <= 0:
+            continue
+        t0, s0 = samples[0]
+        speed = (size - s0) / (now - t0) if now > t0 else 0
+        text = f"{size / 1048576:.0f} MiB" + (f" · {speed / 1048576:.1f} MiB/s" if speed > 0 else "")
+        ctx.report(None, text)
+        ctx.log_progress(None, text)
+
+
+def run_ytdlp(
+    ctx: Ctx,
+    args: list[str],
+    threads: int,
+    total_secs: float | None = None,
+    watch_dir: Path | None = None,
+) -> None:
+    """
+    Run the yt-dlp binary, forwarding progress to ctx. Cancel kills the whole process tree.
+    total_secs: length of what is being downloaded (sections) so ffmpeg's stats become a percentage.
+    watch_dir: folder where the download lands, used as a fallback progress source.
+    """
     ytdlp = find_tool("yt-dlp")
     if not ytdlp:
         raise EngineError(YTDLP_MISSING)
@@ -1200,6 +1303,9 @@ def run_ytdlp(ctx: Ctx, args: list[str], threads: int) -> None:
         "--quiet", "--progress", "--newline",
         "--progress-template", PROGRESS_TEMPLATE,
     ]
+    if total_secs:
+        # --quiet makes yt-dlp run ffmpeg with -loglevel quiet; -stats brings its progress line back.
+        cmd += ["--downloader-args", "ffmpeg:-stats"]
     ffmpeg = find_tool("ffmpeg")
     if ffmpeg:
         cmd += ["--ffmpeg-location", str(Path(ffmpeg).parent)]
@@ -1221,22 +1327,34 @@ def run_ytdlp(ctx: Ctx, args: list[str], threads: int) -> None:
     except OSError as e:
         raise EngineError(f"Could not run yt-dlp:\n{e}") from e
     ctx.proc = proc
+    last_real = [time.monotonic()]
+    stop = threading.Event()
+    watcher = None
+    if watch_dir is not None:
+        watcher = threading.Thread(target=_watch_folder, args=(ctx, watch_dir, stop, last_real), daemon=True)
+        watcher.start()
     tail: list[str] = []
     try:
         assert proc.stdout is not None
+        # text mode turns the "\r" that ffmpeg uses between stats updates into line breaks
         for line in proc.stdout:
             line = line.strip()
             if not line:
                 continue
-            parsed = parse_progress(line)
+            parsed = parse_progress(line) or parse_ffmpeg_stats(line, total_secs)
             if parsed:
+                last_real[0] = time.monotonic()
                 ctx.report(*parsed)
+                ctx.log_progress(*parsed)
                 continue
             tail.append(line)
             if line.startswith(("WARNING", "ERROR")):
                 ctx.log(f"yt-dlp: {line}")
         proc.wait()
     finally:
+        stop.set()
+        if watcher:
+            watcher.join(timeout=2)
         ctx.proc = None
     ctx.check_cancel()
     if proc.returncode != 0:
@@ -1274,7 +1392,7 @@ def download_section(ctx: Ctx, url: str, part: Part, workdir: Path, threads: int
     args = ["-o", _out_template(pdir, "part"), "--download-sections", f"*{part.start:.3f}-{part.end:.3f}"]
     if exact:
         args.append("--force-keyframes-at-cuts")
-    run_ytdlp(ctx, args + [url], threads)
+    run_ytdlp(ctx, args + [url], threads, total_secs=part.duration, watch_dir=pdir)
     media = _find_media(pdir)
     if not media or media.stat().st_size < 4096:
         raise EngineError(
@@ -1304,7 +1422,7 @@ def unique_path(path: Path) -> Path:
         n += 1
 
 
-def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int) -> str:
+def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int, clip: dict | None = None) -> str:
     def tag(t: float) -> str:
         s = int(t)
         return f"{s // 3600:02d}h{s % 3600 // 60:02d}m{s % 60:02d}s"
@@ -1319,11 +1437,25 @@ def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int) -> str:
         start=tag(part.start),
         end=tag(part.end),
     )
+    template = opts.name_template
+    if clip:  # single clip download: the clip's own name instead of the stream's
+        data.update(
+            clip_title=clip.get("title") or "Clip",
+            creator=clip.get("creator_name", ""),
+            views=clip.get("view_count", 0),
+            clip_id=clip.get("id", ""),
+            clip_duration=round(clip.get("duration", 0) or 0),
+        )
+        template = opts.clip_name_template
     try:
-        name = opts.name_template.format_map(data)
+        name = template.format_map(data)
     except (ValueError, IndexError):
-        name = f"{data['id']} - part{part.index}"
-    return safe_name(name) or f"part{part.index}"
+        name = data["clip_title"] if clip else f"{data['id']} - part{part.index}"
+    name = safe_name(name)
+    if clip:
+        name = name[:150].strip(" .")
+        return name or f"clip {data['clip_id']}".strip()
+    return name or f"part{part.index}"
 
 
 def stream_dir(src: SourceInfo, opts: JobOptions) -> Path:
@@ -1510,9 +1642,13 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         chs = chapters_for_part(chapters_all, real_start, real_end)
         n_clip_chapters = len(chs)
         chs = fill_gaps(chs, real_end - real_start, opts.clip_filter.gap_title)
-        stem = final_dir / part_stem(src, opts, part, total_parts)
+        stem = final_dir / part_stem(src, opts, part, total_parts, job.single_clip)
         t = dict(tags)
-        t["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
+        if job.single_clip:
+            t["title"] = job.single_clip.get("title") or src.title
+            t["comment"] = job.single_clip.get("url") or src.url
+        else:
+            t["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
         dest = finalize_part(ctx, file, stem, opts.container, chs, t, real_end - real_start, copy)
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
