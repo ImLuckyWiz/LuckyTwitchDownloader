@@ -35,6 +35,7 @@ import requests
 from luckytwitch_engine import (
     APP_DIR,
     TOOLS_DIR,
+    TWITCH_CLIENT_ID,
     Cancelled,
     ClipFilter,
     Ctx,
@@ -43,6 +44,8 @@ from luckytwitch_engine import (
     JobOptions,
     TwitchClient,
     describe_tools,
+    device_login_poll,
+    device_login_start,
     ensure_tools,
     fetch_clips_for_vod,
     fmt_hms,
@@ -120,23 +123,65 @@ def bmp(text) -> str:
 # --------------------------------------------------------------------------- #
 # Config / settings
 # --------------------------------------------------------------------------- #
-def load_credentials():
+def _read_config() -> dict:
     try:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-        if data.get("client_id") and data.get("client_secret"):
-            return data
+        return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
-        pass
+        return {}
+
+
+def _write_config(data: dict) -> None:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def load_credentials():
+    """Own-app credentials (client id + secret), or None."""
+    data = _read_config()
+    if data.get("client_id") and data.get("client_secret"):
+        return data
     return None
 
 
 def save_credentials(client_id, client_secret):
-    try:
-        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        data = {}
+    data = _read_config()
     data.update({"client_id": client_id, "client_secret": client_secret})
-    CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    _write_config(data)
+
+
+def clear_credentials():
+    data = _read_config()
+    data.pop("client_id", None)
+    data.pop("client_secret", None)
+    _write_config(data)
+
+
+def save_login_tokens(access, refresh):
+    """Store (or, with None, remove) the tokens of 'Sign in with Twitch'."""
+    data = _read_config()
+    if refresh:
+        data.update({"access_token": access, "refresh_token": refresh})
+    else:
+        data.pop("access_token", None)
+        data.pop("refresh_token", None)
+    _write_config(data)
+
+
+def make_client() -> "TwitchClient | None":
+    """Build the Twitch client from what is saved: own app first, otherwise the signed-in user."""
+    creds = load_credentials()
+    if creds:
+        return TwitchClient(creds["client_id"], creds["client_secret"])
+    data = _read_config()
+    if data.get("refresh_token"):
+        return TwitchClient(
+            TWITCH_CLIENT_ID,
+            access_token=data.get("access_token"),
+            refresh_token=data["refresh_token"],
+            on_tokens=save_login_tokens,
+        )
+    return None
 
 
 def load_settings():
@@ -233,9 +278,7 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.after(100, self.poll_queue)
 
-        cfg = load_credentials()
-        if cfg:
-            self.client = TwitchClient(cfg["client_id"], cfg["client_secret"])
+        self.client = make_client()
         self.set_status("Ready. Paste a VOD URL or ID and press «Get info».")
         self.update_preview()
         self.refresh_clips()
@@ -594,22 +637,139 @@ class App:
         dlg.configure(bg=BG)
         dark_titlebar(dlg)
         dlg.grab_set()
-        cfg = load_credentials() or {}
-        id_var = tk.StringVar(value=cfg.get("client_id", ""))
-        sec_var = tk.StringVar(value=cfg.get("client_secret", ""))
         body = ttk.Frame(dlg, padding=15)
         body.pack()
+
         ttk.Label(
             body,
             text="Optional: only needed to fetch clips (clips → chapters).\n"
-                 "Client ID / Secret of your app at dev.twitch.tv.\n"
-                 f"Saved in: {CONFIG_PATH}",
+                 "Sign in with your Twitch account: no developer app needed.",
             justify="left",
         ).grid(row=0, column=0, columnspan=2, sticky="w")
-        ttk.Label(body, text="Client ID:").grid(row=1, column=0, sticky="e", pady=(12, 4))
-        ttk.Entry(body, textvariable=id_var, width=48).grid(row=1, column=1, pady=(12, 4))
-        ttk.Label(body, text="Client Secret:").grid(row=2, column=0, sticky="e", pady=4)
-        ttk.Entry(body, textvariable=sec_var, width=48, show="*").grid(row=2, column=1, pady=4)
+
+        status_var = tk.StringVar()
+        code_var = tk.StringVar()
+        ttk.Label(body, textvariable=status_var, justify="left", wraplength=470).grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=(10, 2))
+        code_lbl = ttk.Label(body, textvariable=code_var, font=(MONO_FONT, 18, "bold"), foreground=ACCENT)
+        code_lbl.grid(row=2, column=0, columnspan=2, pady=(2, 2))
+
+        login_q: queue.Queue = queue.Queue()
+        cancel_ev = threading.Event()
+        state = {"busy": False, "url": ""}
+
+        def signed_in() -> bool:
+            return bool(_read_config().get("refresh_token")) and not load_credentials()
+
+        def refresh_status():
+            if load_credentials():
+                status_var.set("Using your own Twitch app (Client ID / Secret below).")
+            elif signed_in():
+                status_var.set("✔ Signed in with Twitch. Clips are available.")
+            else:
+                status_var.set("Not signed in.")
+            login_btn.config(text="Sign in again" if signed_in() else "Sign in with Twitch")
+            logout_btn.config(state="normal" if (signed_in() or load_credentials()) else "disabled")
+
+        def finish_login(access, refresh):
+            clear_credentials()  # the signed-in account replaces a previous own-app setup
+            save_login_tokens(access, refresh)
+            self.client = make_client()
+            code_var.set("")
+            state["busy"] = False
+            login_btn.config(state="normal")
+            self.set_status("Signed in with Twitch.")
+            refresh_status()
+
+        def fail_login(msg):
+            code_var.set("")
+            state["busy"] = False
+            login_btn.config(state="normal")
+            refresh_status()
+            messagebox.showerror("Twitch sign-in", msg, parent=dlg)
+
+        def pump():
+            try:
+                while True:
+                    kind, *args = login_q.get_nowait()
+                    if kind == "code":
+                        user_code, url = args
+                        state["url"] = url
+                        code_var.set(user_code)
+                        status_var.set("A browser tab opened. Enter this code on twitch.tv/activate\n"
+                                       "and press Authorize. Waiting for you…")
+                    elif kind == "ok":
+                        finish_login(*args)
+                    elif kind == "error":
+                        fail_login(args[0])
+                    elif kind == "cancelled":
+                        code_var.set("")
+                        state["busy"] = False
+                        login_btn.config(state="normal")
+                        refresh_status()
+            except queue.Empty:
+                pass
+            if dlg.winfo_exists():
+                dlg.after(250, pump)
+
+        def start_login():
+            if state["busy"]:
+                return
+            state["busy"] = True
+            cancel_ev.clear()
+            login_btn.config(state="disabled")
+            status_var.set("Contacting Twitch…")
+
+            def work():
+                try:
+                    start = device_login_start()
+                    url = start.get("verification_uri") or "https://www.twitch.tv/activate"
+                    login_q.put(("code", start.get("user_code", ""), url))
+                    try:
+                        webbrowser.open(url)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    access, refresh = device_login_poll(start, cancel=cancel_ev)
+                    login_q.put(("ok", access, refresh))
+                except Cancelled:
+                    login_q.put(("cancelled",))
+                except Exception as e:  # noqa: BLE001
+                    login_q.put(("error", str(e)))
+
+            threading.Thread(target=work, daemon=True).start()
+
+        def do_logout():
+            save_login_tokens(None, None)
+            clear_credentials()
+            self.client = None
+            id_var.set("")
+            sec_var.set("")
+            self.set_status("Twitch account removed.")
+            refresh_status()
+
+        def close():
+            cancel_ev.set()
+            dlg.destroy()
+
+        login_row = ttk.Frame(body)
+        login_row.grid(row=3, column=0, columnspan=2, pady=(6, 0), sticky="w")
+        login_btn = ttk.Button(login_row, text="Sign in with Twitch", command=start_login)
+        login_btn.pack(side="left")
+        ttk.Button(login_row, text="Open page again",
+                   command=lambda: state["url"] and webbrowser.open(state["url"])).pack(side="left", padx=(6, 0))
+        logout_btn = ttk.Button(login_row, text="Sign out", command=do_logout)
+        logout_btn.pack(side="left", padx=(6, 0))
+
+        # --- advanced: own Twitch app --------------------------------------------------------
+        adv = ttk.LabelFrame(body, text="Advanced: use your own Twitch app instead", padding=10)
+        adv.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+        cfg = load_credentials() or {}
+        id_var = tk.StringVar(value=cfg.get("client_id", ""))
+        sec_var = tk.StringVar(value=cfg.get("client_secret", ""))
+        ttk.Label(adv, text="Client ID:").grid(row=0, column=0, sticky="e", pady=(0, 4))
+        ttk.Entry(adv, textvariable=id_var, width=44).grid(row=0, column=1, pady=(0, 4))
+        ttk.Label(adv, text="Client Secret:").grid(row=1, column=0, sticky="e", pady=4)
+        ttk.Entry(adv, textvariable=sec_var, width=44, show="*").grid(row=1, column=1, pady=4)
 
         def save():
             cid, sec = id_var.get().strip(), sec_var.get().strip()
@@ -625,15 +785,19 @@ class App:
             except requests.RequestException as e:
                 messagebox.showerror("Network error", str(e), parent=dlg)
                 return
+            save_login_tokens(None, None)  # own app replaces a signed-in account
             save_credentials(cid, sec)
             self.client = test
             self.set_status("Twitch API credentials saved.")
-            dlg.destroy()
+            refresh_status()
 
-        btns = ttk.Frame(body)
-        btns.grid(row=3, column=0, columnspan=2, pady=(14, 0), sticky="e")
-        ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(side="right", padx=(6, 0))
-        ttk.Button(btns, text="Save", command=save).pack(side="right")
+        ttk.Button(adv, text="Save own app", command=save).grid(row=2, column=0, columnspan=2, sticky="e", pady=(6, 0))
+        ttk.Label(body, text=f"Saved in: {CONFIG_PATH}", foreground=MUTED).grid(
+            row=5, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        ttk.Button(body, text="Close", command=close).grid(row=6, column=0, columnspan=2, sticky="e", pady=(10, 0))
+        dlg.protocol("WM_DELETE_WINDOW", close)
+        refresh_status()
+        pump()
 
     # ---------------------------- plan tab logic ---------------------------- #
     def pick_folder(self):
@@ -690,7 +854,7 @@ class App:
                     except Exception as e:  # noqa: BLE001
                         warn = f"Could not fetch clips: {e}"
                 elif info.twitch_vod_id:
-                    warn = "No Twitch API credentials set: clips are not available (optional)."
+                    warn = "Not signed in to Twitch: clips are not available (optional, see the Twitch API… button)."
                 self.q.put(("info_ok", info, clips, loaded, warn))
             except Exception as e:  # noqa: BLE001
                 self.q.put(("error", str(e)))
@@ -722,7 +886,7 @@ class App:
                 fmt_hms(off), c.get("view_count", 0), f"{round(c.get('duration', 0))}s",
                 bmp(c.get("title", "")), bmp(c.get("creator_name", "")), mark))
         if not self.clips:
-            msg = "No clips loaded (needs Twitch API credentials, optional)." if not self.clips_loaded else "This VOD has no clips."
+            msg = "No clips loaded (sign in with the Twitch API… button, optional)." if not self.clips_loaded else "This VOD has no clips."
         else:
             placed = sum(1 for c in self.clips if c.get("vod_offset") is not None)
             msg = f"{len(included)} of {len(self.clips)} clips pass the filter → {len(chapters)} chapters"

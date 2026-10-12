@@ -29,3 +29,9 @@ Windows may show a SmartScreen "unknown publisher" warning: *More info → Run a
 ## Notes
 - ffmpeg builds used are GPL: fine for personal use; follow GPL terms if you redistribute.
 - Because tools are downloaded, the app needs internet on first run.
+
+## Twitch login (clips)
+Clips need a Twitch session. In the app, press **Twitch API…** → **Sign in with Twitch**: it shows a code and opens
+twitch.tv/activate (Device Code Flow, a *public* Twitch app, no client secret). Users do not need a developer account.
+The tokens are stored in `config.json` in the user data folder and refreshed automatically.
+Advanced users can still enter their own Client ID / Secret there.
