@@ -604,7 +604,7 @@ def premiere_markers_xml(
     name: str, chapters: list[Chapter], duration: float, fps: float, width: int = 1920, height: int = 1080
 ) -> str:
     """
-    FCP7 XML (xmeml) with one empty sequence and one sequence marker per chapter.
+    FCP7 XML (xmeml) with one empty sequence and one sequence marker (in = chapter start, out = chapter end) per chapter.
     Premiere imports it through File > Import. Marker times are relative to the part.
     """
     tb, ntsc = _timebase(fps)
@@ -633,12 +633,13 @@ def premiere_markers_xml(
             f"{c.get('creator_name', '')} · {c.get('view_count', 0)} views · {c.get('url', '')}" for c in ch.clips
         )
         frame = min(max(int(round(ch.start * real_rate)), 0), total - 1)
+        end = min(int(round(ch.end * real_rate)), total)  # the marker spans the whole clip
         lines += [
             "<marker>",
             f"<comment>{escape(comment)}</comment>",
             f"<name>{escape(ch.title)}</name>",
             f"<in>{frame}</in>",
-            "<out>-1</out>",
+            f"<out>{end if end > frame else -1}</out>",
             "</marker>",
         ]
     lines += ["</sequence>", "</xmeml>"]
