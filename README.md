@@ -70,6 +70,24 @@ PyInstaller cannot cross-compile, so build each system on that system.
 - **Windows:** run `build_windows.bat [version]` → `dist\LuckyTwitch\LuckyTwitch.exe`, plus `dist\LuckyTwitch-Setup.exe` if [Inno Setup 6](https://jrsoftware.org/isdl.php) is installed.
 - **macOS:** run `./build_mac.sh` → `dist/LuckyTwitch.app` and `dist/LuckyTwitch-macos-<arch>.dmg`. It also installs the app into Applications on that Mac. The result matches the Mac's chip (Apple Silicon or Intel).
 
+## Development
+
+```
+luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpeg, chapters)
+luckytwitch_downloader.py   the Tk app: window, tabs, queue
+ui/                         UI pieces split out of the app (plan_tab.py, common.py: colours and fonts)
+tests/                      pytest suite
+```
+
+Run the tests:
+
+```
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`. Two tests are marked as expected failures: they document a known quirk (splitting twice at the same clip writes a duplicate cut point).
+
 ## Notes
 
 - The ffmpeg builds the app downloads are GPL. That is fine for personal use; follow the GPL terms if you redistribute them.

@@ -24,6 +24,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check release notes match the tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          first=$(head -n1 RELEASE_NOTES.md | sed 's/^## *//; s/[[:space:]]*$//' | tr -d '\r')
+          if [ "$first" != "$GITHUB_REF_NAME" ]; then
+            echo "::error file=RELEASE_NOTES.md,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update RELEASE_NOTES.md before tagging."
+            exit 1
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

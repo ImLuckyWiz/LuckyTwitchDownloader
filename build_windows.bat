@@ -15,6 +15,7 @@ python -m pip install -r requirements.txt || goto :err
 python -m PyInstaller --noconfirm --clean --windowed ^
   --name LuckyTwitch ^
   --collect-submodules requests ^
+  --collect-submodules ui ^
   --hidden-import luckytwitch_engine ^
   --hidden-import PIL._tkinter_finder ^
   luckytwitch_downloader.py || goto :err

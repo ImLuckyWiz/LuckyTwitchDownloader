@@ -12,6 +12,7 @@ python3 -m PyInstaller --noconfirm --clean --windowed \
   --name LuckyTwitch \
   --osx-bundle-identifier com.luckytwitch.app \
   --collect-submodules requests \
+  --collect-submodules ui \
   --hidden-import luckytwitch_engine \
   --hidden-import PIL._tkinter_finder \
   luckytwitch_downloader.py
