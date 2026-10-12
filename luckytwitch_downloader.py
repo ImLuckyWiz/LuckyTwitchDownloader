@@ -101,6 +101,7 @@ VIDEO_KINDS = {
     "Uploads": "upload",
 }
 THUMB_SIZE = (128, 72)
+THUMB_GAP = 14  # transparent space to the right of each thumbnail, so the title doesn't touch it
 
 DEFAULTS = {
     "out_dir": str((Path.home() / "Downloads" / "LuckyTwitch") if FROZEN else (APP_DIR / "downloads")),
@@ -149,9 +150,12 @@ def open_in_file_manager(path: Path, select: bool = False) -> None:
     path = Path(path)
     if sys.platform == "win32":
         if select and path.is_file():
-            subprocess.Popen(["explorer", f"/select,{path}"])
+            # Explorer wants  /select,"C:\full path\file.mp4"  as ONE command line. Passing a list lets
+            # Python quote the whole "/select,..." argument when the path has spaces, and Explorer then
+            # ignores it and opens the Documents folder. So the command line is built by hand.
+            subprocess.Popen(f'explorer /select,"{os.path.normpath(str(path))}"')
         else:
-            os.startfile(str(path if path.is_dir() else path.parent))  # type: ignore[attr-defined]
+            os.startfile(os.path.normpath(str(path if path.is_dir() else path.parent)))  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
         subprocess.Popen(["open", "-R", str(path)] if select and path.is_file() else ["open", str(path)])
     else:
@@ -586,7 +590,7 @@ class App:
         self.sv_tree = ttk.Treeview(right, columns=("title", "date", "dur", "views"), show="tree headings",
                                     style="Vods.Treeview", selectmode="browse", height=5)
         self.sv_tree.heading("#0", text="")
-        self.sv_tree.column("#0", width=THUMB_SIZE[0] + 12, stretch=False, anchor="center")
+        self.sv_tree.column("#0", width=THUMB_SIZE[0] + THUMB_GAP + 22, stretch=False, anchor="w")
         for col, text, width, anchor in [
             ("title", "Title", 360, "w"), ("date", "Date", 90, "center"),
             ("dur", "Length", 80, "center"), ("views", "Views", 70, "center"),
@@ -1344,7 +1348,10 @@ class App:
             return
         try:
             with Image.open(path) as im:
-                photo = ImageTk.PhotoImage(im.convert("RGB").resize(THUMB_SIZE))
+                thumb = im.convert("RGB").resize(THUMB_SIZE)
+            padded = Image.new("RGBA", (THUMB_SIZE[0] + THUMB_GAP, THUMB_SIZE[1]), (0, 0, 0, 0))
+            padded.paste(thumb, (0, 0))  # transparent strip on the right = gap before the title
+            photo = ImageTk.PhotoImage(padded)
         except Exception:  # noqa: BLE001  (unreadable image: just leave the row without one)
             return
         self.sv_images[iid] = photo
