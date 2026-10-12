@@ -16,6 +16,7 @@ python -m PyInstaller --noconfirm --clean --windowed ^
   --name LuckyTwitch ^
   --collect-submodules requests ^
   --hidden-import luckytwitch_engine ^
+  --hidden-import PIL._tkinter_finder ^
   luckytwitch_downloader.py || goto :err
 
 set ISCC=

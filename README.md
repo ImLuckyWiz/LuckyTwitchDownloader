@@ -29,11 +29,15 @@ Get the latest version from the [Releases](../../releases) page:
 2. Write the cut points, for example `0:00 - 30:00 - 1:30:00 - end` (consecutive parts). Use `;` or a new line to skip gaps: `0:00 - 30:00 ; 2:00:00 - end`. Times can be `H:MM:SS`, `MM:SS`, seconds or `1h30m`.
 3. Choose the download strategy (**Auto** picks whichever is cheaper: full VOD then split, or only the parts), then start the job.
 
+### Finding a VOD (Search tab)
+
+Instead of pasting a link you can search for a streamer: open the **Search** tab, type a name and press Enter. Pick a channel to see its VODs with thumbnails (past broadcasts, highlights or uploads), then double-click one (or press **Use this VOD**) and it is loaded in the Plan tab. The streamers you open are remembered under **Recent streamers**. Searching needs the Twitch sign-in described below; if you are not signed in, the tab shows a **Sign in…** button.
+
 Other options include exact cuts, file and folder name templates, keeping the full VOD, and a queue of jobs. Cancelling stops everything and keeps the partial download so it can resume.
 
 ### Clip chapters (optional)
 
-The app can build chapters from a VOD's Twitch clips, filtered by views, duration or top N. This needs a Twitch session:
+The Search tab and clip chapters need a Twitch session. The app can build chapters from a VOD's Twitch clips, filtered by views, duration or top N. To sign in:
 
 1. Press **Twitch API…** → **Sign in with Twitch**.
 2. A code appears and `twitch.tv/activate` opens in your browser. Enter the code and authorize.
@@ -53,7 +57,7 @@ Uninstalling the app leaves this data folder in place; delete it for a clean rem
 ## Run from source
 
 ```
-pip install requests
+pip install requests pillow
 python luckytwitch_downloader.py
 ```
 

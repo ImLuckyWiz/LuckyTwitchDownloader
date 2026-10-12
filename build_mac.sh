@@ -13,6 +13,7 @@ python3 -m PyInstaller --noconfirm --clean --windowed \
   --osx-bundle-identifier com.luckytwitch.app \
   --collect-submodules requests \
   --hidden-import luckytwitch_engine \
+  --hidden-import PIL._tkinter_finder \
   luckytwitch_downloader.py
 
 # Ad-hoc signature: required for arm64 binaries to launch at all.

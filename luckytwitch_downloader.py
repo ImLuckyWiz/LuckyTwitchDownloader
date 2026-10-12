@@ -3,7 +3,7 @@ LuckyTwitch Downloader - download a Twitch VOD (via yt-dlp) and cut it into
 several parts in one go, optionally adding the VOD's clips as chapters.
 
 Requirements:
-    pip install requests
+    pip install requests pillow
 
 yt-dlp and ffmpeg are downloaded automatically on first run (into a per-user
 "tools" folder) and yt-dlp is kept up to date. Copies already on PATH, next to
@@ -33,6 +33,11 @@ from tkinter import filedialog, messagebox, ttk
 
 import requests
 
+try:  # thumbnails in the Search tab; without Pillow everything else still works
+    from PIL import Image, ImageTk
+except ImportError:  # pragma: no cover
+    Image = ImageTk = None
+
 from luckytwitch_engine import (
     APP_DIR,
     TOOLS_DIR,
@@ -50,12 +55,15 @@ from luckytwitch_engine import (
     clip_cut_text,
     ensure_tools,
     fetch_clips_for_vod,
+    fetch_thumbnail,
+    fetch_videos,
     fmt_hms,
     get_source_info,
     insert_cut_point,
     make_chapters,
     make_plan,
     run_job,
+    search_channels,
     stream_dir,
     user_data_dir,
 )
@@ -71,6 +79,8 @@ except OSError:
     pass
 CONFIG_PATH = DATA_DIR / "config.json"
 SETTINGS_PATH = DATA_DIR / "luckytwitch_settings.json"
+RECENT_PATH = DATA_DIR / "luckytwitch_recent.json"
+MAX_RECENT = 12
 
 if sys.platform == "win32":
     MONO_FONT, UI_FONT = "Consolas", "Segoe UI"
@@ -84,6 +94,13 @@ STRATEGIES = {
     "Download full VOD, then split": "full",
     "Download only the parts": "sections",
 }
+
+VIDEO_KINDS = {
+    "Past broadcasts": "archive",
+    "Highlights": "highlight",
+    "Uploads": "upload",
+}
+THUMB_SIZE = (128, 72)
 
 DEFAULTS = {
     "out_dir": str((Path.home() / "Downloads" / "LuckyTwitch") if FROZEN else (APP_DIR / "downloads")),
@@ -213,6 +230,29 @@ def load_settings():
     return {**DEFAULTS, **{k: v for k, v in saved.items() if k in DEFAULTS}}
 
 
+def load_recent() -> list[dict]:
+    """Streamers picked in the Search tab, most recent first: [{id, login, name}]."""
+    try:
+        data = json.loads(RECENT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    out = []
+    for c in data:
+        if isinstance(c, dict) and c.get("id"):
+            login = str(c.get("login") or "")
+            out.append({"id": str(c["id"]), "login": login, "name": str(c.get("name") or login)})
+    return out[:MAX_RECENT]
+
+
+def save_recent(items: list[dict]) -> None:
+    try:
+        RECENT_PATH.write_text(json.dumps(items, indent=2, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
 # --------------------------------------------------------------------------- #
 # Theme (same look as clips_downloader.py)
 # --------------------------------------------------------------------------- #
@@ -264,11 +304,71 @@ def apply_dark_theme(root):
     style.map("Treeview", background=[("selected", ACCENT)], foreground=[("selected", "#ffffff")])
     style.configure("Treeview.Heading", background=BG3, foreground=FG, relief="flat")
     style.map("Treeview.Heading", background=[("active", "#4a4d55")])
+    style.configure("Vods.Treeview", rowheight=THUMB_SIZE[1] + 8)  # tall rows: room for the thumbnails
     style.configure("Vertical.TScrollbar", background=BG3, troughcolor=BG2, arrowcolor=FG, bordercolor=BG2)
     style.map("Vertical.TScrollbar", background=[("active", "#4a4d55")])
     style.configure("Horizontal.TProgressbar", troughcolor=BG2, background=ACCENT, bordercolor=BG2,
                     lightcolor=ACCENT, darkcolor=ACCENT)
     dark_titlebar(root)
+
+
+# --------------------------------------------------------------------------- #
+# Scrollable tab page
+# --------------------------------------------------------------------------- #
+class ScrollFrame(ttk.Frame):
+    """
+    A tab page that scrolls vertically when the window is too short for its content.
+    Put the widgets in `.body`. When the window is tall enough `.body` stretches to fill it (so rows
+    with a grid weight still grow); otherwise a scrollbar appears and the mouse wheel scrolls.
+    """
+
+    def __init__(self, parent, padding: int = 8):
+        super().__init__(parent)
+        self.canvas = tk.Canvas(self, bg=BG, highlightthickness=0, borderwidth=0, yscrollincrement=20)
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.vsb.set)
+        self.vsb.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.body = ttk.Frame(self.canvas, padding=padding)
+        self._win = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
+        self.body.bind("<Configure>", self._fit)
+        self.canvas.bind("<Configure>", self._fit)
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):  # Windows/macOS, Linux up/down
+            self.canvas.bind_all(seq, self._on_wheel, add="+")
+
+    def _fit(self, _event=None):
+        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if cw <= 1:
+            return  # not laid out yet
+        height = max(ch, self.body.winfo_reqheight())
+        self.canvas.itemconfigure(self._win, width=cw, height=height)
+        self.canvas.configure(scrollregion=(0, 0, cw, height))
+
+    def _on_wheel(self, event):
+        try:
+            w = self.winfo_containing(event.x_root, event.y_root)
+        except (KeyError, tk.TclError):  # Tk quirk with combobox pop-downs
+            return
+        p = w
+        while p is not None and p is not self:
+            p = p.master
+        if p is None:
+            return  # the pointer is not over this page
+        if isinstance(w, (ttk.Treeview, tk.Text, tk.Listbox, ttk.Combobox, ttk.Spinbox)):
+            return  # these handle the wheel themselves
+        if self.body.winfo_reqheight() <= self.canvas.winfo_height():
+            return  # everything fits: nothing to scroll
+        if getattr(event, "num", None) == 4:
+            units = -3
+        elif getattr(event, "num", None) == 5:
+            units = 3
+        else:
+            delta = int(event.delta)
+            if sys.platform == "darwin":
+                units = -delta
+            else:
+                units = -3 * (delta // 120) if abs(delta) >= 120 else (-1 if delta > 0 else 1)
+        self.canvas.yview_scroll(units, "units")
 
 
 # --------------------------------------------------------------------------- #
@@ -291,15 +391,33 @@ class App:
         self._job_prefix = ""
         self.tools_busy = False
         self.tools_ctx: Ctx | None = None
+        # Search tab state
+        self.recent = load_recent()
+        self.sv_gen = 0  # bumped on every new channel / type: results of older requests are ignored
+        self.sv_channel: dict | None = None
+        self.sv_results: list[dict] = []
+        self.sv_videos: list[dict] = []
+        self.sv_cursor: str | None = None
+        self.sv_images: dict[str, object] = {}  # keeps the thumbnails alive (Tk drops unreferenced images)
+        self.thumb_q: queue.Queue = queue.Queue()
 
         root.title("LuckyTwitch Downloader")
         root.geometry("1020x910")
-        root.minsize(900, 760)
+        root.minsize(900, 560)
         self.build_ui()
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.after(100, self.poll_queue)
 
+        if Image is not None:
+            for _ in range(4):
+                threading.Thread(target=self._thumb_worker, daemon=True).start()
+        else:
+            self.log("Pillow is not installed: thumbnails are disabled in the Search tab (pip install pillow).")
+
         self.client = make_client()
+        self.update_search_state()
+        if not self.client:  # nothing to search with yet: start on the Plan tab
+            self.notebook.select(self.tab_plan)
         self.set_status("Ready. Paste a VOD URL or ID and press «Get info».")
         self.update_preview()
         self.refresh_clips()
@@ -393,19 +511,102 @@ class App:
 
         nb = ttk.Notebook(self.root)
         nb.pack(fill="both", expand=True, padx=10, pady=(0, 4))
-        self.tab_plan = ttk.Frame(nb, padding=8)
-        self.tab_options = ttk.Frame(nb, padding=8)
-        self.tab_queue = ttk.Frame(nb, padding=8)
+        # every tab is a ScrollFrame: its content goes in `.body` and scrolls if the window is short
+        self.tab_search = ScrollFrame(nb)
+        self.tab_plan = ScrollFrame(nb)
+        self.tab_options = ScrollFrame(nb)
+        self.tab_queue = ScrollFrame(nb)
+        nb.add(self.tab_search, text="  Search  ")
         nb.add(self.tab_plan, text="  Plan  ")
         nb.add(self.tab_options, text="  Options  ")
         nb.add(self.tab_queue, text="  Queue & log  ")
         self.notebook = nb
+        self.build_search_tab()
         self.build_plan_tab()
         self.build_options_tab()
         self.build_queue_tab()
 
+    def build_search_tab(self):
+        t = self.tab_search.body
+        t.columnconfigure(1, weight=1)
+        t.rowconfigure(2, weight=1)
+
+        # --- search box --- #
+        top = ttk.Frame(t)
+        top.grid(row=0, column=0, columnspan=2, sticky="ew")
+        ttk.Label(top, text="Streamer:").pack(side="left")
+        self.search_var = tk.StringVar()
+        entry = ttk.Entry(top, textvariable=self.search_var)
+        entry.pack(side="left", fill="x", expand=True, padx=8)
+        entry.bind("<Return>", lambda e: self.on_search())
+        self.search_btn = ttk.Button(top, text="Search", command=self.on_search)
+        self.search_btn.pack(side="left")
+
+        # --- shown while not signed in --- #
+        self.signin_bar = ttk.Frame(t)
+        self.signin_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ttk.Label(self.signin_bar, text="⚠ Sign in with Twitch to search streamers and list their VODs.",
+                  foreground=ERR).pack(side="left")
+        ttk.Button(self.signin_bar, text="Sign in…", command=self.ask_credentials).pack(side="left", padx=8)
+
+        # --- left: found channels + recent streamers --- #
+        left = ttk.Frame(t)
+        left.grid(row=2, column=0, sticky="ns", padx=(0, 10), pady=(8, 0))
+
+        def mini_tree(title: str, height: int) -> ttk.Treeview:
+            tr = ttk.Treeview(left, columns=("name",), show="headings", selectmode="browse", height=height)
+            tr.heading("name", text=title)
+            tr.column("name", width=220, anchor="w")
+            tr.bind("<<TreeviewSelect>>", self.on_pick_channel)
+            return tr
+
+        self.ch_tree = mini_tree("Results  (● = live now)", 6)
+        self.ch_tree.pack(fill="x")
+        ttk.Label(left, text="").pack()
+        self.recent_tree = mini_tree("Recent streamers", 8)
+        self.recent_tree.pack(fill="both", expand=True)
+        ttk.Button(left, text="Clear recent", command=self.clear_recent).pack(anchor="e", pady=(4, 0))
+        self.refresh_recent()
+
+        # --- right: the VODs --- #
+        right = ttk.Frame(t)
+        right.grid(row=2, column=1, sticky="nsew", pady=(8, 0))
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(1, weight=1)
+        hdr = ttk.Frame(right)
+        hdr.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 4))
+        self.sv_title = tk.StringVar(value="Search for a streamer, or pick one from your recent list.")
+        ttk.Label(hdr, textvariable=self.sv_title, style="Muted.TLabel").pack(side="left")
+        self.sv_type = tk.StringVar(value="Past broadcasts")
+        kind = ttk.Combobox(hdr, textvariable=self.sv_type, values=list(VIDEO_KINDS), state="readonly", width=16)
+        kind.pack(side="right")
+        kind.bind("<<ComboboxSelected>>",
+                  lambda e: self.sv_channel and self.load_channel(self.sv_channel, remember=False))
+
+        self.sv_tree = ttk.Treeview(right, columns=("title", "date", "dur", "views"), show="tree headings",
+                                    style="Vods.Treeview", selectmode="browse", height=5)
+        self.sv_tree.heading("#0", text="")
+        self.sv_tree.column("#0", width=THUMB_SIZE[0] + 12, stretch=False, anchor="center")
+        for col, text, width, anchor in [
+            ("title", "Title", 360, "w"), ("date", "Date", 90, "center"),
+            ("dur", "Length", 80, "center"), ("views", "Views", 70, "center"),
+        ]:
+            self.sv_tree.heading(col, text=text)
+            self.sv_tree.column(col, width=width, anchor=anchor, stretch=(col == "title"))
+        sb = ttk.Scrollbar(right, orient="vertical", command=self.sv_tree.yview)
+        self.sv_tree.configure(yscrollcommand=sb.set)
+        self.sv_tree.grid(row=1, column=0, sticky="nsew")
+        sb.grid(row=1, column=1, sticky="ns")
+        self.sv_tree.bind("<Double-1>", lambda e: self.sv_tree.identify_row(e.y) and self.use_selected_vod())
+        self.sv_tree.bind("<Return>", lambda e: self.use_selected_vod())
+        brow = ttk.Frame(right)
+        brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        self.more_btn = ttk.Button(brow, text="Load more", command=self.load_more, state="disabled")
+        self.more_btn.pack(side="left")
+        ttk.Button(brow, text="Use this VOD", command=self.use_selected_vod).pack(side="right")
+
     def build_plan_tab(self):
-        t = self.tab_plan
+        t = self.tab_plan.body
         t.columnconfigure(0, weight=1)
         t.rowconfigure(1, weight=1)
 
@@ -486,7 +687,7 @@ class App:
         ttk.Button(act, text="Add & start", command=lambda: self.add_to_queue(True)).pack(side="left", padx=(6, 0))
 
     def build_options_tab(self):
-        t = self.tab_options
+        t = self.tab_options.body
         t.columnconfigure(0, weight=1)
 
         out = ttk.LabelFrame(t, text="Output", padding=10)
@@ -600,7 +801,7 @@ class App:
         ttk.Button(btns, text="Open tools folder", command=self.open_tools_folder).pack(side="left", padx=6)
 
     def build_queue_tab(self):
-        t = self.tab_queue
+        t = self.tab_queue.body
         t.columnconfigure(0, weight=1)
         t.rowconfigure(0, weight=1)
         t.rowconfigure(2, weight=1)
@@ -719,6 +920,7 @@ class App:
                 status_var.set("Not signed in.")
             login_btn.config(text="Sign in again" if signed_in() else "Sign in with Twitch")
             logout_btn.config(state="normal" if (signed_in() or load_credentials()) else "disabled")
+            self.update_search_state()  # show / hide the "sign in" warning of the Search tab
 
         def finish_login(access, refresh):
             clear_credentials()  # the signed-in account replaces a previous own-app setup
@@ -976,6 +1178,188 @@ class App:
         self.cuts.insert("1.0", new)
         self.update_preview()
 
+    # ---------------------------- search tab logic ---------------------------- #
+    def update_search_state(self):
+        """Show the «sign in» warning (and disable searching) while there is no Twitch session."""
+        if self.client:
+            self.signin_bar.grid_remove()
+        else:
+            self.signin_bar.grid()
+        self.search_btn.config(state="normal" if self.client else "disabled")
+
+    def refresh_recent(self):
+        self.recent_tree.delete(*self.recent_tree.get_children())
+        for i, c in enumerate(self.recent):
+            self.recent_tree.insert("", "end", iid=str(i), values=(bmp(c["name"]),))
+
+    def add_recent(self, ch: dict):
+        entry = {"id": ch["id"], "login": ch.get("login", ""), "name": ch.get("name") or ch.get("login", "")}
+        self.recent = ([entry] + [c for c in self.recent if c["id"] != entry["id"]])[:MAX_RECENT]
+        save_recent(self.recent)
+        self.refresh_recent()
+
+    def clear_recent(self):
+        self.recent = []
+        save_recent(self.recent)
+        self.refresh_recent()
+
+    def on_search(self):
+        query = self.search_var.get().strip()
+        if not query:
+            return
+        if not self.client:
+            self.update_search_state()
+            self.set_status("Sign in with Twitch to search (use the «Sign in…» button).")
+            return
+        self.search_btn.config(state="disabled")
+        self.set_status(bmp(f"Searching for «{query}»…"))
+        client = self.client
+
+        def work():
+            try:
+                results = search_channels(client, query)
+            except Exception as e:  # noqa: BLE001
+                self.q.put(("search_err", str(e)))
+                return
+            self.q.put(("search_ok", query, results))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def on_search_ok(self, query: str, results: list[dict]):
+        self.search_btn.config(state="normal" if self.client else "disabled")
+        self.sv_results = results
+        self.ch_tree.delete(*self.ch_tree.get_children())
+        for i, c in enumerate(results):
+            self.ch_tree.insert("", "end", iid=str(i), values=(bmp(("● " if c["live"] else "") + c["name"]),))
+        if not results:
+            self.set_status(bmp(f"No streamers found for «{query}»."))
+            return
+        self.set_status(f"{len(results)} streamer(s) found. Pick one to see their VODs.")
+        if results[0]["login"].lower() == query.lstrip("@").lower():
+            self.ch_tree.selection_set("0")  # exact match: open it straight away
+
+    def on_search_err(self, msg: str):
+        self.search_btn.config(state="normal" if self.client else "disabled")
+        self.set_status("Search failed.")
+        if "sign in" in msg.lower():  # the saved session expired: refresh what the tab shows
+            self.client = make_client()
+            self.update_search_state()
+        messagebox.showerror("Search", msg)
+
+    def on_pick_channel(self, event):
+        tree = event.widget
+        sel = tree.selection()
+        if not sel:
+            return
+        from_results = tree is self.ch_tree
+        ch = (self.sv_results if from_results else self.recent)[int(sel[0])]
+        other = self.recent_tree if from_results else self.ch_tree
+        if other.selection():
+            other.selection_remove(other.selection())
+        self.load_channel(ch)
+
+    def load_channel(self, ch: dict, remember: bool = True, more: bool = False):
+        """Load the first page of a streamer's VODs (or the next page when more=True)."""
+        if not self.client:
+            self.update_search_state()
+            self.set_status("Sign in with Twitch to list VODs (use the «Sign in…» button).")
+            return
+        if more:
+            gen = self.sv_gen
+        else:
+            self.sv_gen += 1
+            gen = self.sv_gen
+            self.sv_channel = ch
+            self.sv_videos, self.sv_cursor = [], None
+            self.sv_images.clear()
+            self.sv_tree.delete(*self.sv_tree.get_children())
+            if remember:
+                self.add_recent(ch)
+        kind = VIDEO_KINDS.get(self.sv_type.get(), "archive")
+        after = self.sv_cursor if more else None
+        self.more_btn.config(state="disabled")
+        self.sv_title.set(bmp(f"{ch['name']}: loading…"))
+        client = self.client
+
+        def work():
+            try:
+                videos, cursor = fetch_videos(client, ch["id"], kind, after=after)
+            except Exception as e:  # noqa: BLE001
+                self.q.put(("videos_err", gen, str(e)))
+                return
+            self.q.put(("videos_ok", gen, videos, cursor))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def load_more(self):
+        if self.sv_channel and self.sv_cursor:
+            self.load_channel(self.sv_channel, more=True)
+
+    def on_videos_ok(self, gen: int, videos: list[dict], cursor: str | None):
+        if gen != self.sv_gen or not self.sv_channel:
+            return  # the user already picked something else
+        start = len(self.sv_videos)
+        for i, v in enumerate(videos):
+            iid = str(start + i)
+            self.sv_tree.insert("", "end", iid=iid, values=(
+                bmp(v["title"]), v["date"], fmt_hms(v["duration"]), v["views"]))
+            if Image is not None and v["thumb"]:
+                self.thumb_q.put((gen, iid, v["thumb"]))
+        self.sv_videos.extend(videos)
+        self.sv_cursor = cursor
+        self.more_btn.config(state="normal" if cursor else "disabled")
+        name = bmp(self.sv_channel["name"])
+        if not self.sv_videos:
+            self.sv_title.set(bmp(f"{name}: no {self.sv_type.get().lower()} found. Twitch deletes VODs after a "
+                                  "while, and some streamers don't save them."))
+        else:
+            self.sv_title.set(f"{name}: {len(self.sv_videos)} VOD(s)" + ("  ·  more available" if cursor else "")
+                              + "  ·  double-click one to use it")
+
+    def on_videos_err(self, gen: int, msg: str):
+        if gen != self.sv_gen:
+            return
+        self.sv_title.set("Could not load the VODs.")
+        self.set_status("Could not load the VODs.")
+        if "sign in" in msg.lower():
+            self.client = make_client()
+            self.update_search_state()
+        messagebox.showerror("Search", msg)
+
+    def _thumb_worker(self):
+        """Background thread: download thumbnails (cached on disk) for the rows of the Search tab."""
+        while True:
+            gen, iid, url = self.thumb_q.get()
+            if gen != self.sv_gen:
+                continue  # stale: the list was replaced meanwhile
+            try:
+                path = fetch_thumbnail(url)
+                if path:
+                    self.q.put(("thumb", gen, iid, str(path)))
+            except Exception:  # noqa: BLE001
+                continue
+
+    def on_thumb(self, gen: int, iid: str, path: str):
+        if gen != self.sv_gen or not self.sv_tree.exists(iid):
+            return
+        try:
+            with Image.open(path) as im:
+                photo = ImageTk.PhotoImage(im.convert("RGB").resize(THUMB_SIZE))
+        except Exception:  # noqa: BLE001  (unreadable image: just leave the row without one)
+            return
+        self.sv_images[iid] = photo
+        self.sv_tree.item(iid, image=photo)
+
+    def use_selected_vod(self):
+        sel = self.sv_tree.selection()
+        if not sel:
+            messagebox.showinfo("Select a VOD", "Select a VOD in the list first.")
+            return
+        video = self.sv_videos[int(sel[0])]
+        self.vod_var.set(video["url"])
+        self.notebook.select(self.tab_plan)
+        self.on_get_info()
+
     # ---------------------------- queue ---------------------------- #
     def add_to_queue(self, start: bool):
         if not self.source:
@@ -1162,6 +1546,16 @@ class App:
                     messagebox.showerror("Error", msg[1])
                 elif kind == "log":
                     self.log(msg[1])
+                elif kind == "search_ok":
+                    self.on_search_ok(msg[1], msg[2])
+                elif kind == "search_err":
+                    self.on_search_err(msg[1])
+                elif kind == "videos_ok":
+                    self.on_videos_ok(msg[1], msg[2], msg[3])
+                elif kind == "videos_err":
+                    self.on_videos_err(msg[1], msg[2])
+                elif kind == "thumb":
+                    self.on_thumb(msg[1], msg[2], msg[3])
                 elif kind == "progress":
                     self.set_progress(msg[1], msg[2])
                 elif kind == "job":
