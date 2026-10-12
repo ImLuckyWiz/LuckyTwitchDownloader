@@ -42,7 +42,7 @@ jobs:
         run: build_windows.bat ${{ github.ref_type == 'tag' && github.ref_name || '1.0' }}
       - name: Build (macOS)
         if: runner.os == 'macOS'
-        run: ./build_mac.sh
+        run: bash build_mac.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LuckyTwitch-${{ matrix.label }}
