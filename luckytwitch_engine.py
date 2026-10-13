@@ -1899,6 +1899,177 @@ def download_section(ctx: Ctx, url: str, part: Part, workdir: Path, threads: int
 
 
 # --------------------------------------------------------------------------- #
+# Sections by whole HLS segments (no ffmpeg -ss, so the real start is known)
+# --------------------------------------------------------------------------- #
+HLS_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0 Safari/537.36"
+)
+
+
+@dataclass(frozen=True)
+class Segment:
+    start: float  # seconds from the start of the VOD
+    end: float
+    url: str
+
+    @property
+    def duration(self) -> float:
+        return self.end - self.start
+
+
+def parse_hls_playlist(text: str, base_url: str) -> list[Segment]:
+    """
+    Parse a finished (VOD) media playlist into segments with cumulative times.
+    Raises ValueError for anything where segment time = cumulative duration is not safe
+    (live stream, encryption, fMP4 init segment, discontinuities, byte ranges, master playlist).
+    """
+    from urllib.parse import urljoin
+
+    segments: list[Segment] = []
+    pending: float | None = None
+    t = 0.0
+    ended = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            tag = line.split(":", 1)[0]
+            if tag in ("#EXT-X-KEY", "#EXT-X-MAP", "#EXT-X-DISCONTINUITY", "#EXT-X-BYTERANGE", "#EXT-X-STREAM-INF"):
+                raise ValueError(f"unsupported playlist tag {tag}")
+            if tag == "#EXT-X-ENDLIST":
+                ended = True
+            elif tag == "#EXTINF":
+                try:
+                    pending = float(line.split(":", 1)[1].split(",", 1)[0])
+                except (ValueError, IndexError) as e:
+                    raise ValueError(f"bad line: {line}") from e
+            continue
+        if pending is None:
+            raise ValueError("segment without #EXTINF")
+        segments.append(Segment(t, t + pending, urljoin(base_url, line)))
+        t += pending
+        pending = None
+    if not ended:
+        raise ValueError("playlist is not finished (no #EXT-X-ENDLIST)")
+    if not segments:
+        raise ValueError("playlist has no segments")
+    return segments
+
+
+def select_segments(segments: list[Segment], start: float, end: float) -> tuple[int, int]:
+    """
+    Index range (first, last) of the segments that cover [start, end].
+    The first segment is the one containing `start`, the last one the one containing `end`
+    (an end exactly on a boundary belongs to the segment that ends there). Times outside the VOD are clamped.
+    """
+    eps = 1e-6
+    total = segments[-1].end
+    if end <= start:
+        raise ValueError("empty time range")
+    if start >= total - eps:
+        raise ValueError("the part starts after the end of the VOD")
+    first = 0
+    for i, seg in enumerate(segments):
+        if seg.start <= start + eps:
+            first = i
+        else:
+            break
+    last = len(segments) - 1
+    for i, seg in enumerate(segments):
+        if seg.end >= end - eps:
+            last = i
+            break
+    return first, max(first, last)
+
+
+def write_local_playlist(segments: list[Segment], dest: Path) -> None:
+    target = max(1, math.ceil(max(s.duration for s in segments)))
+    lines = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        f"#EXT-X-TARGETDURATION:{target}",
+        "#EXT-X-MEDIA-SEQUENCE:0",
+        "#EXT-X-PLAYLIST-TYPE:VOD",
+    ]
+    for s in segments:
+        lines += [f"#EXTINF:{s.duration:.3f},", s.url]
+    lines.append("#EXT-X-ENDLIST")
+    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def get_playlist_url(ctx: Ctx, url: str) -> str:
+    """The media playlist (.m3u8) yt-dlp would download, chosen with the same quality flags."""
+    ytdlp = find_tool("yt-dlp")
+    if not ytdlp:
+        raise EngineError(YTDLP_MISSING)
+    ctx.check_cancel()
+    try:
+        proc = subprocess.run(
+            [ytdlp, "-g", "-S", "res,fps,tbr", "--no-warnings", url],
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", errors="replace",
+            env=_tool_env(), creationflags=_NO_WINDOW, timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise EngineError(f"Could not get the playlist address: {e}") from e
+    ctx.check_cancel()
+    urls = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+    if proc.returncode != 0 or len(urls) != 1:
+        raise EngineError(f"yt-dlp gave {len(urls)} address(es) instead of one playlist")
+    if not urls[0].startswith("http") or ".m3u8" not in urls[0].split("?", 1)[0]:
+        raise EngineError("the video address is not an HLS playlist")
+    return urls[0]
+
+
+def download_section_aligned(
+    ctx: Ctx, url: str, part: Part, workdir: Path
+) -> tuple[Path, float, float] | None:
+    """
+    Download [part.start, part.end] as whole HLS segments with a single ffmpeg stream copy and NO -ss.
+    Returns (file, real_start, real_end) in VOD time: the file starts at a segment boundary at or
+    before part.start (never after) and the caller knows exactly where.
+    Returns None when this method cannot be used (the caller then uses the old method).
+    """
+    try:
+        playlist_url = get_playlist_url(ctx, url)
+        resp = requests.get(playlist_url, headers={"User-Agent": HLS_USER_AGENT}, timeout=30)
+        resp.raise_for_status()
+        segments = parse_hls_playlist(resp.text, playlist_url)
+        first, last = select_segments(segments, part.start, part.end)
+        chosen = segments[first : last + 1]
+        real_start, real_end = chosen[0].start, min(chosen[-1].end, segments[-1].end)
+
+        pdir = workdir / f"part{part.index}"
+        if pdir.exists():
+            shutil.rmtree(pdir)
+        pdir.mkdir(parents=True)
+        local = pdir / "part.m3u8"
+        write_local_playlist(chosen, local)
+        out = pdir / "part.mp4"
+        run_ffmpeg(
+            ctx,
+            [
+                "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+                "-user_agent", HLS_USER_AGENT,
+                "-i", str(local),
+                "-map", "0:v:0", "-map", "0:a?",
+                "-c", "copy", "-f", "mp4", str(out),
+            ],
+            total=real_end - real_start,
+        )
+        if not out.exists() or out.stat().st_size < 4096:
+            raise EngineError("the downloaded file is empty")
+    except Cancelled:
+        raise
+    except (EngineError, requests.RequestException, ValueError, OSError) as e:
+        reason = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
+        ctx.log(f"Could not use the segment download ({reason}); using the old method. Markers may be up to 10 s off.")
+        return None
+    return out, real_start, real_end
+
+
+# --------------------------------------------------------------------------- #
 # Splitting / finalizing
 # --------------------------------------------------------------------------- #
 def safe_name(text: str) -> str:
@@ -2071,13 +2242,16 @@ def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, contain
     return result
 
 
-def cut_exact(ctx: Ctx, full: Path, part: Part, container: str, workdir: Path) -> Path:
-    """Frame-exact cut (re-encodes video)."""
+def cut_exact(ctx: Ctx, full: Path, part: Part, container: str, workdir: Path, offset: float | None = None) -> Path:
+    """
+    Frame-exact cut (re-encodes video).
+    `offset`: where the part starts inside `full` (default: part.start, i.e. `full` is the whole VOD).
+    """
     out = workdir / f"exact_{part.index}.{container}"
     run_ffmpeg(
         ctx,
         [
-            "-ss", f"{part.start:.3f}", "-i", str(full), "-t", f"{part.duration:.3f}",
+            "-ss", f"{part.start if offset is None else offset:.3f}", "-i", str(full), "-t", f"{part.duration:.3f}",
             "-map", "0:v:0", "-map", "0:a?",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
             "-c:a", "aac", "-b:a", "192k",
@@ -2185,9 +2359,24 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             ctx.check_cancel()
             lo, hi = i / total_parts, (i + 1) / total_parts
             ctx.stage(lo, lo + (hi - lo) * 0.9, f"Downloading part {p.index}/{total_parts}")
-            f = download_section(ctx, src.url, p, workdir, opts.threads, opts.exact)
+            aligned = download_section_aligned(ctx, src.url, p, workdir)
+            if aligned:
+                f, real_start, real_end = aligned
+                early = p.start - real_start
+                ctx.log(
+                    f"Part {p.index} starts at {fmt_hms(real_start)} (asked {fmt_hms(p.start)}"
+                    + (f", {early:.0f} s early" if early >= 0.5 else "")
+                    + f") and ends at {fmt_hms(real_end)}"
+                )
+                if opts.exact:
+                    ctx.stage(lo + (hi - lo) * 0.9, hi, f"Re-encoding part {p.index}/{total_parts}")
+                    f = cut_exact(ctx, f, p, opts.container, workdir, offset=max(0.0, p.start - real_start))
+                    real_start, real_end = p.start, p.end
+            else:
+                f = download_section(ctx, src.url, p, workdir, opts.threads, opts.exact)
+                real_start, real_end = p.start, p.end
             ctx.stage(lo + (hi - lo) * 0.9, hi, f"Finishing part {p.index}/{total_parts}")
-            finish(p, f, p.start, p.end)
+            finish(p, f, real_start, real_end)
 
     shutil.rmtree(workdir, ignore_errors=True)
     ctx.stage(1.0, 1.0, "Done")

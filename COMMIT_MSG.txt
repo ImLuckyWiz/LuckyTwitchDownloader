@@ -1,15 +1,14 @@
-Fix clip start: Twitch vod_offset is the clip END, not the start
+Download sections by whole HLS segments and use their real start for markers (v1.5.2)
 
-Twitch's `vod_offset` marks where a clip ends in the VOD, but the app used it
-as the start. Every clip was shifted later by its own duration (a 60 s clip
-ending at 0:22:15 was placed at 0:22:15 instead of 0:21:15), which showed up
-in the Clips table, timeline marks, "Split at selected clip", single clip
-downloads, chapters and the Premiere XML markers.
+ffmpeg's -ss on Twitch HLS VODs landed on a segment up to 10 s before the
+requested time, but the app assumed the file started exactly at that time,
+so chapters and Premiere markers were shifted.
 
-- Add clip_start() / clip_end() helpers (start = vod_offset - duration,
-  clamped to 0) and use them everywhere instead of reading vod_offset
-- Sort and filter clips by their real start
-- Chapters and clip_cut_text now span [start - lead-in, vod_offset]
-- Update tests to the "offset = end" semantics, add regression tests
-  using the 0:22:15 / 60 s example
-- Release notes for v1.5.1
+- Read the VOD's media playlist (yt-dlp -g), pick the segments covering the
+  part ourselves and give ffmpeg a local playlist with only those (no -ss)
+- The real start/end (segment boundaries) now go to chapters and markers
+- Exact mode: download aligned, then re-encode-cut from the real start
+- Fall back to the old method (with a log warning) for encrypted, live,
+  multi-URL or otherwise unsupported playlists; cancel is never swallowed
+- Add tests/test_hls_sections.py
+- Release notes for v1.5.2 (only this version)
