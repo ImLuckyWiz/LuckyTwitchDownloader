@@ -2063,7 +2063,8 @@ def download_section_aligned(
     except Cancelled:
         raise
     except (EngineError, requests.RequestException, ValueError, OSError) as e:
-        reason = str(e).strip().splitlines()[0] if str(e).strip() else type(e).__name__
+        # Keep every line of the message (ffmpeg's real error comes after the "ffmpeg failed:" header).
+        reason = " | ".join(ln.strip() for ln in str(e).splitlines() if ln.strip())[:500] or type(e).__name__
         ctx.log(f"Could not use the segment download ({reason}); using the old method. Markers may be up to 10 s off.")
         return None
     return out, real_start, real_end

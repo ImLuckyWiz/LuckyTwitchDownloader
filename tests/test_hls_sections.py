@@ -202,3 +202,16 @@ def test_run_job_exact_cuts_from_the_real_start(monkeypatch, tmp_path):
     eng.run_job(_job(tmp_path, exact=True), ctx)
     assert calls["offset"] == 3.0
     assert calls["total"] == 60.0
+
+
+def test_fallback_log_keeps_the_whole_ffmpeg_error(monkeypatch, tmp_path):
+    ctx, logs = _ctx()
+    monkeypatch.setattr(eng, "get_playlist_url", lambda c, u: BASE)
+    monkeypatch.setattr(eng.requests, "get", lambda *a, **k: FakeResp(make_playlist()))
+
+    def failing_ffmpeg(c, args, total=None):
+        raise eng.EngineError("ffmpeg failed:\n[https @ 0x1] HTTP error 403 Forbidden\nError opening input")
+
+    monkeypatch.setattr(eng, "run_ffmpeg", failing_ffmpeg)
+    assert eng.download_section_aligned(ctx, "u", eng.Part(1, 0, 60), tmp_path) is None
+    assert any("403 Forbidden" in m and "Error opening input" in m for m in logs)
