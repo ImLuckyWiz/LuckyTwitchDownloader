@@ -26,7 +26,7 @@ Get the latest version from the [Releases](../../releases) page:
 ## Using it
 
 1. Paste a VOD URL or ID and press **Get info**.
-2. Write the cut points, for example `0:00 - 30:00 - 1:30:00 - end` (consecutive parts). Use `;` or a new line to skip gaps: `0:00 - 30:00 ; 2:00:00 - end`. Times can be `H:MM:SS`, `MM:SS`, seconds or `1h30m`.
+2. Write the cut points, for example `0:00 - 30:00 - 1:30:00 - end` (consecutive parts). Use `;` or a new line to skip gaps: `0:00 - 30:00 ; 2:00:00 - end`. Times can be `H:MM:SS`, `MM:SS`, seconds or `1h30m`. Or use the **Timeline** above the text box: click the thumbnails to cut, drag a cut line to move it, right-click it to remove it, click a part to skip it, double-click a game bar to make that game its own part. The mouse wheel zooms, **Undo** takes back the last edit. The text and the timeline always match.
 3. Choose the download strategy (**Auto** picks whichever is cheaper: full VOD then split, or only the parts), then start the job.
 
 ### Finding a VOD (Search tab)
@@ -75,7 +75,7 @@ PyInstaller cannot cross-compile, so build each system on that system.
 ```
 luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpeg, chapters)
 luckytwitch_downloader.py   the Tk app: window, tabs, queue
-ui/                         UI pieces split out of the app (plan_tab.py, common.py: colours and fonts)
+ui/                         UI pieces split out of the app (plan_tab.py, timeline.py, common.py: colours and fonts)
 tests/                      pytest suite
 ```
 
@@ -86,7 +86,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`. Two tests are marked as expected failures: they document a known quirk (splitting twice at the same clip writes a duplicate cut point).
+The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
 
 ## Notes
 

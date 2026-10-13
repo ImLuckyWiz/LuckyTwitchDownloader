@@ -1384,6 +1384,8 @@ class App(PlanTabMixin):
                     self.on_videos_err(msg[1], msg[2])
                 elif kind == "thumb":
                     self.on_thumb(msg[1], msg[2], msg[3])
+                elif kind == "frames":
+                    self.on_frames(msg[1], msg[2])
                 elif kind == "progress":
                     self.set_progress(msg[1], msg[2])
                 elif kind == "job":

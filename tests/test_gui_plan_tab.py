@@ -310,18 +310,15 @@ def test_split_respects_the_lead_in_setting(gui):
     assert gui.cuts_text() == "0:00:00 - 0:59:50 - end"
 
 
-@pytest.mark.xfail(
-    reason="KNOWN QUIRK (pre-existing, kept as-is in Phase 0): a second split at the same clip writes a "
-           "duplicate boundary and the preview then shows an error. Same root cause as the engine test.",
-    strict=True,
-)
 def test_splitting_twice_at_the_same_clip_keeps_a_valid_plan(gui):
     gui.load_vod()
     gui.load_clips()
     gui.set_cuts("0:00:00 - end")
     gui.app.tree.selection_set("1")
     gui.app.split_at_clip()
+    once = gui.cuts_text()
     gui.app.split_at_clip()
+    assert gui.cuts_text() == once  # the second split did not write a duplicate boundary
     assert gui.preview()[1] == "ok"
 
 

@@ -188,14 +188,8 @@ def test_insert_skips_groups_it_cannot_read():
     assert out == "banana - 5:00\n0:00 - 0:01:40 - end"
 
 
-@pytest.mark.xfail(
-    reason="KNOWN QUIRK (pre-existing, kept as-is in Phase 0): splitting at a time that is already a "
-           "boundary writes the same point twice, e.g. '0:00:00 - 0:59:57 - 0:59:57 - end', which the "
-           "planner then rejects with 'Cut points must increase'. Expected: ignore or report it.",
-    raises=PlanError,
-    strict=True,
-)
 def test_insert_at_an_existing_boundary_gives_valid_text():
     once = insert_cut_point("0:00:00 - end", 3597, DUR)
     twice = insert_cut_point(once, 3597, DUR)
-    parse_cut_points(twice, DUR)  # currently raises PlanError
+    assert twice == once  # no duplicate boundary: asking for the same cut again changes nothing
+    parse_cut_points(twice, DUR)  # and the text is still valid
