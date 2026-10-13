@@ -2051,7 +2051,6 @@ def download_section_aligned(
             ctx,
             [
                 "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
-                "-user_agent", HLS_USER_AGENT,
                 "-i", str(local),
                 "-map", "0:v:0", "-map", "0:a?",
                 "-c", "copy", "-f", "mp4", str(out),

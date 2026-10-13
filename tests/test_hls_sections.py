@@ -115,6 +115,7 @@ def test_aligned_success(monkeypatch, tmp_path):
     assert f.name == "part.mp4"
     assert "-ss" not in seen["args"] and "-t" not in seen["args"]
     assert "-protocol_whitelist" in seen["args"]
+    assert "-user_agent" not in seen["args"]  # not a valid option when ffmpeg reads a local playlist
     assert seen["total"] == 70.0
 
 
