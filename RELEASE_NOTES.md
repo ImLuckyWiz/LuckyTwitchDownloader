@@ -1,23 +1,15 @@
-## v1.5.0
-
-### Added
-- **Timeline** at the top of the Plan tab: the whole VOD on one strip, so you can see where the streamer changed game and place your cuts with the mouse. It shows:
-  - one coloured bar per game (the same game always has the same colour);
-  - preview thumbnails of the VOD, loaded in the background;
-  - green marks for the clips;
-  - the parts you will download, with skipped sections left dark.
-- **Editing on the timeline:**
-  - click the thumbnails to cut there (cuts snap to game changes and clips);
-  - drag a cut line to move it, right-click it to remove it;
-  - click a part to skip it, click a skipped section to bring it back;
-  - double-click a game bar to make it its own part (Shift + double-click: keep only that game).
-- **Zoom and move:** mouse wheel to zoom, Shift + wheel or the scroll bar to move, **Fit** to see the whole VOD again, **Undo** (or Ctrl+Z) to take back the last edit. Hover anywhere to see the time, the game and a bigger thumbnail.
-- The **Cut points** text box still works and stays in sync: type there and the timeline follows, edit the timeline and the text changes.
+## v1.5.1
 
 ### Fixed
-- **Split at selected clip** used twice on the same clip no longer writes an empty range like `0:59:57 - 0:59:57`. The second split now does nothing.
+- **Clips were out of sync: they appeared one clip-length too late.** Twitch reports the position of a clip as the moment it *ends*, and the app used it as the moment it *starts*. Every clip start was shifted by the length of the clip (a 60 s clip showed up 60 s late). The start is now calculated as end − length. This fixes all of these at once:
+  - the **At** column in the Clips table;
+  - the green clip marks on the timeline;
+  - **Split at selected clip**;
+  - **Download selected clips** (the cut now covers the clip itself and not the part after it);
+  - the clip **chapters** inside the downloaded file;
+  - the **Premiere Pro markers** (`.markers.xml`): In is now at the start of the clip and Out at its end.
+- Example: a 60 s clip that ends at 0:22:15 now starts at 0:21:15 (before, it was shown at 0:22:15).
 
 ### Good to know
-- Thumbnails are a few minutes apart on long VODs (every 5 seconds on a 15-minute one), so use them to find the place and type the exact time when you need precision.
-- Without Pillow, or if Twitch has no thumbnails for a VOD, the timeline works without pictures. VODs without game information show no game bars.
-- On macOS, right-click means two-finger click or Ctrl + click.
+- If you already downloaded parts with clip chapters or Premiere markers, download them again to get the corrected positions. Old `.markers.xml` files are wrong by the length of each clip.
+- Markers can still be 1–2 seconds off in Premiere. When a part is cut without re-encoding, it starts at the nearest keyframe and not at the exact second you typed. This is a separate, small difference and is not changed in this version.

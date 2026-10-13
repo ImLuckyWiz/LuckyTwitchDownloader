@@ -12,6 +12,7 @@ from luckytwitch_engine import (
     chapters_for_part,
     clip_cut_text,
     ffmetadata,
+    clip_start,
     fill_gaps,
     filter_clips,
     make_chapters,
@@ -19,9 +20,11 @@ from luckytwitch_engine import (
 )
 
 
-def clip(offset, views=0, duration=30, title="T", creator="c", **extra):
+def clip(start, views=0, duration=30, title="T", creator="c", **extra):
+    """A clip that STARTS at `start`. Twitch's vod_offset is where the clip ENDS (start + duration)."""
+    offset = None if start is None else start + duration
     return {"vod_offset": offset, "view_count": views, "duration": duration, "title": title,
-            "creator_name": creator, "url": f"https://clips.twitch.tv/{offset}", **extra}
+            "creator_name": creator, "url": f"https://clips.twitch.tv/{start}", **extra}
 
 
 # --------------------------------------------------------------------------- filter_clips
@@ -31,23 +34,23 @@ def test_filter_drops_clips_without_a_position():
 
 def test_filter_min_views_and_min_duration():
     clips = [clip(10, views=5, duration=10), clip(20, views=50, duration=10), clip(30, views=50, duration=40)]
-    assert [c["vod_offset"] for c in filter_clips(clips, ClipFilter(min_views=50))] == [20, 30]
-    assert [c["vod_offset"] for c in filter_clips(clips, ClipFilter(min_duration=30))] == [30]
+    assert [clip_start(c) for c in filter_clips(clips, ClipFilter(min_views=50))] == [20, 30]
+    assert [clip_start(c) for c in filter_clips(clips, ClipFilter(min_duration=30))] == [30]
 
 
 def test_filter_top_n_keeps_the_most_viewed_but_returns_them_in_time_order():
     clips = [clip(10, views=1), clip(20, views=100), clip(30, views=50), clip(40, views=100)]
     kept = filter_clips(clips, ClipFilter(top_n=2))
-    assert [c["vod_offset"] for c in kept] == [20, 40]
+    assert [clip_start(c) for c in kept] == [20, 40]
 
 
 def test_filter_top_n_ties_are_broken_by_earlier_offset():
     clips = [clip(30, views=10), clip(10, views=10), clip(20, views=10)]
-    assert [c["vod_offset"] for c in filter_clips(clips, ClipFilter(top_n=2))] == [10, 20]
+    assert [clip_start(c) for c in filter_clips(clips, ClipFilter(top_n=2))] == [10, 20]
 
 
 def test_filter_returns_time_order():
-    assert [c["vod_offset"] for c in filter_clips([clip(50), clip(5), clip(20)], ClipFilter())] == [5, 20, 50]
+    assert [clip_start(c) for c in filter_clips([clip(50), clip(5), clip(20)], ClipFilter())] == [5, 20, 50]
 
 
 # --------------------------------------------------------------------------- make_chapters
@@ -182,12 +185,12 @@ def test_ffmetadata_without_chapters():
 
 # --------------------------------------------------------------------------- clip_cut_text
 def test_clip_cut_text_adds_padding_and_rounds_outwards():
-    assert clip_cut_text({"vod_offset": 600, "duration": 30.4}, 7200) == "0:09:57 - 0:10:34"
+    assert clip_cut_text({"vod_offset": 630.4, "duration": 30}, 7200) == "0:09:57 - 0:10:34"
 
 
 def test_clip_cut_text_is_clamped_to_the_vod():
-    assert clip_cut_text({"vod_offset": 1, "duration": 30}, 7200) == "0:00:00 - 0:00:34"
-    assert clip_cut_text({"vod_offset": 7190, "duration": 30}, 7200) == "1:59:47 - 2:00:00"
+    assert clip_cut_text({"vod_offset": 31, "duration": 30}, 7200) == "0:00:00 - 0:00:34"
+    assert clip_cut_text({"vod_offset": 7220, "duration": 30}, 7200) == "1:59:47 - 2:00:00"
 
 
 def test_clip_cut_text_errors():
@@ -244,3 +247,17 @@ def test_premiere_xml_escapes_titles_and_comments():
 def test_premiere_xml_zero_length_marker_has_no_out_point():
     _, (m,) = _markers(premiere_markers_xml("seq", [Chapter(5, 5, "A")], 10, 30))
     assert m.findtext("out") == "-1"
+
+
+# --------------------------------------------------------------------------- vod_offset is the END of the clip
+def test_clip_start_is_the_offset_minus_the_duration():
+    # real case: the clip ends at 0:22:15 and lasts 60 s, so it starts at 0:21:15
+    assert clip_start({"vod_offset": 22 * 60 + 15, "duration": 60}) == 21 * 60 + 15
+    assert clip_start({"vod_offset": None, "duration": 60}) is None
+    assert clip_start({"vod_offset": 10, "duration": 60}) == 0  # never before the start of the VOD
+
+
+def test_chapter_for_a_real_clip_covers_the_clip_not_what_comes_after_it():
+    (ch,) = make_chapters([{"vod_offset": 22 * 60 + 15, "duration": 60, "title": "x", "view_count": 5}],
+                          ClipFilter(pad_before=3, title_template="{title}"))
+    assert (ch.start, ch.end) == (21 * 60 + 12, 22 * 60 + 15)

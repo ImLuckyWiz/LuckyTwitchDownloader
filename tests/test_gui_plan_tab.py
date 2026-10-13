@@ -23,9 +23,9 @@ SOURCE = dict(url="https://www.twitch.tv/videos/123", id="v123", title="Big Stre
 
 def make_clips():
     return [
-        {"id": "a", "vod_offset": 600, "view_count": 500, "duration": 30.4, "title": "Epic fail \U0001F602",
+        {"id": "a", "vod_offset": 630.4, "view_count": 500, "duration": 30, "title": "Epic fail \U0001F602",
          "creator_name": "viewer1", "url": "https://clips.twitch.tv/a"},
-        {"id": "b", "vod_offset": 3600, "view_count": 10, "duration": 12, "title": "Small one",
+        {"id": "b", "vod_offset": 3612, "view_count": 10, "duration": 12, "title": "Small one",
          "creator_name": "viewer2", "url": "https://clips.twitch.tv/b"},
         {"id": "c", "vod_offset": None, "view_count": 99, "duration": 20, "title": "No offset",
          "creator_name": "viewer3", "url": "https://clips.twitch.tv/c"},

@@ -19,6 +19,7 @@ import webbrowser
 from tkinter import messagebox, ttk
 
 from luckytwitch_engine import (
+    clip_start,
     EngineError,
     fmt_hms,
     insert_cut_point,
@@ -159,7 +160,7 @@ class PlanTabMixin:
         chapters = make_chapters(self.clips, flt)
         included = {c.get("id") for ch in chapters for c in ch.clips}
         for i, c in enumerate(self.clips):
-            off = c.get("vod_offset")
+            off = clip_start(c)
             mark = "?" if off is None else ("✓" if c.get("id") in included else "—")
             self.tree.insert("", "end", iid=str(i), values=(
                 fmt_hms(off), c.get("view_count", 0), f"{round(c.get('duration', 0))}s",
@@ -167,7 +168,7 @@ class PlanTabMixin:
         if not self.clips:
             msg = "No clips loaded (sign in with the Twitch API… button, optional)." if not self.clips_loaded else "This VOD has no clips."
         else:
-            placed = sum(1 for c in self.clips if c.get("vod_offset") is not None)
+            placed = sum(1 for c in self.clips if clip_start(c) is not None)
             msg = f"{len(included)} of {len(self.clips)} clips pass the filter → {len(chapters)} chapters"
             if placed < len(self.clips):
                 msg += f"  ({len(self.clips) - placed} can't be placed: no offset)"
@@ -192,7 +193,7 @@ class PlanTabMixin:
         if not self.source:
             messagebox.showinfo("No VOD", "Press «Get info» first.")
             return
-        off = self.clips[int(sel[0])].get("vod_offset")
+        off = clip_start(self.clips[int(sel[0])])
         if off is None:
             messagebox.showinfo("No offset", "That clip has no position in the VOD.")
             return
@@ -209,7 +210,7 @@ class PlanTabMixin:
 
     # ---------------------------- timeline ---------------------------- #
     def _clip_times(self) -> list[float]:
-        return [c["vod_offset"] for c in self.clips if c.get("vod_offset") is not None]
+        return [t for t in (clip_start(c) for c in self.clips) if t is not None]
 
     def sync_timeline(self):
         """Show the current VOD and the parts the cut text describes (called after every change of either)."""

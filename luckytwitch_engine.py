@@ -527,6 +527,25 @@ def _iso_z(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def clip_start(clip: dict) -> float | None:
+    """
+    Where the clip STARTS in the VOD, in seconds (None if Twitch gave no position).
+
+    Twitch's `vod_offset` is where the clip ENDS in the VOD, not where it starts
+    (despite what the API docs say), so the start is `vod_offset - duration`.
+    """
+    off = clip.get("vod_offset")
+    if off is None:
+        return None
+    return max(0.0, float(off) - float(clip.get("duration") or 0))
+
+
+def clip_end(clip: dict) -> float | None:
+    """Where the clip ENDS in the VOD, in seconds (None if Twitch gave no position)."""
+    off = clip.get("vod_offset")
+    return None if off is None else float(off)
+
+
 def fetch_clips_for_vod(client: TwitchClient, vod_id: str) -> list[dict]:
     """All clips that belong to this VOD, sorted by position in the VOD."""
     data = client.get("videos", {"id": vod_id}).get("data", [])
@@ -551,7 +570,7 @@ def fetch_clips_for_vod(client: TwitchClient, vod_id: str) -> list[dict]:
         cursor = page.get("pagination", {}).get("cursor")
         if not cursor:
             break
-    clips.sort(key=lambda c: (c.get("vod_offset") is None, c.get("vod_offset") or 0))
+    clips.sort(key=lambda c: (clip_start(c) is None, clip_start(c) or 0))
     return clips
 
 
@@ -674,14 +693,14 @@ def filter_clips(clips: list[dict], flt: ClipFilter) -> list[dict]:
     kept = [
         c
         for c in clips
-        if c.get("vod_offset") is not None
+        if clip_start(c) is not None
         and c.get("view_count", 0) >= flt.min_views
         and c.get("duration", 0) >= flt.min_duration
     ]
     if flt.top_n > 0:
-        kept.sort(key=lambda c: (-c.get("view_count", 0), c["vod_offset"]))
+        kept.sort(key=lambda c: (-c.get("view_count", 0), clip_start(c)))
         kept = kept[: flt.top_n]
-    kept.sort(key=lambda c: c["vod_offset"])
+    kept.sort(key=clip_start)
     return kept
 
 
@@ -702,11 +721,11 @@ def clip_cut_text(
     clip: dict, duration: float | None, pad_before: float = 3, pad_after: float = 3
 ) -> str:
     """Cut text ('H:MM:SS - H:MM:SS') that covers just one clip (plus a little context)."""
-    off = clip.get("vod_offset")
-    if off is None:
+    clip_s = clip_start(clip)
+    if clip_s is None:
         raise PlanError("That clip has no position in the VOD.")
-    start = max(0.0, float(off) - pad_before)
-    end = float(off) + float(clip.get("duration") or 0) + pad_after
+    start = max(0.0, clip_s - pad_before)
+    end = float(clip["vod_offset"]) + pad_after
     if duration:
         end = min(end, duration)
     a, b = math.floor(start), math.ceil(end)
@@ -719,10 +738,9 @@ def make_chapters(clips: list[dict], flt: ClipFilter) -> list[Chapter]:
     """Filtered clips -> chapters in absolute VOD time. Overlapping clips are merged."""
     chapters: list[Chapter] = []
     for c in filter_clips(clips, flt):
-        off = float(c["vod_offset"])
         ch = Chapter(
-            start=max(0.0, off - flt.pad_before),
-            end=off + float(c.get("duration", 0)) + flt.pad_after,
+            start=max(0.0, clip_start(c) - flt.pad_before),
+            end=clip_end(c) + flt.pad_after,
             title=_chapter_title(c, flt.title_template),
             views=c.get("view_count", 0),
             clips=[c],

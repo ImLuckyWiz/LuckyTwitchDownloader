@@ -1,0 +1,15 @@
+Fix clip start: Twitch vod_offset is the clip END, not the start
+
+Twitch's `vod_offset` marks where a clip ends in the VOD, but the app used it
+as the start. Every clip was shifted later by its own duration (a 60 s clip
+ending at 0:22:15 was placed at 0:22:15 instead of 0:21:15), which showed up
+in the Clips table, timeline marks, "Split at selected clip", single clip
+downloads, chapters and the Premiere XML markers.
+
+- Add clip_start() / clip_end() helpers (start = vod_offset - duration,
+  clamped to 0) and use them everywhere instead of reading vod_offset
+- Sort and filter clips by their real start
+- Chapters and clip_cut_text now span [start - lead-in, vod_offset]
+- Update tests to the "offset = end" semantics, add regression tests
+  using the 0:22:15 / 60 s example
+- Release notes for v1.5.1
