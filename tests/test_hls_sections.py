@@ -216,3 +216,21 @@ def test_fallback_log_keeps_the_whole_ffmpeg_error(monkeypatch, tmp_path):
     monkeypatch.setattr(eng, "run_ffmpeg", failing_ffmpeg)
     assert eng.download_section_aligned(ctx, "u", eng.Part(1, 0, 60), tmp_path) is None
     assert any("403 Forbidden" in m and "Error opening input" in m for m in logs)
+
+
+# --- ffmpeg -progress block -> "size · speed · ETA" --- #
+def test_ffmpeg_progress_block_gives_fraction_speed_and_eta():
+    pr = eng.FfmpegProgress(total=100.0)
+    block = ["frame=300", "total_size=10485760", "out_time_us=10000000", "out_time=00:00:10.000000", "speed=2.5x"]
+    assert all(pr.feed(line) is None for line in block)
+    frac, text = pr.feed("progress=continue")
+    assert frac == pytest.approx(0.1)
+    assert text == "10 MiB · 2.5x · ETA 0:00:36"
+
+
+def test_ffmpeg_progress_without_speed_still_reports_fraction():
+    pr = eng.FfmpegProgress(total=50.0)
+    pr.feed("out_time_us=25000000")
+    pr.feed("speed=N/A")
+    frac, text = pr.feed("progress=continue")
+    assert frac == pytest.approx(0.5) and "ETA" not in text

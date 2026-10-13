@@ -1625,6 +1625,52 @@ class Ctx:
             raise Cancelled("Cancelled.")
 
 
+_FF_PROGRESS_KEYS = {"out_time_us", "out_time_ms", "total_size", "speed", "progress"}
+
+
+class FfmpegProgress:
+    """
+    Reads the `-progress pipe:1` key=value lines of ffmpeg. feed(line) returns (fraction, text) at the end of
+    each update block (text = "12.3 MiB · 2.9x · ETA 1:04:33"), otherwise None.
+    """
+
+    def __init__(self, total: float | None):
+        self.total = total
+        self.t: float | None = None
+        self.size: float | None = None  # bytes
+        self.speed: float | None = None
+
+    def feed(self, line: str) -> tuple[float | None, str] | None:
+        key, _, value = line.strip().partition("=")
+        if key in ("out_time_us", "out_time_ms"):
+            try:
+                self.t = int(value) / 1_000_000
+            except ValueError:
+                pass
+        elif key == "total_size":
+            try:
+                self.size = float(value)
+            except ValueError:
+                pass
+        elif key == "speed":
+            try:
+                self.speed = float(value.strip().rstrip("x"))
+            except ValueError:
+                self.speed = None
+        elif key == "progress" and self.t is not None:
+            frac = min(max(self.t / self.total, 0.0), 1.0) if self.total else None
+            bits = []
+            if self.size:
+                mib = self.size / (1024 * 1024)
+                bits.append(f"{mib:.1f} MiB" if mib < 10 else f"{mib:.0f} MiB")
+            if self.speed and self.speed > 0:
+                bits.append(f"{self.speed:.1f}x")
+                if self.total:
+                    bits.append(f"ETA {fmt_hms(max(self.total - self.t, 0) / self.speed)}")
+            return frac, " · ".join(bits)
+        return None
+
+
 def run_ffmpeg(ctx: Ctx, args: list[str], total: float | None = None) -> str:
     """Run ffmpeg, report progress when `total` (seconds of output) is known."""
     ffmpeg = find_tool("ffmpeg")
@@ -1646,17 +1692,16 @@ def run_ffmpeg(ctx: Ctx, args: list[str], total: float | None = None) -> str:
     )
     ctx.proc = proc
     errors: list[str] = []
+    progress = FfmpegProgress(total)
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
             line = line.strip()
-            if line.startswith(("out_time_us=", "out_time_ms=")):
-                try:
-                    t = int(line.split("=", 1)[1]) / 1_000_000
-                except ValueError:
-                    continue
-                if total:
-                    ctx.report(t / total)
+            if line.partition("=")[0] in _FF_PROGRESS_KEYS:
+                parsed = progress.feed(line)
+                if parsed and total:
+                    ctx.report(parsed[0], parsed[1])
+                    ctx.log_progress(parsed[0], parsed[1])
             elif line and "=" not in line.split(" ")[0]:
                 errors.append(line)
         proc.wait()
