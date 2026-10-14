@@ -5,6 +5,8 @@
   ``Accent.TButton``  filled purple button (the main action of a screen)
   ``Ghost.TButton``   no background until hovered (small secondary actions)
   ``Muted.TLabel``    grey helper text
+  ``Nav.TButton`` / ``NavSel.TButton``  sidebar entries (normal / selected); ``CardGhost.TButton`` the «Advanced» header;
+                      ``Chip.TButton`` the small {token} buttons next to template fields
   ``Card.*``          Frame / Label / CardMuted.Label / Checkbutton / Entry / Combobox / Spinbox on a card (BG2)
   ``Title.TLabel`` and ``Heading.TLabel``  bigger text for page and section titles
 """
@@ -17,7 +19,7 @@ import tkinter.font as tkfont
 from tkinter import ttk
 
 from ui.common import (
-    ACCENT, ACCENT_HOVER, ACCENT_PRESS, BG, BG2, BG3, BORDER, DISABLED, FG, HOVER, MUTED, PRESSED, UI_FONT, WHITE,
+    ACCENT, ACCENT_DIM, ACCENT_HOVER, ACCENT_PRESS, BG, BG2, BG3, BORDER, DISABLED, FG, HOVER, MUTED, PRESSED, UI_FONT, WHITE,
 )
 
 try:
@@ -165,6 +167,23 @@ def apply_dark_theme(root):
     style.configure("Card.TCheckbutton", background=BG2)
     style.map("Card.TCheckbutton", background=[("active", BG2)])
     style.configure("Card.TButton", background=BG3)
+
+    # sidebar entries, the «Advanced» header and the {token} chips
+    def flat_button(name, bg, fg, hover_bg, hover_fg, font, padding, anchor="center"):
+        style.configure(name, background=bg, foreground=fg, bordercolor=bg, lightcolor=bg, darkcolor=bg,
+                        font=font, padding=padding, anchor=anchor, borderwidth=0, focusthickness=0)
+        style.map(name, background=[("pressed", PRESSED), ("active", hover_bg)],
+                  bordercolor=[("pressed", PRESSED), ("active", hover_bg)],
+                  lightcolor=[("pressed", PRESSED), ("active", hover_bg)],
+                  darkcolor=[("pressed", PRESSED), ("active", hover_bg)],
+                  foreground=[("active", hover_fg)])
+
+    flat_button("Nav.TButton", BG2, MUTED, BG3, FG, (UI_FONT, 10), (14, 9), "w")
+    flat_button("NavSel.TButton", ACCENT_DIM, WHITE, ACCENT_DIM, WHITE, (UI_FONT, 10, "bold"), (14, 9), "w")
+    flat_button("CardGhost.TButton", BG2, MUTED, BG3, FG, (UI_FONT, 10, "bold"), (8, 5), "w")
+    flat_button("Chip.TButton", BG3, FG, HOVER, WHITE, (UI_FONT, 9), (8, 2))
+    style.map("Chip.TButton", foreground=[("disabled", DISABLED), ("active", WHITE)],
+              background=[("disabled", BG2), ("pressed", ACCENT_PRESS), ("active", HOVER)])
 
     # --- check boxes (rounded, purple when on) --- #
     style.configure("TCheckbutton", background=BG, foreground=FG, padding=(2, 3))

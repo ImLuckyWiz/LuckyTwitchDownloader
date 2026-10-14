@@ -1,4 +1,5 @@
-"""Small reusable widgets for the refined UI: ``Toggle`` (switch), ``Tooltip``, ``Card`` and ``SettingRow``.
+"""Small reusable widgets for the refined UI: ``Toggle`` (switch), ``Tooltip``, ``Card``, ``SettingRow``,
+``SideNav`` (sidebar), ``Collapsible`` (Advanced area), ``TokenChips`` and ``ScrollFrame``.
 
 All of them are plain Tk / ttk with the palette of ``ui.common``; Pillow is used (when present) only to
 draw the switch smoothly.
@@ -6,6 +7,7 @@ draw the switch smoothly.
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -300,3 +302,177 @@ class SettingRow(ttk.Frame):
         if divider:
             self._divider = tk.Frame(self, bg=BORDER, height=1)
             self._divider.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+
+
+# --------------------------------------------------------------------------- #
+# Scrollable page
+# --------------------------------------------------------------------------- #
+class ScrollFrame(ttk.Frame):
+    """
+    A tab page that scrolls vertically when the window is too short for its content.
+    Put the widgets in `.body`. When the window is tall enough `.body` stretches to fill it (so rows
+    with a grid weight still grow); otherwise a scrollbar appears and the mouse wheel scrolls.
+    """
+
+    def __init__(self, parent, padding: int = 8):
+        super().__init__(parent)
+        self.canvas = tk.Canvas(self, bg=BG, highlightthickness=0, borderwidth=0, yscrollincrement=20)
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.vsb.set)
+        self.vsb.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.body = ttk.Frame(self.canvas, padding=padding)
+        self._win = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
+        self.body.bind("<Configure>", self._fit)
+        self.canvas.bind("<Configure>", self._fit)
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):  # Windows/macOS, Linux up/down
+            self.canvas.bind_all(seq, self._on_wheel, add="+")
+
+    def refit(self) -> None:
+        """Recompute the scroll area now. Call it after showing / hiding things inside ``.body``: the body keeps
+        the size it was given, so Tk sends no <Configure> when only its content changes."""
+        self.update_idletasks()
+        self._fit()
+
+    def _fit(self, _event=None):
+        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if cw <= 1:
+            return  # not laid out yet
+        height = max(ch, self.body.winfo_reqheight())
+        self.canvas.itemconfigure(self._win, width=cw, height=height)
+        self.canvas.configure(scrollregion=(0, 0, cw, height))
+
+    def _on_wheel(self, event):
+        try:
+            w = self.winfo_containing(event.x_root, event.y_root)
+        except (KeyError, tk.TclError):  # Tk quirk with combobox pop-downs
+            return
+        p = w
+        while p is not None and p is not self:
+            p = p.master
+        if p is None:
+            return  # the pointer is not over this page
+        if isinstance(w, (ttk.Treeview, tk.Text, tk.Listbox, ttk.Combobox, ttk.Spinbox)):
+            return  # these handle the wheel themselves
+        if self.body.winfo_reqheight() <= self.canvas.winfo_height():
+            return  # everything fits: nothing to scroll
+        if getattr(event, "num", None) == 4:
+            units = -3
+        elif getattr(event, "num", None) == 5:
+            units = 3
+        else:
+            delta = int(event.delta)
+            if sys.platform == "darwin":
+                units = -delta
+            else:
+                units = -3 * (delta // 120) if abs(delta) >= 120 else (-1 if delta > 0 else 1)
+        self.canvas.yview_scroll(units, "units")
+
+
+# --------------------------------------------------------------------------- #
+# Sidebar navigation (one section visible at a time)
+# --------------------------------------------------------------------------- #
+class SideNav(ttk.Frame):
+    """A vertical list of entries; the selected one is tinted purple. ``command(key)`` runs on every change.
+
+    Entries are real buttons: Tab reaches them, Space/Enter picks one, Up/Down move the selection.
+    """
+
+    def __init__(self, parent, items: list[tuple[str, str]], command, width: int = 17):
+        super().__init__(parent, style="Card.TFrame", padding=8)
+        self.command = command
+        self.keys = [k for k, _ in items]
+        self.buttons: dict[str, ttk.Button] = {}
+        self.current: str | None = None
+        for key, label in items:
+            b = ttk.Button(self, text=label, style="Nav.TButton", width=width, command=lambda k=key: self.select(k))
+            b.pack(fill="x", pady=1)
+            b.bind("<Down>", lambda e, k=key: self._step(k, 1))
+            b.bind("<Up>", lambda e, k=key: self._step(k, -1))
+            self.buttons[key] = b
+
+    def _step(self, key: str, delta: int):
+        i = self.keys.index(key) + delta
+        if 0 <= i < len(self.keys):
+            self.select(self.keys[i])
+            self.buttons[self.keys[i]].focus_set()
+        return "break"
+
+    def select(self, key: str) -> None:
+        if key not in self.buttons:
+            return
+        self.current = key
+        for k, b in self.buttons.items():
+            b.configure(style="NavSel.TButton" if k == key else "Nav.TButton")
+        self.command(key)
+
+
+# --------------------------------------------------------------------------- #
+# «Advanced» area: collapsed until the header is clicked
+# --------------------------------------------------------------------------- #
+class Collapsible(ttk.Frame):
+    """A header button («▸ Advanced») that shows / hides ``.body``. Rows go in with ``add_row`` like a Card."""
+
+    def __init__(self, parent, title: str = "Advanced", hint: str = "", opened: bool = False, on_change=None):
+        super().__init__(parent, style="Card.TFrame")
+        self.columnconfigure(0, weight=1)
+        self.title, self.hint = title, hint
+        self.opened = opened
+        self.on_change = on_change  # called after it opens / closes (the page may need to re-fit its scroll area)
+        self.header = ttk.Button(self, style="CardGhost.TButton", command=self.toggle)
+        self.header.grid(row=0, column=0, sticky="w", pady=(6, 0))
+        self.body = ttk.Frame(self, style="Card.TFrame")
+        self.body.columnconfigure(0, weight=1)
+        self._rows = 0
+        self._apply()
+
+    def add_row(self, *a, **kw) -> "SettingRow":
+        row = SettingRow(self.body, *a, **kw)
+        row.grid(row=self._rows, column=0, sticky="ew")
+        self._rows += 1
+        return row
+
+    def toggle(self) -> None:
+        self.opened = not self.opened
+        self._apply()
+        if self.on_change:
+            self.on_change()
+
+    def _apply(self) -> None:
+        arrow = "\u25be" if self.opened else "\u25b8"
+        self.header.configure(text=f"{arrow}  {self.title}" + (f"   \u00b7   {self.hint}" if self.hint else ""))
+        if self.opened:
+            self.body.grid(row=1, column=0, sticky="ew")
+        else:
+            self.body.grid_remove()
+
+
+# --------------------------------------------------------------------------- #
+# Clickable {token} chips for template fields
+# --------------------------------------------------------------------------- #
+class TokenChips(ttk.Frame):
+    """A row of small buttons; clicking one inserts ``{token}`` at the cursor of ``entry``."""
+
+    def __init__(self, parent, entry: ttk.Entry, tokens: list[str], per_row: int = 6):
+        super().__init__(parent, style="Card.TFrame")
+        self.entry = entry
+        self.chips: list[ttk.Button] = []
+        for i, tok in enumerate(tokens):
+            b = ttk.Button(self, text="{" + tok + "}", style="Chip.TButton", command=lambda t=tok: self.insert(t))
+            b.grid(row=i // per_row, column=i % per_row, sticky="w", padx=(0, 6), pady=(0, 4))
+            self.chips.append(b)
+
+    def insert(self, token: str) -> None:
+        if str(self.entry.cget("state")) == "disabled":
+            return
+        try:
+            if self.entry.selection_present():  # typing over a selection replaces it, like in any text field
+                self.entry.delete("sel.first", "sel.last")
+        except tk.TclError:
+            pass
+        self.entry.insert("insert", "{" + token + "}")
+        self.entry.focus_set()
+
+    def set_enabled(self, on: bool) -> None:
+        for b in self.chips:
+            b.state(["!disabled"] if on else ["disabled"])

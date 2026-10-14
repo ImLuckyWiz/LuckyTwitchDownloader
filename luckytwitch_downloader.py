@@ -67,7 +67,9 @@ from luckytwitch_engine import (
     user_data_dir,
 )
 from ui.common import ACCENT, BG, BG2, BG3, ERR, FG, MONO_FONT, MUTED, bmp, set_app_icon
+from ui.options_tab import OptionsTabMixin
 from ui.plan_tab import PlanTabMixin
+from ui.widgets import ScrollFrame  # noqa: F401  (re-exported: tests and other modules import it from here)
 from ui.theme import apply_dark_theme as _apply_base_theme, dark_titlebar
 
 # From source: keep config next to the script (as before). Packaged app: the app
@@ -256,68 +258,11 @@ def apply_dark_theme(root):
 
 
 # --------------------------------------------------------------------------- #
-# Scrollable tab page
-# --------------------------------------------------------------------------- #
-class ScrollFrame(ttk.Frame):
-    """
-    A tab page that scrolls vertically when the window is too short for its content.
-    Put the widgets in `.body`. When the window is tall enough `.body` stretches to fill it (so rows
-    with a grid weight still grow); otherwise a scrollbar appears and the mouse wheel scrolls.
-    """
-
-    def __init__(self, parent, padding: int = 8):
-        super().__init__(parent)
-        self.canvas = tk.Canvas(self, bg=BG, highlightthickness=0, borderwidth=0, yscrollincrement=20)
-        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.vsb.set)
-        self.vsb.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.body = ttk.Frame(self.canvas, padding=padding)
-        self._win = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
-        self.body.bind("<Configure>", self._fit)
-        self.canvas.bind("<Configure>", self._fit)
-        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):  # Windows/macOS, Linux up/down
-            self.canvas.bind_all(seq, self._on_wheel, add="+")
-
-    def _fit(self, _event=None):
-        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
-        if cw <= 1:
-            return  # not laid out yet
-        height = max(ch, self.body.winfo_reqheight())
-        self.canvas.itemconfigure(self._win, width=cw, height=height)
-        self.canvas.configure(scrollregion=(0, 0, cw, height))
-
-    def _on_wheel(self, event):
-        try:
-            w = self.winfo_containing(event.x_root, event.y_root)
-        except (KeyError, tk.TclError):  # Tk quirk with combobox pop-downs
-            return
-        p = w
-        while p is not None and p is not self:
-            p = p.master
-        if p is None:
-            return  # the pointer is not over this page
-        if isinstance(w, (ttk.Treeview, tk.Text, tk.Listbox, ttk.Combobox, ttk.Spinbox)):
-            return  # these handle the wheel themselves
-        if self.body.winfo_reqheight() <= self.canvas.winfo_height():
-            return  # everything fits: nothing to scroll
-        if getattr(event, "num", None) == 4:
-            units = -3
-        elif getattr(event, "num", None) == 5:
-            units = 3
-        else:
-            delta = int(event.delta)
-            if sys.platform == "darwin":
-                units = -delta
-            else:
-                units = -3 * (delta // 120) if abs(delta) >= 120 else (-1 if delta > 0 else 1)
-        self.canvas.yview_scroll(units, "units")
-
-
-# --------------------------------------------------------------------------- #
 # App
 # --------------------------------------------------------------------------- #
-class App(PlanTabMixin):
+class App(PlanTabMixin, OptionsTabMixin):
+    STRATEGY_NAMES = list(STRATEGIES)  # the choices of the Strategy drop-down (Options tab)
+
     def __init__(self, root: tk.Tk):
         self.root = root
         self.q: queue.Queue = queue.Queue()
@@ -459,10 +404,11 @@ class App(PlanTabMixin):
 
         nb = ttk.Notebook(self.root)
         nb.pack(fill="both", expand=True, padx=10, pady=(0, 4))
-        # every tab is a ScrollFrame: its content goes in `.body` and scrolls if the window is short
+        # Search / Plan / Queue are ScrollFrames: content goes in `.body` and scrolls if the window is short.
+        # Options is a plain frame: a sidebar on the left and one scrolling section on the right.
         self.tab_search = ScrollFrame(nb)
         self.tab_plan = ScrollFrame(nb)
-        self.tab_options = ScrollFrame(nb)
+        self.tab_options = ttk.Frame(nb)
         self.tab_queue = ScrollFrame(nb)
         nb.add(self.tab_search, text="  Search  ")
         nb.add(self.tab_plan, text="  Plan  ")
@@ -552,142 +498,6 @@ class App(PlanTabMixin):
         self.more_btn = ttk.Button(brow, text="Load more", command=self.load_more, state="disabled")
         self.more_btn.pack(side="left")
         ttk.Button(brow, text="Use this VOD", style="Accent.TButton", command=self.use_selected_vod).pack(side="right")
-
-    def build_options_tab(self):
-        t = self.tab_options.body
-        t.columnconfigure(0, weight=1)
-
-        out = ttk.LabelFrame(t, text="Output", padding=10)
-        out.grid(row=0, column=0, sticky="ew")
-        out.columnconfigure(1, weight=1)
-        ttk.Label(out, text="Folder:").grid(row=0, column=0, sticky="e", pady=3)
-        ttk.Entry(out, textvariable=self.var("out_dir")).grid(row=0, column=1, sticky="ew", padx=6)
-        fbtns = ttk.Frame(out)
-        fbtns.grid(row=0, column=2)
-        ttk.Button(fbtns, text="Browse…", command=self.pick_folder).pack(side="left")
-        ttk.Button(fbtns, text="Open folder", command=lambda: self.open_output_folder()).pack(side="left", padx=(6, 0))
-
-        ttk.Label(out, text="Format:").grid(row=1, column=0, sticky="e", pady=3)
-        row = ttk.Frame(out)
-        row.grid(row=1, column=1, columnspan=2, sticky="w", padx=6)
-        ttk.Combobox(row, textvariable=self.var("container"), values=["mp4", "mkv"], width=6,
-                     state="readonly").pack(side="left")
-        ttk.Label(row, text="    Download threads:").pack(side="left")
-        ttk.Spinbox(row, textvariable=self.var("threads"), from_=1, to=32, width=4).pack(side="left", padx=4)
-
-        ttk.Label(out, text="Strategy:").grid(row=2, column=0, sticky="e", pady=3)
-        row = ttk.Frame(out)
-        row.grid(row=2, column=1, columnspan=2, sticky="w", padx=6)
-        cb = ttk.Combobox(row, textvariable=self.var("strategy"), values=list(STRATEGIES),
-                          state="readonly", width=30)
-        cb.pack(side="left")
-        cb.bind("<<ComboboxSelected>>", self.update_preview)
-        ttk.Label(row, text="    Auto uses the full VOD if the parts cover at least").pack(side="left")
-        sp = ttk.Spinbox(row, textvariable=self.var("threshold"), from_=1, to=100, width=4,
-                         command=self.update_preview)
-        sp.pack(side="left", padx=4)
-        sp.bind("<KeyRelease>", self.update_preview)
-        ttk.Label(row, text="%").pack(side="left")
-
-        ttk.Label(out, text="File name:").grid(row=3, column=0, sticky="e", pady=3)
-        ttk.Entry(out, textvariable=self.var("name_template")).grid(row=3, column=1, columnspan=2, sticky="ew", padx=6)
-        ttk.Label(out, text="Tokens: {streamer} {date} {id} {title} {n} {total} {start} {end}",
-                  style="Muted.TLabel").grid(row=4, column=1, columnspan=2, sticky="w", padx=6)
-
-        ttk.Checkbutton(out, text="Organize in subfolders:  Folder / Streamer / Stream / parts",
-                        variable=self.var("subfolders")).grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 0))
-        ttk.Label(out, text="Stream folder:").grid(row=6, column=0, sticky="e", pady=3)
-        ttk.Entry(out, textvariable=self.var("folder_template")).grid(row=6, column=1, columnspan=2, sticky="ew", padx=6)
-        ttk.Label(out, text="Tokens: {streamer} {date} {id} {title}",
-                  style="Muted.TLabel").grid(row=7, column=1, columnspan=2, sticky="w", padx=6)
-
-        ttk.Checkbutton(out, text="Frame-exact cuts (re-encodes: slow, CPU heavy. Default = lossless, "
-                                  "cuts land on keyframes, ~2 s precision)",
-                        variable=self.var("exact")).grid(row=8, column=0, columnspan=3, sticky="w", pady=(8, 0))
-        ttk.Checkbutton(out, text="Keep the full VOD file as well (when the full-VOD strategy is used)",
-                        variable=self.var("keep_full")).grid(row=9, column=0, columnspan=3, sticky="w")
-
-        chf = ttk.LabelFrame(t, text="Chapter details", padding=10)
-        chf.grid(row=1, column=0, sticky="ew", pady=(10, 0))
-        chf.columnconfigure(1, weight=1)
-        ttk.Label(chf, text="Chapter title:").grid(row=0, column=0, sticky="e", pady=3)
-        e = ttk.Entry(chf, textvariable=self.var("title_tpl"))
-        e.grid(row=0, column=1, sticky="ew", padx=6)
-        e.bind("<KeyRelease>", lambda ev: self.refresh_clips())
-        ttk.Label(chf, text="Tokens: {title} {creator} {views} {duration}", style="Muted.TLabel").grid(
-            row=1, column=1, sticky="w", padx=6)
-        ttk.Label(chf, text="Tail (s):").grid(row=2, column=0, sticky="e", pady=3)
-        row = ttk.Frame(chf)
-        row.grid(row=2, column=1, sticky="w", padx=6)
-        sp = ttk.Spinbox(row, textvariable=self.var("pad_after"), from_=0, to=600, width=5, command=self.refresh_clips)
-        sp.pack(side="left")
-        sp.bind("<KeyRelease>", lambda ev: self.refresh_clips())
-        ttk.Label(row, text="   seconds the chapter lasts after the clip ends", style="Muted.TLabel").pack(side="left")
-        ttk.Label(chf, text="Gap chapter:").grid(row=3, column=0, sticky="e", pady=3)
-        row = ttk.Frame(chf)
-        row.grid(row=3, column=1, sticky="w", padx=6)
-        ttk.Entry(row, textvariable=self.var("gap_title"), width=16).pack(side="left")
-        ttk.Label(row, text="   name for the stretches between clips (MP4 needs one; leave empty only for MKV)",
-                  style="Muted.TLabel").pack(side="left")
-        ttk.Checkbutton(chf, text="Also save a .clips.json next to each part (clip titles, creators, links)",
-                        variable=self.var("sidecar")).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Checkbutton(chf, text="Also export the clips as markers for Premiere Pro (.markers.xml next to each part, "
-                                  "plain import without colors, works even if chapters are off)",
-                        variable=self.var("premiere_xml"), command=self.refresh_clips).grid(
-            row=5, column=0, columnspan=2, sticky="w")
-        ttk.Checkbutton(chf, text="Also export a .markers.json for the LuckyTwitch Premiere plugin (colors, clip "
-                                  "details; works even if chapters are off)",
-                        variable=self.var("premiere_plugin"), command=self.refresh_clips).grid(
-            row=6, column=0, columnspan=2, sticky="w")
-        ttk.Checkbutton(chf, text="Also mark the game / category changes (markers named «GAME: ...» in the "
-                                  ".markers.xml, and as game markers in the .markers.json; works for full VODs and "
-                                  "for parts, even if chapters are off)",
-                        variable=self.var("game_markers")).grid(row=7, column=0, columnspan=2, sticky="w")
-
-        clf = ttk.LabelFrame(t, text="Single clip downloads (button «Download only selected clip»)", padding=10)
-        clf.grid(row=2, column=0, sticky="ew", pady=(10, 0))
-        clf.columnconfigure(1, weight=1)
-        ttk.Label(clf, text="File name:").grid(row=0, column=0, sticky="e", pady=3)
-        ttk.Entry(clf, textvariable=self.var("clip_name_template")).grid(row=0, column=1, sticky="ew", padx=6)
-        ttk.Label(clf, text="Tokens: {clip_title} {creator} {views} {clip_id} {clip_duration}   and also   "
-                            "{streamer} {date} {id} {title} {start} {end}   ({id} and {title} are the VOD's)",
-                  style="Muted.TLabel", wraplength=900, justify="left").grid(row=1, column=1, sticky="w", padx=6)
-        ttk.Label(clf, text="Extra time:").grid(row=2, column=0, sticky="e", pady=3)
-        row = ttk.Frame(clf)
-        row.grid(row=2, column=1, sticky="w", padx=6)
-        ttk.Label(row, text="before").pack(side="left")
-        ttk.Spinbox(row, textvariable=self.var("clip_pad_before"), from_=0, to=600, width=5).pack(side="left", padx=4)
-        ttk.Label(row, text="s      after").pack(side="left")
-        ttk.Spinbox(row, textvariable=self.var("clip_pad_after"), from_=0, to=600, width=5).pack(side="left", padx=4)
-        ttk.Label(row, text="s      seconds added around the clip", style="Muted.TLabel").pack(side="left")
-
-        chat = ttk.LabelFrame(t, text="Chat (Twitch VODs only)", padding=10)
-        chat.grid(row=3, column=0, sticky="ew", pady=(10, 0))
-        ttk.Checkbutton(chat, text="Also download the chat of each part (TwitchDownloaderCLI, downloaded the first time)",
-                        variable=self.var("chat")).grid(row=0, column=0, columnspan=3, sticky="w")
-        ttk.Label(chat, text="Format:").grid(row=1, column=0, sticky="e", pady=3)
-        ttk.Combobox(chat, textvariable=self.var("chat_format"), values=list(CHAT_FORMATS),
-                     state="readonly", width=8).grid(row=1, column=1, sticky="w", padx=6)
-        ttk.Checkbutton(chat, text="Embed emotes and badges (bigger file, but it works offline)",
-                        variable=self.var("chat_embed")).grid(row=1, column=2, sticky="w")
-        ttk.Label(chat, text="Saved next to each part as «name.chat.json». Inside the .json the message times count "
-                             "from the start of the VOD, not from the start of the part; the file's start/end say which "
-                             "stretch it covers. TwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader).",
-                  style="Muted.TLabel", wraplength=900, justify="left").grid(row=2, column=0, columnspan=3, sticky="w")
-
-        tools = ttk.LabelFrame(t, text="Tools (yt-dlp and ffmpeg)", padding=10)
-        tools.grid(row=4, column=0, sticky="ew", pady=(10, 0))
-        tools.columnconfigure(0, weight=1)
-        self.tools_info = tk.StringVar(value="Checking…")
-        ttk.Label(tools, textvariable=self.tools_info, style="Muted.TLabel", justify="left").grid(
-            row=0, column=0, sticky="w")
-        ttk.Checkbutton(tools, text="Check for yt-dlp updates on startup (recommended: Twitch changes often)",
-                        variable=self.var("auto_update")).grid(row=1, column=0, sticky="w", pady=(6, 0))
-        btns = ttk.Frame(tools)
-        btns.grid(row=2, column=0, sticky="w", pady=(6, 0))
-        self.update_btn = ttk.Button(btns, text="Update yt-dlp now", command=self.update_tools_now)
-        self.update_btn.pack(side="left")
-        ttk.Button(btns, text="Open tools folder", command=self.open_tools_folder).pack(side="left", padx=6)
 
     def build_queue_tab(self):
         t = self.tab_queue.body
@@ -983,6 +793,7 @@ class App(PlanTabMixin):
             self.cuts.insert("1.0", "0:00:00 - end")
         self.update_preview()
         self.refresh_clips()
+        self.refresh_name_examples()
         self.set_status("VOD loaded. Set your cut points and add it to the queue.")
         if warn:
             self.log(warn)
