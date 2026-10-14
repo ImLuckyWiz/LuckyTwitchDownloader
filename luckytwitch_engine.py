@@ -1783,6 +1783,56 @@ class FfmpegProgress:
         return None
 
 
+# --------------------------------------------------------------------------- #
+# MP4 movie timescale
+# --------------------------------------------------------------------------- #
+# Newer ffmpeg builds set the MP4 "movie timescale" to the least common multiple of the track timescales
+# (720000 for 90 kHz video + 48 kHz audio) instead of 1000. The edit list lengths are then stored in
+# 1/720000 s, and on a part longer than ~99 min they no longer fit in 32 bits. Premiere Pro's importer
+# crashes on such files (QT::QTTrack::CalcTrim) although every video player opens them. Forcing 1000
+# keeps the edit list (so audio and video stay in sync) and its numbers small.
+MP4_MOVIE_TIMESCALE = 1000
+
+
+def mp4_flags(container: str) -> list[str]:
+    """ffmpeg output options that keep an MP4 readable by Premiere Pro. Empty for other containers."""
+    return ["-movie_timescale", str(MP4_MOVIE_TIMESCALE)] if container.lower().lstrip(".") == "mp4" else []
+
+
+def mp4_movie_timescale(path: Path) -> int | None:
+    """Movie timescale (mvhd) of an MP4 / MOV file, read from its header only. None if it cannot be read."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)
+            total = f.tell()
+            pos = 0
+            while pos + 8 <= total:
+                f.seek(pos)
+                head = f.read(16)
+                size, typ = int.from_bytes(head[:4], "big"), head[4:8]
+                hdr = 8
+                if size == 1 and len(head) >= 16:
+                    size, hdr = int.from_bytes(head[8:16], "big"), 16
+                elif size == 0:
+                    size = total - pos
+                if size < hdr:
+                    return None
+                if typ == b"moov":
+                    f.seek(pos + hdr)
+                    data = f.read(min(size - hdr, 1 << 20))  # mvhd is the first box inside moov
+                    i = data.find(b"mvhd")
+                    if i < 4:
+                        return None
+                    body = i + 4  # version(1) flags(3) then times
+                    version = data[body]
+                    off = body + (20 if version == 1 else 12)
+                    return int.from_bytes(data[off:off + 4], "big")
+                pos += size
+    except OSError:
+        return None
+    return None
+
+
 def run_ffmpeg(ctx: Ctx, args: list[str], total: float | None = None) -> str:
     """Run ffmpeg, report progress when `total` (seconds of output) is known."""
     ffmpeg = find_tool("ffmpeg")
@@ -2253,7 +2303,7 @@ def download_section_aligned(
                 "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
                 "-i", str(local),
                 "-map", "0:v:0", "-map", "0:a?",
-                "-c", "copy", "-f", "mp4", str(out),
+                "-c", "copy", *mp4_flags("mp4"), "-f", "mp4", str(out),
             ],
             total=real_end - real_start,
         )
@@ -2363,13 +2413,21 @@ def finalize_part(
         meta.write_text(ffmetadata(chapters, tags), encoding="utf-8")
         run_ffmpeg(
             ctx,
-            ["-i", str(src_file), "-i", str(meta), "-map", "0", "-map_metadata", "1", "-map_chapters", "1", "-c", "copy", str(dest)],
+            ["-i", str(src_file), "-i", str(meta), "-map", "0", "-map_metadata", "1", "-map_chapters", "1", "-c", "copy",
+             *mp4_flags(container), str(dest)],
             total=total,
         )
     elif src_file.suffix.lower() == "." + container:
-        (shutil.copy2 if copy_instead_of_move else shutil.move)(str(src_file), str(dest))
+        ts = mp4_movie_timescale(src_file) if container.lower() == "mp4" else None
+        if ts is not None and ts != MP4_MOVIE_TIMESCALE:
+            # e.g. a file made by yt-dlp's own ffmpeg: rewrite the header only (stream copy), then drop the source
+            run_ffmpeg(ctx, ["-i", str(src_file), "-map", "0", "-c", "copy", *mp4_flags(container), str(dest)], total=total)
+            if not copy_instead_of_move:
+                src_file.unlink(missing_ok=True)
+        else:
+            (shutil.copy2 if copy_instead_of_move else shutil.move)(str(src_file), str(dest))
     else:
-        run_ffmpeg(ctx, ["-i", str(src_file), "-map", "0", "-c", "copy", str(dest)], total=total)
+        run_ffmpeg(ctx, ["-i", str(src_file), "-map", "0", "-c", "copy", *mp4_flags(container), str(dest)], total=total)
     return dest
 
 
@@ -2651,6 +2709,7 @@ def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, contain
             "-map", "0:v:0", "-map", "0:a?",
             "-c", "copy",
             "-f", "segment",
+            *(["-segment_format_options", f"movie_timescale={MP4_MOVIE_TIMESCALE}"] if mp4_flags(container) else []),
             "-segment_times", times,
             "-segment_list", str(listing),
             "-segment_list_type", "csv",
@@ -2683,6 +2742,7 @@ def cut_exact(ctx: Ctx, full: Path, part: Part, container: str, workdir: Path, o
             "-map", "0:v:0", "-map", "0:a?",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
             "-c:a", "aac", "-b:a", "192k",
+            *mp4_flags(container),
             str(out),
         ],
         total=part.duration,
