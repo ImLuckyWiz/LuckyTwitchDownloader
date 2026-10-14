@@ -681,6 +681,7 @@ class Chapter:
     title: str
     views: int = 0
     clips: list[dict] = field(default_factory=list)
+    kind: str = "clip"  # "clip" (a Twitch clip) or "game" (a game / category change)
 
 
 class _SafeDict(dict):
@@ -767,8 +768,13 @@ def chapters_for_part(chapters: list[Chapter], start: float, end: float) -> list
         s, e = max(ch.start, start) - start, min(ch.end, end) - start
         if e - s < 1:
             continue
-        out.append(Chapter(s, e, ch.title, ch.views, ch.clips))
+        out.append(Chapter(s, e, ch.title, ch.views, ch.clips, ch.kind))
     return out
+
+
+def game_chapters(segments: list[GameSegment]) -> list[Chapter]:
+    """The game / category changes of a VOD as chapters of kind "game" (absolute VOD time)."""
+    return [Chapter(g.start, g.end, g.title or "(no category)", kind="game") for g in segments]
 
 
 def fill_gaps(chapters: list[Chapter], total: float, title: str) -> list[Chapter]:
@@ -852,6 +858,7 @@ def premiere_markers_xml(
 ) -> str:
     """
     FCP7 XML (xmeml) with one empty sequence and one sequence marker (in = chapter start, out = chapter end) per chapter.
+    Game / category chapters (kind "game") are named "GAME: <game>" so they stand out from the clip markers.
     Premiere imports it through File > Import. Marker times are relative to the part.
     """
     tb, ntsc = _timebase(fps)
@@ -876,15 +883,19 @@ def premiere_markers_xml(
         f"<timecode>{rate}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode>",
     ]
     for ch in chapters:
-        comment = " | ".join(
-            f"{c.get('creator_name', '')} · {c.get('view_count', 0)} views · {c.get('url', '')}" for c in ch.clips
-        )
+        if ch.kind == "game":
+            name, comment = f"GAME: {ch.title}", "Game / category"
+        else:
+            name = ch.title
+            comment = " | ".join(
+                f"{c.get('creator_name', '')} · {c.get('view_count', 0)} views · {c.get('url', '')}" for c in ch.clips
+            )
         frame = min(max(int(round(ch.start * real_rate)), 0), total - 1)
         end = min(int(round(ch.end * real_rate)), total)  # the marker spans the whole clip
         lines += [
             "<marker>",
             f"<comment>{escape(comment)}</comment>",
-            f"<name>{escape(ch.title)}</name>",
+            f"<name>{escape(name)}</name>",
             f"<in>{frame}</in>",
             f"<out>{end if end > frame else -1}</out>",
             "</marker>",
@@ -1153,6 +1164,10 @@ class JobOptions:
     folder_template: str = "{date} - {title} - {id}"  # name of the per-stream folder
     clip_name_template: str = "{clip_title}"  # file name when a single clip is downloaded
     premiere_xml: bool = False  # also write a Premiere Pro XML (clips as markers) next to each part
+    game_markers: bool = False  # also put the game / category changes into that XML as markers ("GAME: ...")
+    chat: bool = False  # also download the chat of each part with TwitchDownloaderCLI (Twitch VODs only)
+    chat_format: str = "json"  # json | txt | html
+    chat_embed: bool = False  # embed emotes / badges in the chat file (bigger, but it renders offline)
 
 
 @dataclass
@@ -1184,6 +1199,10 @@ _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 USER_AGENT = "LuckyTwitch/1.0 (+https://github.com/yt-dlp/yt-dlp)"
 YTDLP_RELEASES = "https://github.com/yt-dlp/yt-dlp/releases"
 FFMPEG_BUILDS = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest"
+# Optional chat download: TwitchDownloaderCLI (MIT, https://github.com/lay295/TwitchDownloader). Pinned to the
+# version the integration was tested with; downloaded the first time "Download chat" is used.
+TDCLI_REPO = "lay295/TwitchDownloader"
+TDCLI_VERSION = "1.56.5"
 
 
 def find_tool(name: str) -> str | None:
@@ -1299,6 +1318,13 @@ def describe_tools() -> str:
             continue
         where = "managed by LuckyTwitch" if _is_managed(path) else path
         lines.append(f"{name} {_run_version(path, flag)}  ({where})")
+    tdcli = find_tdcli()
+    if not tdcli:
+        lines.append("TwitchDownloaderCLI: not installed (downloaded the first time chat is used)")
+    elif _is_managed_tdcli(tdcli):
+        lines.append(f"TwitchDownloaderCLI {_read_versions().get('tdcli', '?')}  (managed by LuckyTwitch)")
+    else:
+        lines.append(f"TwitchDownloaderCLI {_run_version(tdcli, '--version')}  ({tdcli})")
     return "\n".join(lines)
 
 
@@ -1592,6 +1618,10 @@ class Ctx:
         self._lo, self._hi, self._label = lo, hi, label
         self._log_step, self._log_t = -1, float("-inf")
         self._progress(lo, label)
+
+    def relabel(self, label: str) -> None:
+        """New label for the current stage, keeping its share of the progress bar."""
+        self.stage(self._lo, self._hi, label)
 
     def report(self, frac: float | None, extra: str = "") -> None:
         text = self._label + (f"  ·  {extra}" if extra else "")
@@ -2241,6 +2271,234 @@ def _write_sidecar(dest: Path, chapters: list[Chapter]) -> None:
     dest.with_suffix(".clips.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- #
+# Chat download (TwitchDownloaderCLI, only used when "Download chat" is on)
+# --------------------------------------------------------------------------- #
+CHAT_FORMATS = ("json", "txt", "html")
+_TDCLI_EXE = "TwitchDownloaderCLI" + EXE
+
+
+def tdcli_dir() -> Path:
+    return TOOLS_DIR / "TwitchDownloaderCLI"
+
+
+def find_tdcli() -> str | None:
+    """Our own copy first, then a TwitchDownloaderCLI next to the script / in bin / on PATH."""
+    cand = tdcli_dir() / _TDCLI_EXE
+    if cand.is_file():
+        return str(cand)
+    return find_tool("TwitchDownloaderCLI")
+
+
+def _is_managed_tdcli(path: str | Path) -> bool:
+    try:
+        return Path(path).resolve().parent == tdcli_dir().resolve()
+    except OSError:
+        return False
+
+
+def pick_tdcli_asset(names: list[str], plat: str | None = None, machine: str | None = None) -> str | None:
+    """Which file of a TwitchDownloader release is the CLI for this system (matched by keywords)."""
+    plat = plat or sys.platform
+    arm = (machine or platform.machine()).lower().startswith(("arm", "aarch"))
+    for name in names:
+        n = name.lower()
+        if not (n.startswith("twitchdownloadercli") and n.endswith(".zip")):
+            continue
+        if plat == "win32":
+            ok = "windows" in n and "x64" in n  # the x64 build also runs on Windows on ARM
+        elif plat == "darwin":
+            ok = "mac" in n and (("arm" in n) if arm else ("x64" in n and "arm" not in n))
+        else:
+            ok = "linux" in n and "alpine" not in n and (("arm" in n) if arm else ("x64" in n and "arm" not in n))
+        if ok:
+            return name
+    return None
+
+
+def _tdcli_release(tag: str) -> dict:
+    for t in (tag, "v" + tag):
+        try:
+            r = _http_get(f"https://api.github.com/repos/{TDCLI_REPO}/releases/tags/{t}")
+        except requests.RequestException as e:
+            raise EngineError(f"Could not reach GitHub to download TwitchDownloaderCLI:\n{e}") from e
+        if r.status_code == 404:
+            continue
+        if not r.ok:
+            raise EngineError(f"GitHub refused the TwitchDownloaderCLI lookup (HTTP {r.status_code}). Try again in a few minutes.")
+        return r.json()
+    raise EngineError(f"TwitchDownloaderCLI {tag} was not found on GitHub.")
+
+
+def _extract_tdcli(archive: Path, dest: Path) -> None:
+    """Unzip the CLI and the files next to it into `dest`, whatever folder layout the zip has."""
+    with zipfile.ZipFile(archive) as z:
+        files = [i for i in z.infolist() if not i.is_dir()]
+        main = next((i for i in files if PurePosixPath(i.filename.replace("\\", "/")).name == _TDCLI_EXE), None)
+        if main is None:
+            raise EngineError("The TwitchDownloaderCLI download did not contain the program.")
+        root = PurePosixPath(main.filename.replace("\\", "/")).parent
+        dest.mkdir(parents=True)
+        base = dest.resolve()
+        for info in files:
+            try:
+                rel = PurePosixPath(info.filename.replace("\\", "/")).relative_to(root)
+            except ValueError:
+                continue  # outside the folder that holds the program
+            target = (dest / rel).resolve()
+            if base not in target.parents:
+                continue  # never write outside the destination
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with z.open(info) as src, open(target, "wb") as out:
+                shutil.copyfileobj(src, out)
+    (dest / _TDCLI_EXE).chmod(0o755)
+
+
+def install_tdcli(ctx: "Ctx", tag: str = TDCLI_VERSION) -> None:
+    """Download the pinned TwitchDownloaderCLI release from GitHub into the tools folder."""
+    TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+    ctx.log(f"Downloading TwitchDownloaderCLI {tag} (needed for chat, one-time download)…")
+    ctx.stage(0.0, 1.0, f"Downloading TwitchDownloaderCLI {tag}")
+    release = _tdcli_release(tag)
+    assets = [a for a in release.get("assets", []) if isinstance(a, dict) and a.get("name")]
+    name = pick_tdcli_asset([a["name"] for a in assets])
+    manual = (f"You can download it yourself from https://github.com/{TDCLI_REPO}/releases "
+              f"and put the program in:\n{tdcli_dir()}")
+    asset = next((a for a in assets if a["name"] == name), None)
+    if not asset or not asset.get("browser_download_url"):
+        raise EngineError(f"There is no TwitchDownloaderCLI build for this system in release {tag}.\n{manual}")
+    archive = TOOLS_DIR / "TwitchDownloaderCLI.zip.download"
+    staging = TOOLS_DIR / "TwitchDownloaderCLI.new"
+    shutil.rmtree(staging, ignore_errors=True)
+    try:
+        _download_with_retry(ctx, asset["browser_download_url"], archive)
+        digest = str(asset.get("digest") or "")
+        if digest.startswith("sha256:"):
+            if _sha256(archive) != digest[len("sha256:"):].lower():
+                raise EngineError("Checksum mismatch for TwitchDownloaderCLI: the download is corrupted, try again.")
+        else:
+            ctx.log("GitHub published no checksum for TwitchDownloaderCLI, so it was not verified.")
+        try:
+            _extract_tdcli(archive, staging)
+        except zipfile.BadZipFile as e:
+            raise EngineError("The TwitchDownloaderCLI download is not a valid zip file, try again.") from e
+        try:
+            if tdcli_dir().exists():
+                shutil.rmtree(tdcli_dir())
+            os.replace(staging, tdcli_dir())
+        except OSError as e:
+            raise EngineError("TwitchDownloaderCLI is in use right now. Wait for running jobs to finish and try again.") from e
+    finally:
+        archive.unlink(missing_ok=True)
+        shutil.rmtree(staging, ignore_errors=True)
+    _write_version("tdcli", tag)
+    ctx.log(f"TwitchDownloaderCLI {tag} installed.")
+
+
+def ensure_tdcli(ctx: "Ctx") -> str:
+    """Path of TwitchDownloaderCLI: a copy the user provided as it is, ours only if it is the pinned version."""
+    path = find_tdcli()
+    if path and (not _is_managed_tdcli(path) or _read_versions().get("tdcli") == TDCLI_VERSION):
+        return path
+    install_tdcli(ctx)
+    path = find_tdcli()
+    if not path:
+        raise EngineError("TwitchDownloaderCLI was installed but could not be found.")
+    return path
+
+
+_TDCLI_STATUS = re.compile(r"^\[STATUS\]\s*-\s*(?P<phase>.*?)\s*(?:(?P<pct>\d+)%)?\s*(?:\[\d+/\d+\])?\s*$")
+_CHAT_PHASES = (("downloading", 0.0, 0.85), ("backfilling", 0.85, 0.98), ("writing", 0.98, 1.0))
+
+
+def parse_tdcli_status(line: str) -> tuple[str, float | None] | None:
+    """'[STATUS] - Downloading 16%' -> ('Downloading', 0.136). None if the line is not a status line."""
+    m = _TDCLI_STATUS.match(line.strip())
+    if not m:
+        return None
+    phase, pct = m.group("phase"), m.group("pct")
+    for key, lo, hi in _CHAT_PHASES:
+        if phase.lower().startswith(key):
+            return phase, lo + (hi - lo) * (min(int(pct), 100) / 100 if pct else 0.0)
+    return phase, None
+
+
+def tdcli_error(lines: list[str]) -> str:
+    """The useful part of what TwitchDownloaderCLI printed when it failed (it can dump a whole stack trace)."""
+    for ln in lines:
+        if "--->" in ln and "Exception:" in ln:
+            return ln.split("Exception:", 1)[1].strip()
+    for ln in lines:
+        if ln.startswith("[ERROR]"):
+            return ln[len("[ERROR]"):].lstrip(" -").strip()
+    for ln in lines:
+        if ln.startswith("Unhandled exception"):
+            return ln.split(":", 1)[-1].strip()
+    return " | ".join(lines[-3:]) or "no details"
+
+
+def chat_command(tdcli: str, vod_id: str, start: float, end: float, out: Path, embed: bool, cache_dir: Path) -> list[str]:
+    """Chat of [start, end] (VOD time, widened to whole seconds: the chat API only has whole seconds)."""
+    cmd = [
+        tdcli, "chatdownload", "--id", vod_id,
+        "-b", f"{math.floor(start)}s", "-e", f"{math.ceil(end)}s",
+        "-o", str(out),
+        "--collision", "Overwrite",  # never wait for an answer: nobody can type into the pipe
+        "--banner=false", "--log-level", "Status,Warning,Error",
+        "--temp-path", str(cache_dir),
+    ]
+    if embed:
+        cmd.append("--embed-images")
+    return cmd
+
+
+def download_chat(ctx: "Ctx", tdcli: str, vod_id: str, start: float, end: float, dest: Path,
+                  embed: bool, cache_dir: Path) -> Path:
+    """Run TwitchDownloaderCLI for one stretch of a VOD. Never leaves a half-written file behind."""
+    ctx.check_cancel()
+    dest = unique_path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        proc = subprocess.Popen(
+            chat_command(tdcli, vod_id, start, end, dest, embed, cache_dir),
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace", env=_tool_env(),
+            creationflags=_NO_WINDOW, start_new_session=sys.platform != "win32",
+        )
+    except OSError as e:
+        raise EngineError(f"Could not run TwitchDownloaderCLI:\n{e}") from e
+    ctx.proc = proc
+    tail: list[str] = []
+    ok = False
+    try:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            status = parse_tdcli_status(line)
+            if status:
+                ctx.report(status[1], status[0])
+            elif len(tail) < 60:
+                tail.append(line)
+        proc.wait()
+        ctx.check_cancel()
+        if proc.returncode != 0:
+            raise EngineError("Chat download failed: " + tdcli_error(tail))
+        if not dest.is_file() or dest.stat().st_size == 0:
+            raise EngineError("Chat download finished but the file is empty.")
+        ok = True
+        return dest
+    finally:
+        ctx.proc = None
+        if not ok:
+            try:  # a cancelled / failed run leaves an empty file behind
+                dest.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
 def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, container: str, workdir: Path) -> dict[int, tuple[Path, float, float]]:
     """
     Single ffmpeg pass (stream copy) that cuts the full file at every boundary.
@@ -2339,6 +2597,19 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         + ("download full VOD, then split" if plan.strategy == "full" else "download only the parts")
     )
     chapters_all = _load_chapters(ctx, job)
+    games_all = game_chapters(src.segments) if opts.game_markers and not job.single_clip else []
+    chat_fmt = opts.chat_format if opts.chat_format in CHAT_FORMATS else "json"
+    chat_tool: str | None = None
+    if opts.chat and not job.single_clip:
+        if not src.twitch_vod_id:
+            ctx.log("Chat download skipped: it only works for Twitch VODs.")
+        else:
+            try:
+                chat_tool = ensure_tdcli(ctx)
+            except Cancelled:
+                raise
+            except EngineError as e:
+                ctx.log(f"Chat download skipped (the video is still downloaded): {e}")
 
     out_dir = Path(opts.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2368,13 +2639,29 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
-        if opts.premiere_xml and clip_chs:
+        game_chs = chapters_for_part(games_all, real_start, real_end)
+        marker_clips = clip_chs if opts.premiere_xml else []
+        if marker_clips or game_chs:
             probe = probe_video(dest)
             if probe is None:
                 ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere XML.")
             fps, w, h = probe or (30.0, 1920, 1080)
-            xml = write_premiere_xml(dest, clip_chs, real_end - real_start, fps, w, h)
-            ctx.log(f"✔ {xml.name}  ({len(clip_chs)} markers for Premiere Pro, {fps:g} fps)")
+            markers = sorted(marker_clips + game_chs, key=lambda c: (c.start, c.kind))
+            xml = write_premiere_xml(dest, markers, real_end - real_start, fps, w, h)
+            bits = ([f"{len(marker_clips)} clip markers"] if marker_clips else []) + (
+                [f"{len(game_chs)} game markers"] if game_chs else [])
+            ctx.log(f"✔ {xml.name}  ({' + '.join(bits)} for Premiere Pro, {fps:g} fps)")
+        if chat_tool:
+            try:
+                ctx.relabel(f"Chat for part {part.index}/{total_parts}")
+                chat_file = download_chat(
+                    ctx, chat_tool, src.twitch_vod_id or "", real_start, real_end,
+                    dest.with_suffix(f".chat.{chat_fmt}"), opts.chat_embed, workdir / "chat_cache")
+                ctx.log(f"✔ {chat_file.name}  (chat from {fmt_hms(real_start)} to {fmt_hms(real_end)} of the VOD)")
+            except Cancelled:
+                raise
+            except EngineError as e:
+                ctx.log(f"Chat for part {part.index} failed (the video is fine): {e}")
         results.append(dest)
 
     if plan.strategy == "full":

@@ -40,6 +40,7 @@ except ImportError:  # pragma: no cover
 
 from luckytwitch_engine import (
     APP_DIR,
+    CHAT_FORMATS,
     TOOLS_DIR,
     TWITCH_CLIENT_ID,
     Cancelled,
@@ -115,6 +116,10 @@ DEFAULTS = {
     "gap_title": "Stream",
     "sidecar": False,
     "premiere_xml": False,
+    "game_markers": False,
+    "chat": False,
+    "chat_format": "json",
+    "chat_embed": False,
     "subfolders": True,
     "folder_template": "{date} - {title} - {id}",
     "clip_name_template": "{clip_title}",
@@ -450,6 +455,10 @@ class App(PlanTabMixin):
             clip_filter=self.build_filter(),
             sidecar=bool(v["sidecar"].get()),
             premiere_xml=bool(v["premiere_xml"].get()),
+            game_markers=bool(v["game_markers"].get()),
+            chat=bool(v["chat"].get()),
+            chat_format=v["chat_format"].get() if v["chat_format"].get() in CHAT_FORMATS else "json",
+            chat_embed=bool(v["chat_embed"].get()),
             subfolders=bool(v["subfolders"].get()),
             folder_template=v["folder_template"].get().strip() or DEFAULTS["folder_template"],
             clip_name_template=v["clip_name_template"].get().strip() or DEFAULTS["clip_name_template"],
@@ -673,6 +682,9 @@ class App(PlanTabMixin):
                                   "works even if chapters are off)",
                         variable=self.var("premiere_xml"), command=self.refresh_clips).grid(
             row=5, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(chf, text="Also mark the game / category changes (markers named «GAME: ...» in the same "
+                                  ".markers.xml; works for full VODs and for parts, even if chapters are off)",
+                        variable=self.var("game_markers")).grid(row=6, column=0, columnspan=2, sticky="w")
 
         clf = ttk.LabelFrame(t, text="Single clip downloads (button «Download only selected clip»)", padding=10)
         clf.grid(row=2, column=0, sticky="ew", pady=(10, 0))
@@ -691,8 +703,22 @@ class App(PlanTabMixin):
         ttk.Spinbox(row, textvariable=self.var("clip_pad_after"), from_=0, to=600, width=5).pack(side="left", padx=4)
         ttk.Label(row, text="s      seconds added around the clip", style="Muted.TLabel").pack(side="left")
 
+        chat = ttk.LabelFrame(t, text="Chat (Twitch VODs only)", padding=10)
+        chat.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        ttk.Checkbutton(chat, text="Also download the chat of each part (TwitchDownloaderCLI, downloaded the first time)",
+                        variable=self.var("chat")).grid(row=0, column=0, columnspan=3, sticky="w")
+        ttk.Label(chat, text="Format:").grid(row=1, column=0, sticky="e", pady=3)
+        ttk.Combobox(chat, textvariable=self.var("chat_format"), values=list(CHAT_FORMATS),
+                     state="readonly", width=8).grid(row=1, column=1, sticky="w", padx=6)
+        ttk.Checkbutton(chat, text="Embed emotes and badges (bigger file, but it works offline)",
+                        variable=self.var("chat_embed")).grid(row=1, column=2, sticky="w")
+        ttk.Label(chat, text="Saved next to each part as «name.chat.json». Inside the .json the message times count "
+                             "from the start of the VOD, not from the start of the part; the file's start/end say which "
+                             "stretch it covers. TwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader).",
+                  style="Muted.TLabel", wraplength=900, justify="left").grid(row=2, column=0, columnspan=3, sticky="w")
+
         tools = ttk.LabelFrame(t, text="Tools (yt-dlp and ffmpeg)", padding=10)
-        tools.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        tools.grid(row=4, column=0, sticky="ew", pady=(10, 0))
         tools.columnconfigure(0, weight=1)
         self.tools_info = tk.StringVar(value="Checking…")
         ttk.Label(tools, textvariable=self.tools_info, style="Muted.TLabel", justify="left").grid(
@@ -1233,7 +1259,8 @@ class App(PlanTabMixin):
                 cut = clip_cut_text(clip, self.source.duration, before, after)
                 # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
                 opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
-                               keep_full=False, sidecar=False, premiere_xml=False)
+                               keep_full=False, sidecar=False, premiere_xml=False,
+                               game_markers=False, chat=False)
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
                 messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")

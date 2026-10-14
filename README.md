@@ -44,6 +44,19 @@ The Search tab and clip chapters need a Twitch session. The app can build chapte
 
 This uses Twitch's Device Code Flow with a public app, so there is no client secret and you do **not** need a Twitch developer account. Advanced users can still enter their own Client ID / Secret in the same window.
 
+### Game markers for Premiere Pro (optional)
+
+In **Options → Chapter details**, tick *Also mark the game / category changes*. Each part (or the full VOD) then gets a `.markers.xml` next to it with one marker per game, named `GAME: <game>` and spanning the whole stretch (for example `GAME: Just Chatting` from 0:00:00 to 1:00:00, then `GAME: Resident Evil 2`). Import it in Premiere with **File → Import**. The game list comes from Twitch through yt-dlp, the same data the Timeline shows as colored bars. It works with or without the clip markers (they share the same file when both are ticked). Premiere's XML import has no marker color, so the `GAME:` prefix is what tells them apart from the clip markers.
+
+### Chat download (optional, Twitch VODs only)
+
+In **Options → Chat**, tick *Also download the chat of each part*. The first time, the app downloads [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader) (MIT license, pinned to one tested version) into the tools folder. Each part then gets a chat file next to it, `name.chat.json` (or `.txt` / `.html`), covering exactly the stretch of the VOD that the part covers. Notes:
+
+- Inside the `.json`, message times count from the **start of the VOD**, not from the start of the part. The file's `start` and `end` say which stretch it covers.
+- Chat times are whole seconds, so expect up to a second of difference against the video.
+- If the chat cannot be downloaded (deleted VOD, no internet...), the video is still downloaded and the log says why.
+- *Embed emotes and badges* makes the file bigger but lets it render offline.
+
 ## Where things are stored
 
 | What | Windows | macOS |
@@ -87,6 +100,14 @@ python -m pytest
 ```
 
 The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
+
+## Credits
+
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) downloads the videos (Unlicense).
+- [FFmpeg](https://ffmpeg.org) cuts them (builds from [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) on Windows, static builds on macOS).
+- [TwitchDownloader](https://github.com/lay295/TwitchDownloader) by lay295 and contributors downloads the chat (MIT). It is downloaded on demand, not bundled.
+
+LuckyTwitch Downloader is not affiliated with Twitch Interactive, Inc., TwitchDownloader or yt-dlp.
 
 ## Notes
 
