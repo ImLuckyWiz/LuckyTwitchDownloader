@@ -1,14 +1,14 @@
-## v1.6.0
+## v1.7.0
 
 ### Added
-- **Chat download (Twitch VODs).** In Options → Chat, tick *Also download the chat of each part*. Each part gets a chat file next to it (`name.chat.json`, or `.txt` / `.html`) that covers exactly the stretch of the VOD the part covers, using the real start and end of the file. *Embed emotes and badges* makes the file bigger but lets it render offline.
-- The first time you use it, the app downloads **TwitchDownloaderCLI** (version 1.56.5) into the tools folder, the same way it does with yt-dlp and ffmpeg. Tools shows its status. If you already have a copy next to the app or on your PATH, that one is used.
-- **Game markers for Premiere Pro.** In Options → Chapter details, tick *Also mark the game / category changes*. The `.markers.xml` next to each part (or the full VOD) then gets one marker per game, named `GAME: <game>`, spanning the whole stretch, for example `GAME: Just Chatting` from 0:00:00 to 1:00:00 and then `GAME: Resident Evil 2`. For a part, only the games inside it are marked, with times relative to the part. It works with or without the clip markers; when both are on they share the same file. The games are the same ones the Timeline shows as colored bars.
+- **Premiere Pro plugin (beta): colored markers.** In Options → Chapter details, tick *Also export a .markers.json for the LuckyTwitch Premiere plugin*. Each part (or the full VOD) gets a `.markers.json` next to it with every marker's kind (clip or game), time, views and clip details. The new panel in `premiere-plugin/` (download `LuckyTwitch-Premiere-Plugin.zip` from this release) imports it as **colored markers straight onto your active sequence**, instead of bringing in a separate sequence like the XML does.
+- In the panel you choose what to import (games, clips, minimum views) and the colors: one color for game changes, and clip markers colored by view tiers (for example red from 50 views, orange from 10, yellow below). The clip's creator, views and link go in the marker comment. Choices are remembered. Markers can start at the beginning of the sequence or at the playhead, and one Undo removes an import.
+- The plugin needs Premiere Pro 2026. Install steps are in `premiere-plugin/README.md`. A **Diagnostics** section in the panel helps check that the plugin and your Premiere agree.
+- The format of the file is documented in `docs/markers-format.md`. It carries a version number, so a newer file opened by an older plugin gives a clear message instead of failing silently.
 
 ### Good to know
-- **Chat times count from the start of the VOD**, not from the start of the part (this is how the `.json` is written). The `start` and `end` inside the file say which stretch it covers. Chat times are whole seconds, so expect up to a second of difference against the video.
-- If the chat cannot be downloaded (deleted VOD, no internet, GitHub unreachable), the video is still downloaded and the log says why. A cancelled or failed chat download leaves no empty file behind.
-- Chat is skipped for single clips and for links that are not Twitch VODs.
-- Premiere's XML import has no marker color, so the `GAME:` prefix is what tells the game markers apart from the clip markers.
-- Game markers are off by default, and so is chat, so nothing changes for existing setups.
-- TwitchDownloader is MIT licensed and is downloaded on demand, not bundled. See Credits in the README.
+- **The `.markers.xml` option is unchanged.** It is a separate checkbox, so you can use the XML, the plugin file, or both. Premiere's XML import still has no marker color, so the XML keeps its `GAME:` prefix.
+- *Also mark the game / category changes* now applies to both files. If it is the only marker option ticked, you still get the `.markers.xml` with the games, as before. If the plugin file is ticked as well, the games go into the `.markers.json` (tick the XML option too if you also want them there).
+- Marker times in the `.markers.json` count from the start of the part, like the XML. The file also says where the part sits in the VOD (`part.start` / `part.end`), which helps to line it up with the chat file.
+- Colors are not stored in the file: the plugin picks them, so you can change the scheme without downloading again. Premiere has eight marker colors to choose from.
+- Both marker options are off by default, so nothing changes for existing setups.

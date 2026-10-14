@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; font-size: 12px; color: var(--uxp-host-text-color); padding: 10px; }
+    h2 { font-size: 13px; margin: 14px 0 6px; }
+    .row { display: flex; align-items: center; margin: 4px 0; }
+    .row label { flex: 1; }
+    .row select, .row input[type="text"] { width: 110px; }
+    .muted { opacity: .65; }
+    .block { margin: 6px 0; }
+    button { margin: 4px 4px 4px 0; }
+    #fileInfo { margin: 6px 0; white-space: pre-wrap; }
+    #log { white-space: pre-wrap; margin-top: 8px; padding: 6px; border: 1px solid var(--uxp-host-border-color); min-height: 40px; max-height: 220px; overflow-y: auto; }
+    .err { color: #e34850; }
+  </style>
+</head>
+<body>
+  <div class="block">
+    <button id="pick">Choose .markers.json…</button>
+    <div id="fileInfo" class="muted">No file chosen.</div>
+  </div>
+
+  <h2>What to import</h2>
+  <div class="row"><input type="checkbox" id="importGames"><label for="importGames">Game / category markers</label>
+    <select id="gameColor"></select></div>
+  <div class="row"><input type="checkbox" id="gamePrefix"><label for="gamePrefix">Name them «GAME: …»</label></div>
+  <div class="row"><input type="checkbox" id="importClips"><label for="importClips">Clip markers</label></div>
+  <div class="row"><label for="minViews">Only clips with at least … views</label><input type="text" id="minViews"></div>
+
+  <h2>Clip colors</h2>
+  <div class="row"><input type="checkbox" id="colorByViews"><label for="colorByViews">Color by views</label></div>
+  <div class="row"><label for="lowColor">Fewer than the mid tier</label><select id="lowColor"></select></div>
+  <div class="row"><label for="midViews">Mid tier from … views</label><input type="text" id="midViews"></div>
+  <div class="row"><label for="midColor">Mid tier color</label><select id="midColor"></select></div>
+  <div class="row"><label for="highViews">High tier from … views</label><input type="text" id="highViews"></div>
+  <div class="row"><label for="highColor">High tier color</label><select id="highColor"></select></div>
+  <div class="row"><label for="clipColor">One color for all clips (when the above is off)</label><select id="clipColor"></select></div>
+
+  <h2>Where</h2>
+  <div class="row"><label for="offsetMode">The part starts…</label>
+    <select id="offsetMode">
+      <option value="start">at the start of the sequence</option>
+      <option value="playhead">at the playhead</option>
+    </select></div>
+
+  <div class="block">
+    <button id="import" disabled>Import markers into the active sequence</button>
+    <div class="muted">One undo step (Ctrl/Cmd+Z) removes them again.</div>
+  </div>
+
+  <h2>Diagnostics</h2>
+  <div class="muted">Only needed while checking that this plugin and your Premiere agree.</div>
+  <div class="block">
+    <button id="probe">Probe the API</button>
+    <button id="testMarkers">Add test markers</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script src="src/main.js"></script>
+</body>
+</html>

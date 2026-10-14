@@ -913,6 +913,87 @@ def write_premiere_xml(dest: Path, chapters: list[Chapter], duration: float, fps
 
 
 # --------------------------------------------------------------------------- #
+# Premiere Pro plugin export (.markers.json, read by the plugin in premiere-plugin/)
+# --------------------------------------------------------------------------- #
+MARKERS_JSON_FORMAT = "luckytwitch-markers"
+MARKERS_JSON_VERSION = 1  # bump when the layout changes in a way an older plugin cannot read; see docs/markers-format.md
+
+
+def _clip_marker_comment(clips: list[dict]) -> str:
+    return " | ".join(f"{c.get('creator_name', '')} · {c.get('view_count', 0)} views · {c.get('url', '')}" for c in clips)
+
+
+def premiere_markers_json(
+    name: str,
+    chapters: list[Chapter],
+    duration: float,
+    fps: float,
+    source: SourceInfo | None = None,
+    part_start: float = 0.0,
+    part_end: float | None = None,
+) -> str:
+    """
+    The markers of one part as JSON for the Premiere Pro plugin. Unlike the XML it keeps what each marker is
+    (a clip or a game) and the numbers behind it (views...), so the plugin can choose colors and names itself.
+    Times are seconds from the start of the part; part_start / part_end say where the part sits in the VOD.
+    """
+    markers = []
+    for ch in sorted(chapters, key=lambda c: (c.start, c.kind)):
+        m: dict = {
+            "kind": "game" if ch.kind == "game" else "clip",
+            "name": ch.title,
+            "start": round(ch.start, 3),
+            "end": round(ch.end, 3),
+        }
+        if ch.kind == "game":
+            m["game"] = ch.title
+            m["comment"] = "Game / category"
+        else:
+            m["views"] = ch.views
+            m["comment"] = _clip_marker_comment(ch.clips)
+            m["clips"] = [
+                {
+                    "id": c.get("id"),
+                    "title": c.get("title"),
+                    "creator": c.get("creator_name"),
+                    "views": c.get("view_count"),
+                    "duration": c.get("duration"),
+                    "url": c.get("url"),
+                }
+                for c in ch.clips
+            ]
+        markers.append(m)
+    data: dict = {
+        "format": MARKERS_JSON_FORMAT,
+        "version": MARKERS_JSON_VERSION,
+        "name": name,
+        "duration": round(duration, 3),
+        "fps": round(fps, 5),
+        "part": {"start": round(part_start, 3), "end": round(part_end if part_end is not None else part_start + duration, 3)},
+    }
+    if source is not None:
+        data["source"] = {
+            "url": source.url,
+            "vod_id": source.twitch_vod_id,
+            "title": source.title,
+            "streamer": source.uploader,
+            "date": source.date,
+        }
+    data["markers"] = markers
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
+def write_markers_json(dest: Path, chapters: list[Chapter], duration: float, fps: float,
+                       source: SourceInfo | None = None, part_start: float = 0.0,
+                       part_end: float | None = None) -> Path:
+    """Write <part name>.markers.json next to the part file."""
+    out = dest.with_name(dest.stem + ".markers.json")
+    out.write_text(premiere_markers_json(dest.stem, chapters, duration, fps, source, part_start, part_end),
+                   encoding="utf-8")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Source info (yt-dlp)
 # --------------------------------------------------------------------------- #
 @dataclass
@@ -1165,6 +1246,7 @@ class JobOptions:
     clip_name_template: str = "{clip_title}"  # file name when a single clip is downloaded
     premiere_xml: bool = False  # also write a Premiere Pro XML (clips as markers) next to each part
     game_markers: bool = False  # also put the game / category changes into that XML as markers ("GAME: ...")
+    premiere_plugin: bool = False  # also write a .markers.json for the LuckyTwitch Premiere Pro plugin (colors, details)
     chat: bool = False  # also download the chat of each part with TwitchDownloaderCLI (Twitch VODs only)
     chat_format: str = "json"  # json | txt | html
     chat_embed: bool = False  # embed emotes / badges in the chat file (bigger, but it renders offline)
@@ -2569,7 +2651,7 @@ def cut_exact(ctx: Ctx, full: Path, part: Part, container: str, workdir: Path, o
 # Running a job
 # --------------------------------------------------------------------------- #
 def _load_chapters(ctx: Ctx, job: Job) -> list[Chapter]:
-    if not (job.opts.chapters or job.opts.premiere_xml):
+    if not (job.opts.chapters or job.opts.premiere_xml or job.opts.premiere_plugin):
         return []
     clips = job.clips
     if clips is None:
@@ -2640,17 +2722,29 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
         game_chs = chapters_for_part(games_all, real_start, real_end)
-        marker_clips = clip_chs if opts.premiere_xml else []
-        if marker_clips or game_chs:
+        # Two separate outputs. The XML is the plain import (no colors). The JSON is for the plugin. Game markers
+        # alone still give the XML, as before, unless the plugin file is on (then they go there).
+        xml_clips = clip_chs if opts.premiere_xml else []
+        json_clips = clip_chs if opts.premiere_plugin else []
+        want_xml = opts.premiere_xml or (opts.game_markers and not opts.premiere_plugin)
+        if (want_xml and (xml_clips or game_chs)) or (opts.premiere_plugin and (json_clips or game_chs)):
             probe = probe_video(dest)
             if probe is None:
-                ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere XML.")
+                ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers.")
             fps, w, h = probe or (30.0, 1920, 1080)
-            markers = sorted(marker_clips + game_chs, key=lambda c: (c.start, c.kind))
-            xml = write_premiere_xml(dest, markers, real_end - real_start, fps, w, h)
-            bits = ([f"{len(marker_clips)} clip markers"] if marker_clips else []) + (
-                [f"{len(game_chs)} game markers"] if game_chs else [])
-            ctx.log(f"✔ {xml.name}  ({' + '.join(bits)} for Premiere Pro, {fps:g} fps)")
+
+            def marker_bits(clips: list[Chapter]) -> str:
+                return " + ".join(([f"{len(clips)} clip markers"] if clips else [])
+                                  + ([f"{len(game_chs)} game markers"] if game_chs else []))
+
+            if want_xml and (xml_clips or game_chs):
+                markers = sorted(xml_clips + game_chs, key=lambda c: (c.start, c.kind))
+                xml = write_premiere_xml(dest, markers, real_end - real_start, fps, w, h)
+                ctx.log(f"✔ {xml.name}  ({marker_bits(xml_clips)} for Premiere Pro, {fps:g} fps)")
+            if opts.premiere_plugin and (json_clips or game_chs):
+                markers = sorted(json_clips + game_chs, key=lambda c: (c.start, c.kind))
+                mj = write_markers_json(dest, markers, real_end - real_start, fps, src, real_start, real_end)
+                ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips)} for the Premiere plugin, {fps:g} fps)")
         if chat_tool:
             try:
                 ctx.relabel(f"Chat for part {part.index}/{total_parts}")

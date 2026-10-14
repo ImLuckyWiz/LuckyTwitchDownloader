@@ -59,9 +59,31 @@ jobs:
             dist/LuckyTwitch-Setup.exe
             dist/LuckyTwitch-*.dmg
 
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check and test the Premiere plugin
+        working-directory: premiere-plugin
+        run: |
+          npm run check
+          npm test
+      - name: Package the Premiere plugin
+        run: |
+          mkdir -p dist
+          cd premiere-plugin
+          zip -r ../dist/LuckyTwitch-Premiere-Plugin.zip manifest.json index.html src README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LuckyTwitch-plugin
+          path: dist/LuckyTwitch-Premiere-Plugin.zip
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, plugin]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,4 +97,5 @@ jobs:
           files: |
             release/*.exe
             release/*.dmg
+            release/*.zip
           body_path: RELEASE_NOTES.md

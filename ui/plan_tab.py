@@ -172,7 +172,8 @@ class PlanTabMixin:
             msg = f"{len(included)} of {len(self.clips)} clips pass the filter → {len(chapters)} chapters"
             if placed < len(self.clips):
                 msg += f"  ({len(self.clips) - placed} can't be placed: no offset)"
-            if not (self.vars["chapters"].get() or self.vars["premiere_xml"].get()):
+            if not (self.vars["chapters"].get() or self.vars["premiere_xml"].get()
+                    or self.vars["premiere_plugin"].get()):
                 msg += "  [chapters are OFF]"
         self.clips_lbl.set(msg)
         self.timeline.set_clip_marks(self._clip_times())

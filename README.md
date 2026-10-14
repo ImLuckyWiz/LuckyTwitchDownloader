@@ -48,6 +48,10 @@ This uses Twitch's Device Code Flow with a public app, so there is no client sec
 
 In **Options → Chapter details**, tick *Also mark the game / category changes*. Each part (or the full VOD) then gets a `.markers.xml` next to it with one marker per game, named `GAME: <game>` and spanning the whole stretch (for example `GAME: Just Chatting` from 0:00:00 to 1:00:00, then `GAME: Resident Evil 2`). Import it in Premiere with **File → Import**. The game list comes from Twitch through yt-dlp, the same data the Timeline shows as colored bars. It works with or without the clip markers (they share the same file when both are ticked). Premiere's XML import has no marker color, so the `GAME:` prefix is what tells them apart from the clip markers.
 
+### Premiere Pro plugin: colored markers (optional)
+
+The `.markers.xml` above is limited by what Premiere's XML import understands: no marker colors, and it brings in a separate sequence. For more, tick **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin**. Each part (or the full VOD) then gets a `.markers.json` next to it, and the panel in [`premiere-plugin/`](premiere-plugin) imports it as colored markers straight onto your active sequence: game changes in one color, clips colored by their views, with the creator and link in the comment. It is independent of the XML option, so you can use either or both. The game markers option applies to both files. See [`premiere-plugin/README.md`](premiere-plugin/README.md) to install it and [`docs/markers-format.md`](docs/markers-format.md) for the file format.
+
 ### Chat download (optional, Twitch VODs only)
 
 In **Options → Chat**, tick *Also download the chat of each part*. The first time, the app downloads [TwitchDownloaderCLI](https://github.com/lay295/TwitchDownloader) (MIT license, pinned to one tested version) into the tools folder. Each part then gets a chat file next to it, `name.chat.json` (or `.txt` / `.html`), covering exactly the stretch of the VOD that the part covers. Notes:
@@ -90,6 +94,8 @@ luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpe
 luckytwitch_downloader.py   the Tk app: window, tabs, queue
 ui/                         UI pieces split out of the app (plan_tab.py, timeline.py, common.py: colours and fonts)
 tests/                      pytest suite
+premiere-plugin/            the Premiere Pro panel that reads the .markers.json (JavaScript, own tests)
+docs/                       file format notes (markers-format.md)
 ```
 
 Run the tests:
@@ -99,7 +105,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
+The plugin has its own tests (`cd premiere-plugin && npm test`, Node 20+, no dependencies). The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
 
 ## Credits
 

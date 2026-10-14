@@ -116,6 +116,7 @@ DEFAULTS = {
     "gap_title": "Stream",
     "sidecar": False,
     "premiere_xml": False,
+    "premiere_plugin": False,
     "game_markers": False,
     "chat": False,
     "chat_format": "json",
@@ -455,6 +456,7 @@ class App(PlanTabMixin):
             clip_filter=self.build_filter(),
             sidecar=bool(v["sidecar"].get()),
             premiere_xml=bool(v["premiere_xml"].get()),
+            premiere_plugin=bool(v["premiere_plugin"].get()),
             game_markers=bool(v["game_markers"].get()),
             chat=bool(v["chat"].get()),
             chat_format=v["chat_format"].get() if v["chat_format"].get() in CHAT_FORMATS else "json",
@@ -679,12 +681,17 @@ class App(PlanTabMixin):
         ttk.Checkbutton(chf, text="Also save a .clips.json next to each part (clip titles, creators, links)",
                         variable=self.var("sidecar")).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Checkbutton(chf, text="Also export the clips as markers for Premiere Pro (.markers.xml next to each part, "
-                                  "works even if chapters are off)",
+                                  "plain import without colors, works even if chapters are off)",
                         variable=self.var("premiere_xml"), command=self.refresh_clips).grid(
             row=5, column=0, columnspan=2, sticky="w")
-        ttk.Checkbutton(chf, text="Also mark the game / category changes (markers named «GAME: ...» in the same "
-                                  ".markers.xml; works for full VODs and for parts, even if chapters are off)",
-                        variable=self.var("game_markers")).grid(row=6, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(chf, text="Also export a .markers.json for the LuckyTwitch Premiere plugin (colors, clip "
+                                  "details; works even if chapters are off)",
+                        variable=self.var("premiere_plugin"), command=self.refresh_clips).grid(
+            row=6, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(chf, text="Also mark the game / category changes (markers named «GAME: ...» in the "
+                                  ".markers.xml, and as game markers in the .markers.json; works for full VODs and "
+                                  "for parts, even if chapters are off)",
+                        variable=self.var("game_markers")).grid(row=7, column=0, columnspan=2, sticky="w")
 
         clf = ttk.LabelFrame(t, text="Single clip downloads (button «Download only selected clip»)", padding=10)
         clf.grid(row=2, column=0, sticky="ew", pady=(10, 0))
@@ -1260,7 +1267,7 @@ class App(PlanTabMixin):
                 # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
                 opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
                                keep_full=False, sidecar=False, premiere_xml=False,
-                               game_markers=False, chat=False)
+                               premiere_plugin=False, game_markers=False, chat=False)
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
                 messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")
