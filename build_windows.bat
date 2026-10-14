@@ -14,6 +14,8 @@ python -m pip install -r requirements.txt || goto :err
 
 python -m PyInstaller --noconfirm --clean --windowed ^
   --name LuckyTwitch ^
+  --icon assets\icon.ico ^
+  --add-data "assets;assets" ^
   --collect-submodules requests ^
   --collect-submodules ui ^
   --hidden-import luckytwitch_engine ^

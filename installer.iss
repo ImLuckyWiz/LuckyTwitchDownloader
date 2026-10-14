@@ -20,6 +20,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\LuckyTwitch.exe
+SetupIconFile=assets\icon.ico
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Tasks]

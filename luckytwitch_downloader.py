@@ -66,8 +66,9 @@ from luckytwitch_engine import (
     stream_dir,
     user_data_dir,
 )
-from ui.common import ACCENT, BG, BG2, BG3, ERR, FG, MONO_FONT, MUTED, bmp
+from ui.common import ACCENT, BG, BG2, BG3, ERR, FG, MONO_FONT, MUTED, bmp, set_app_icon
 from ui.plan_tab import PlanTabMixin
+from ui.theme import apply_dark_theme as _apply_base_theme, dark_titlebar
 
 # From source: keep config next to the script (as before). Packaged app: the app
 # folder may be read-only (inside a macOS .app, Program Files...), so use the
@@ -246,62 +247,12 @@ def save_recent(items: list[dict]) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Theme (same look as clips_downloader.py)
+# Theme: see ui/theme.py (dark_titlebar and the base styles live there)
 # --------------------------------------------------------------------------- #
-def dark_titlebar(window):
-    if sys.platform != "win32":
-        return
-    try:
-        import ctypes
-
-        window.update_idletasks()
-        hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
-        value = ctypes.c_int(1)
-        for attr in (20, 19):
-            ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(value), ctypes.sizeof(value))
-    except Exception:  # noqa: BLE001
-        pass
-
-
 def apply_dark_theme(root):
+    _apply_base_theme(root)
     style = ttk.Style(root)
-    style.theme_use("clam")
-    root.configure(bg=BG)
-    style.configure(".", background=BG, foreground=FG, fieldbackground=BG2, bordercolor=BG3,
-                    lightcolor=BG, darkcolor=BG, troughcolor=BG2, focuscolor=BG)
-    style.configure("TFrame", background=BG)
-    style.configure("TLabel", background=BG, foreground=FG)
-    style.configure("Muted.TLabel", background=BG, foreground=MUTED)
-    style.configure("TLabelframe", background=BG, bordercolor=BG3)
-    style.configure("TLabelframe.Label", background=BG, foreground=ACCENT)
-    style.configure("TButton", background=BG3, foreground=FG, padding=6, borderwidth=0)
-    style.map("TButton", background=[("disabled", BG2), ("active", ACCENT)], foreground=[("disabled", "#777777")])
-    style.configure("TEntry", fieldbackground=BG2, foreground=FG, insertcolor=FG, bordercolor=BG3)
-    style.configure("TSpinbox", fieldbackground=BG2, foreground=FG, insertcolor=FG, arrowcolor=FG,
-                    background=BG3, bordercolor=BG3)
-    style.configure("TCombobox", fieldbackground=BG2, foreground=FG, arrowcolor=FG, background=BG3,
-                    selectbackground=BG2, selectforeground=FG, bordercolor=BG3)
-    style.map("TCombobox", fieldbackground=[("readonly", BG2)], foreground=[("readonly", FG)])
-    root.option_add("*TCombobox*Listbox.background", BG2)
-    root.option_add("*TCombobox*Listbox.foreground", FG)
-    root.option_add("*TCombobox*Listbox.selectBackground", ACCENT)
-    style.configure("TCheckbutton", background=BG, foreground=FG)
-    style.map("TCheckbutton", background=[("active", BG)],
-              indicatorcolor=[("selected", ACCENT), ("!selected", BG2)])
-    style.configure("TNotebook", background=BG, bordercolor=BG3, tabmargins=(0, 4, 0, 0))
-    style.configure("TNotebook.Tab", background=BG2, foreground=FG, padding=(14, 6), borderwidth=0)
-    style.map("TNotebook.Tab", background=[("selected", ACCENT), ("active", BG3)],
-              foreground=[("selected", "#ffffff")])
-    style.configure("Treeview", background=BG2, fieldbackground=BG2, foreground=FG, rowheight=24, borderwidth=0)
-    style.map("Treeview", background=[("selected", ACCENT)], foreground=[("selected", "#ffffff")])
-    style.configure("Treeview.Heading", background=BG3, foreground=FG, relief="flat")
-    style.map("Treeview.Heading", background=[("active", "#4a4d55")])
     style.configure("Vods.Treeview", rowheight=THUMB_SIZE[1] + 8)  # tall rows: room for the thumbnails
-    style.configure("Vertical.TScrollbar", background=BG3, troughcolor=BG2, arrowcolor=FG, bordercolor=BG2)
-    style.map("Vertical.TScrollbar", background=[("active", "#4a4d55")])
-    style.configure("Horizontal.TProgressbar", troughcolor=BG2, background=ACCENT, bordercolor=BG2,
-                    lightcolor=ACCENT, darkcolor=ACCENT)
-    dark_titlebar(root)
 
 
 # --------------------------------------------------------------------------- #
@@ -500,7 +451,7 @@ class App(PlanTabMixin):
         entry = ttk.Entry(top, textvariable=self.vod_var)
         entry.pack(side="left", fill="x", expand=True, padx=8)
         entry.bind("<Return>", lambda e: self.on_get_info())
-        self.info_btn = ttk.Button(top, text="Get info", command=self.on_get_info)
+        self.info_btn = ttk.Button(top, text="Get info", style="Accent.TButton", command=self.on_get_info)
         self.info_btn.pack(side="left")
         ttk.Button(top, text="Twitch API…", command=self.ask_credentials).pack(side="left", padx=(8, 0))
         self.info_var = tk.StringVar(value="No VOD loaded.")
@@ -536,7 +487,7 @@ class App(PlanTabMixin):
         entry = ttk.Entry(top, textvariable=self.search_var)
         entry.pack(side="left", fill="x", expand=True, padx=8)
         entry.bind("<Return>", lambda e: self.on_search())
-        self.search_btn = ttk.Button(top, text="Search", command=self.on_search)
+        self.search_btn = ttk.Button(top, text="Search", style="Accent.TButton", command=self.on_search)
         self.search_btn.pack(side="left")
 
         # --- shown while not signed in --- #
@@ -600,7 +551,7 @@ class App(PlanTabMixin):
         brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         self.more_btn = ttk.Button(brow, text="Load more", command=self.load_more, state="disabled")
         self.more_btn.pack(side="left")
-        ttk.Button(brow, text="Use this VOD", command=self.use_selected_vod).pack(side="right")
+        ttk.Button(brow, text="Use this VOD", style="Accent.TButton", command=self.use_selected_vod).pack(side="right")
 
     def build_options_tab(self):
         t = self.tab_options.body
@@ -754,7 +705,7 @@ class App(PlanTabMixin):
         self.qtree.grid(row=0, column=0, sticky="nsew")
         btns = ttk.Frame(t)
         btns.grid(row=1, column=0, sticky="ew", pady=6)
-        self.start_btn = ttk.Button(btns, text="Start queue", command=self.start_queue)
+        self.start_btn = ttk.Button(btns, text="Start queue", style="Accent.TButton", command=self.start_queue)
         self.start_btn.pack(side="left")
         self.cancel_btn = ttk.Button(btns, text="Cancel current", command=self.cancel_current, state="disabled")
         self.cancel_btn.pack(side="left", padx=6)
@@ -1471,6 +1422,7 @@ def main():
     except Exception:  # noqa: BLE001
         pass
     root = tk.Tk()
+    set_app_icon(root)
     apply_dark_theme(root)
     App(root)
     root.mainloop()

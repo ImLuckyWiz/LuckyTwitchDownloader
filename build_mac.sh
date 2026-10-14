@@ -10,6 +10,8 @@ python3 -m pip install -r requirements.txt
 
 python3 -m PyInstaller --noconfirm --clean --windowed \
   --name LuckyTwitch \
+  --icon assets/icon.icns \
+  --add-data "assets:assets" \
   --osx-bundle-identifier com.luckytwitch.app \
   --collect-submodules requests \
   --collect-submodules ui \

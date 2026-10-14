@@ -291,7 +291,7 @@ class Timeline(ttk.Frame):
     def _draw_width(self) -> int:
         w = self.canvas.winfo_width()
         if w <= 50:  # not laid out yet (or a test): fall back to the requested width
-            w = int(float(self.canvas.cget("width")))
+            w = self.canvas.winfo_reqwidth()  # (cget("width") may be "10c", a Tk distance, not a number)
         return max(w - 2 * PADX, 1)
 
     def x_of(self, t: float) -> float:
