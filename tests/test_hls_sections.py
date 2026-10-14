@@ -35,11 +35,41 @@ def test_parse_durations_and_urls(segs):
 
 @pytest.mark.parametrize(
     "bad",
-    ['#EXT-X-KEY:METHOD=AES-128,URI="k"', '#EXT-X-MAP:URI="init.mp4"', "#EXT-X-DISCONTINUITY", "#EXT-X-BYTERANGE:100@0"],
+    ['#EXT-X-KEY:METHOD=AES-128,URI="k"', "#EXT-X-DISCONTINUITY"],
 )
 def test_parse_rejects_unsafe_tags(bad):
     with pytest.raises(ValueError):
         eng.parse_hls_playlist(make_playlist(n=5, extra=bad), BASE)
+
+
+def test_parse_fmp4_init_section(tmp_path):
+    segs = eng.parse_hls_playlist(make_playlist(n=5, extra='#EXT-X-MAP:URI="init-0.mp4"'), BASE)
+    assert all(s.init == ("https://cdn.example.com/abc/chunked/init-0.mp4", None) for s in segs)
+    out = tmp_path / "p.m3u8"
+    eng.write_local_playlist(segs[1:3], out)
+    text = out.read_text()
+    assert text.count("#EXT-X-MAP") == 1
+    assert '#EXT-X-MAP:URI="https://cdn.example.com/abc/chunked/init-0.mp4"' in text
+    assert text.index("#EXT-X-MAP") < text.index("#EXTINF")
+    assert "#EXT-X-VERSION:7" in text
+
+
+def test_parse_byteranges_resolve_implicit_offsets(tmp_path):
+    pl = "\n".join([
+        "#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-TARGETDURATION:10",
+        '#EXT-X-MAP:URI="v.mp4",BYTERANGE="700@0"',
+        "#EXTINF:10.0,", "#EXT-X-BYTERANGE:1000@700", "v.mp4",
+        "#EXTINF:10.0,", "#EXT-X-BYTERANGE:500", "v.mp4",
+        "#EXTINF:10.0,", "#EXT-X-BYTERANGE:600", "v.mp4",
+        "#EXT-X-ENDLIST", ""])
+    segs = eng.parse_hls_playlist(pl, BASE)
+    assert [s.byterange for s in segs] == ["1000@700", "500@1700", "600@2200"]
+    assert segs[0].init[1] == "700@0"
+    out = tmp_path / "p.m3u8"
+    eng.write_local_playlist(segs[1:], out)  # a subset must keep explicit offsets
+    text = out.read_text()
+    assert "#EXT-X-BYTERANGE:500@1700" in text and "#EXT-X-BYTERANGE:600@2200" in text
+    assert 'BYTERANGE="700@0"' in text
 
 
 def test_parse_rejects_live_and_empty():

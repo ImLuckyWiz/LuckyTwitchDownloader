@@ -2069,22 +2069,35 @@ class Segment:
     start: float  # seconds from the start of the VOD
     end: float
     url: str
+    # fMP4 playlists: (absolute init-section URL, "length@offset" or None) from #EXT-X-MAP
+    init: tuple[str, str | None] | None = None
+    # "length@offset" from #EXT-X-BYTERANGE, with the offset always explicit
+    byterange: str | None = None
 
     @property
     def duration(self) -> float:
         return self.end - self.start
 
 
+def _hls_attrs(text: str) -> dict[str, str]:
+    """Attributes of a tag like  URI="x",BYTERANGE="10@0"  ->  {"URI": "x", "BYTERANGE": "10@0"}."""
+    return {k.upper(): v.strip('"') for k, v in re.findall(r'([A-Za-z0-9-]+)=("[^"]*"|[^,]*)', text)}
+
+
 def parse_hls_playlist(text: str, base_url: str) -> list[Segment]:
     """
     Parse a finished (VOD) media playlist into segments with cumulative times.
+    Supports fMP4 playlists (#EXT-X-MAP init section) and byte ranges.
     Raises ValueError for anything where segment time = cumulative duration is not safe
-    (live stream, encryption, fMP4 init segment, discontinuities, byte ranges, master playlist).
+    (live stream, encryption, discontinuities, master playlist).
     """
     from urllib.parse import urljoin
 
     segments: list[Segment] = []
     pending: float | None = None
+    pending_range: tuple[int, int | None] | None = None  # (length, offset or None)
+    init: tuple[str, str | None] | None = None
+    next_offset: dict[str, int] = {}  # resource URL -> where the next implicit byte range starts
     t = 0.0
     ended = False
     for raw in text.splitlines():
@@ -2093,19 +2106,40 @@ def parse_hls_playlist(text: str, base_url: str) -> list[Segment]:
             continue
         if line.startswith("#"):
             tag = line.split(":", 1)[0]
-            if tag in ("#EXT-X-KEY", "#EXT-X-MAP", "#EXT-X-DISCONTINUITY", "#EXT-X-BYTERANGE", "#EXT-X-STREAM-INF"):
+            rest = line.split(":", 1)[1] if ":" in line else ""
+            if tag in ("#EXT-X-KEY", "#EXT-X-SESSION-KEY", "#EXT-X-DISCONTINUITY", "#EXT-X-STREAM-INF"):
                 raise ValueError(f"unsupported playlist tag {tag}")
-            if tag == "#EXT-X-ENDLIST":
+            if tag == "#EXT-X-MAP":
+                attrs = _hls_attrs(rest)
+                if "URI" not in attrs:
+                    raise ValueError(f"bad line: {line}")
+                init = (urljoin(base_url, attrs["URI"]), attrs.get("BYTERANGE"))
+            elif tag == "#EXT-X-BYTERANGE":
+                try:
+                    length_s, _, offset_s = rest.partition("@")
+                    pending_range = (int(length_s), int(offset_s) if offset_s else None)
+                except ValueError as e:
+                    raise ValueError(f"bad line: {line}") from e
+            elif tag == "#EXT-X-ENDLIST":
                 ended = True
             elif tag == "#EXTINF":
                 try:
-                    pending = float(line.split(":", 1)[1].split(",", 1)[0])
+                    pending = float(rest.split(",", 1)[0])
                 except (ValueError, IndexError) as e:
                     raise ValueError(f"bad line: {line}") from e
             continue
         if pending is None:
             raise ValueError("segment without #EXTINF")
-        segments.append(Segment(t, t + pending, urljoin(base_url, line)))
+        seg_url = urljoin(base_url, line)
+        byterange = None
+        if pending_range is not None:
+            length, offset = pending_range
+            if offset is None:
+                offset = next_offset.get(seg_url, 0)
+            next_offset[seg_url] = offset + length
+            byterange = f"{length}@{offset}"
+            pending_range = None
+        segments.append(Segment(t, t + pending, seg_url, init, byterange))
         t += pending
         pending = None
     if not ended:
@@ -2143,15 +2177,24 @@ def select_segments(segments: list[Segment], start: float, end: float) -> tuple[
 
 def write_local_playlist(segments: list[Segment], dest: Path) -> None:
     target = max(1, math.ceil(max(s.duration for s in segments)))
+    needs_map = any(s.init for s in segments)
     lines = [
         "#EXTM3U",
-        "#EXT-X-VERSION:3",
+        f"#EXT-X-VERSION:{7 if needs_map else 4 if any(s.byterange for s in segments) else 3}",
         f"#EXT-X-TARGETDURATION:{target}",
         "#EXT-X-MEDIA-SEQUENCE:0",
         "#EXT-X-PLAYLIST-TYPE:VOD",
     ]
+    current_init = None
     for s in segments:
-        lines += [f"#EXTINF:{s.duration:.3f},", s.url]
+        if s.init and s.init != current_init:
+            uri, brange = s.init
+            lines.append(f'#EXT-X-MAP:URI="{uri}"' + (f',BYTERANGE="{brange}"' if brange else ""))
+            current_init = s.init
+        lines.append(f"#EXTINF:{s.duration:.3f},")
+        if s.byterange:
+            lines.append(f"#EXT-X-BYTERANGE:{s.byterange}")
+        lines.append(s.url)
     lines.append("#EXT-X-ENDLIST")
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

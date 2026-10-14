@@ -6,11 +6,13 @@ Imports the `.markers.json` that LuckyTwitch Downloader writes next to each part
 
 Needs Premiere Pro 2026 (UXP panels; `minVersion` in `manifest.json` is 25.6.0).
 
-## Install (developer loading)
+## Install for testing (Windows, no Creative Cloud needed)
 
-1. Install **UXP Developer Tool** from Creative Cloud Desktop (under *All apps*) and open Premiere Pro.
-2. In the Developer Tool press **Add Plugin…** and pick this folder's `manifest.json`.
-3. Press **Load** (or **Actions → Load**). The panel appears under **Window → Extensions → LuckyTwitch Markers**.
+Double-click `install-dev.bat`. It copies the plugin to `%APPDATA%\Adobe\UXP\Plugins\External\com.luckytwitch.premiere-markers_0.1.0` (Premiere only loads it if the folder is named `<manifest id>_<manifest version>`; the script reads both from `manifest.json`), replacing any earlier copy. Then restart Premiere Pro. Run it again after every change to the plugin. `install-dev.bat -Uninstall` removes it.
+
+You may need **Enable developer mode** in Premiere's UXP plugin settings. If the panel does not show up, check the folder name first.
+
+Alternative: **UXP Developer Tool** (Creative Cloud Desktop > All apps), Add Plugin, pick `manifest.json`, Load. The panel then appears under the Window menu.
 
 ## Use
 
