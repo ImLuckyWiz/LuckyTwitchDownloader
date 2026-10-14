@@ -75,11 +75,16 @@ jobs:
         run: |
           mkdir -p dist
           cd premiere-plugin
-          zip -r ../dist/LuckyTwitch-Premiere-Plugin.zip manifest.json index.html src README.md
+          # .ccx = a zip with manifest.json at its root; double-clicking it installs the plugin (Creative Cloud)
+          zip -X -r ../dist/LuckyTwitch-Premiere-Plugin.ccx manifest.json index.html src
+          # .zip = the same plus the dev install scripts, for a manual install when the .ccx will not open
+          zip -X -r ../dist/LuckyTwitch-Premiere-Plugin.zip manifest.json index.html src README.md install-dev.bat install-dev.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: LuckyTwitch-plugin
-          path: dist/LuckyTwitch-Premiere-Plugin.zip
+          path: |
+            dist/LuckyTwitch-Premiere-Plugin.ccx
+            dist/LuckyTwitch-Premiere-Plugin.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -98,4 +103,5 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.zip
+            release/*.ccx
           body_path: RELEASE_NOTES.md

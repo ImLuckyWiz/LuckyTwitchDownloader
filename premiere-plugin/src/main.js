@@ -1,8 +1,14 @@
 "use strict";
+try {
 /* The panel: file picker, settings, and the Import button. Logic is in markers-core.js, Premiere calls in premiere-adapter.js. */
 
-const core = require("./markers-core.js");
-const adapter = require("./premiere-adapter.js");
+const core = window.LTCore || require("./markers-core.js");
+// The Premiere adapter is loaded only when needed, so a problem there can never stop the panel (and the file picker) from starting.
+let adapterModule = null;
+function getAdapter() {
+  if (!adapterModule) adapterModule = window.LTAdapter || require("./premiere-adapter.js");
+  return adapterModule;
+}
 
 const $ = (id) => document.getElementById(id);
 const STORE_KEY = "luckytwitch-markers-settings-v1";
@@ -16,11 +22,26 @@ try {
 let loaded = null; // the checked file: {file, label}
 
 function log(text, isError = false) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  if (isError) div.className = "err";
-  $("log").appendChild(div);
-  $("log").scrollTop = $("log").scrollHeight;
+  window.__ltLog(text, isError);
+}
+
+async function copyLog() {
+  const text = $("log").value;
+  const say = (m) => ($("copyState").textContent = m);
+  if (!text) return say("The log is empty.");
+  try {
+    await navigator.clipboard.writeText(text);
+    return say("Copied.");
+  } catch (e) {
+    /* clipboard not available: fall back to selecting the text */
+  }
+  try {
+    $("log").focus();
+    $("log").select();
+    say("Could not copy by itself. The log is selected: press Ctrl+C.");
+  } catch (e) {
+    say("Could not copy. Click in the log, press Ctrl+A, then Ctrl+C.");
+  }
 }
 
 // ---- settings -------------------------------------------------------------------------------------------
@@ -29,14 +50,8 @@ const NUMBER_FIELDS = ["minViews", "midViews", "highViews"];
 const CHECK_FIELDS = ["importGames", "gamePrefix", "importClips", "colorByViews"];
 
 function fillColorMenus() {
-  for (const id of COLOR_FIELDS) {
-    for (const c of core.COLORS) {
-      const o = document.createElement("option");
-      o.value = String(c.index);
-      o.textContent = c.name;
-      $(id).appendChild(o);
-    }
-  }
+  const html = core.COLORS.map((c) => `<option value="${c.index}">${c.name}</option>`).join("");
+  for (const id of COLOR_FIELDS) $(id).innerHTML = html;
 }
 
 function loadSettings() {
@@ -87,19 +102,45 @@ function updateSummary() {
   $("import").disabled = items.length === 0;
 }
 
+function useFileText(text, label) {
+  const file = core.parseMarkersFile(text);
+  loaded = { file, label };
+  updateSummary();
+}
+
+function failLoad(e) {
+  loaded = null;
+  $("import").disabled = true;
+  $("fileInfo").textContent = "No file chosen.";
+  log(e && e.message ? e.message : String(e), true);
+}
+
 async function pickFile() {
+  log("Opening the file picker…");
   try {
     const fs = require("uxp").storage.localFileSystem;
-    const entry = await fs.getFileForOpening({ types: ["json"] });
-    if (!entry) return; // cancelled
-    const file = core.parseMarkersFile(await entry.read());
-    loaded = { file, label: entry.name };
-    updateSummary();
+    let entry;
+    try {
+      entry = await fs.getFileForOpening({ types: ["json"] });
+    } catch (e) {
+      log(`The picker with a .json filter failed (${e && e.message ? e.message : e}); trying without a filter.`);
+      entry = await fs.getFileForOpening();
+    }
+    if (!entry) return log("No file picked."); // cancelled
+    useFileText(await entry.read(), entry.name);
   } catch (e) {
-    loaded = null;
-    $("import").disabled = true;
-    $("fileInfo").textContent = "No file chosen.";
-    log(e.message || String(e), true);
+    failLoad(e);
+    log("If the picker will not open on your Premiere, open the .markers.json in Notepad, copy everything, paste it in the box below and press «Use pasted text».", true);
+  }
+}
+
+function usePasted() {
+  const text = $("pasted").value.trim();
+  if (!text) return log("Paste the contents of the .markers.json first.", true);
+  try {
+    useFileText(text, "(pasted text)");
+  } catch (e) {
+    failLoad(e);
   }
 }
 
@@ -122,18 +163,37 @@ async function doImport() {
   const settings = readSettings();
   const { items } = core.planMarkers(loaded.file, settings);
   if (!items.length) return log("Nothing to import with these choices.", true);
-  const n = await adapter.importMarkers(items, settings.offsetMode, log);
+  const n = await getAdapter().importMarkers(items, settings.offsetMode, log);
   log(`Done: ${n} markers on the active sequence.`);
 }
 
-window.addEventListener("load", () => {
-  fillColorMenus();
-  showSettings(loadSettings());
-  for (const id of [...COLOR_FIELDS, ...NUMBER_FIELDS, ...CHECK_FIELDS, "offsetMode"]) {
-    $(id).addEventListener("change", saveSettings);
+function init() {
+  // Buttons first: whatever fails after this, they still react.
+  const on = (id, fn) => $(id) && $(id).addEventListener("click", () => guarded(fn));
+  on("pick", pickFile);
+  on("usePasted", usePasted);
+  on("import", doImport);
+  on("copyLog", copyLog);
+  $("clearLog") && $("clearLog").addEventListener("click", () => { $("log").value = ""; $("copyState").textContent = ""; });
+  on("probe", () => getAdapter().probe(log));
+  on("testMarkers", () => getAdapter().addTestMarkers(core.COLORS, log));
+  try {
+    fillColorMenus();
+    showSettings(loadSettings());
+    for (const id of [...COLOR_FIELDS, ...NUMBER_FIELDS, ...CHECK_FIELDS, "offsetMode"]) {
+      $(id).addEventListener("change", saveSettings);
+    }
+  } catch (e) {
+    log(`Could not set up the settings: ${e && e.message ? e.message : e}`, true);
   }
-  $("pick").addEventListener("click", () => guarded(pickFile));
-  $("import").addEventListener("click", () => guarded(doImport));
-  $("probe").addEventListener("click", () => guarded(() => adapter.probe(log)));
-  $("testMarkers").addEventListener("click", () => guarded(() => adapter.addTestMarkers(core.COLORS, log)));
-});
+  log(`Panel ready (settings, file picker and buttons are set up). Core: ${core ? "ok" : "missing"}, Premiere adapter: ${window.LTAdapter ? "ok" : "not loaded"}.`);
+}
+
+window.addEventListener("error", (ev) => log(`Error: ${ev.message || ev}`, true));
+window.addEventListener("unhandledrejection", (ev) => log(`Error: ${ev.reason && ev.reason.message ? ev.reason.message : ev.reason}`, true));
+
+if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", init);
+else init();
+} catch (e) {
+  if (window.__ltLog) window.__ltLog("main.js failed to start: " + (e && e.stack ? e.stack : e), true);
+}

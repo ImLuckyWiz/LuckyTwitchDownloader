@@ -10,7 +10,12 @@
  *   3. color index N gives the color named in COLORS (markers-core.js)
  */
 
-const ppro = require("premierepro");
+let pproModule = null;
+/** The premierepro module, loaded when first needed (so this file can load even where it is missing). */
+function P() {
+  if (!pproModule) pproModule = require("premierepro");
+  return pproModule;
+}
 
 const TICKS_PER_SECOND = 254016000000; // Premiere's time unit
 
@@ -49,10 +54,10 @@ function need(obj, method, where) {
   return obj[method].bind(obj);
 }
 
-const tick = (seconds) => ppro.TickTime.createWithSeconds(Math.max(0, seconds));
+const tick = (seconds) => P().TickTime.createWithSeconds(Math.max(0, seconds));
 
 async function activeContext() {
-  const project = await ppro.Project.getActiveProject();
+  const project = await P().Project.getActiveProject();
   if (!project) throw new PremiereError("No project is open.");
   const sequence = await project.getActiveSequence();
   if (!sequence) throw new PremiereError("There is no active sequence. Open one in the Timeline and try again.");
@@ -90,7 +95,7 @@ async function listMarkers(markersOwner) {
   return out;
 }
 
-const markerType = () => (ppro.Marker && ppro.Marker.MARKER_TYPE_COMMENT) || "Comment";
+const markerType = () => (P().Marker && P().Marker.MARKER_TYPE_COMMENT) || "Comment";
 
 /**
  * Creates the planned markers on the active sequence (from planMarkers in markers-core.js).
@@ -100,7 +105,7 @@ const markerType = () => (ppro.Marker && ppro.Marker.MARKER_TYPE_COMMENT) || "Co
 async function importMarkers(items, offsetMode, log) {
   const { project, sequence } = await activeContext();
   const base = await baseSeconds(sequence, offsetMode);
-  const markers = await need(ppro.Markers, "getMarkers", "Markers")(sequence);
+  const markers = await need(P().Markers, "getMarkers", "Markers")(sequence);
   const createAdd = need(markers, "createAddMarkerAction", "the markers list");
 
   const shifted = items.map((it) => ({ ...it, start: it.start + base }));
@@ -141,7 +146,7 @@ async function colorMarkers(project, markersOwner, items, log) {
 /** Diagnostics: eight markers, one per color index, named with the color the plugin believes that index is. */
 async function addTestMarkers(colors, log) {
   const { project, sequence } = await activeContext();
-  const markers = await need(ppro.Markers, "getMarkers", "Markers")(sequence);
+  const markers = await need(P().Markers, "getMarkers", "Markers")(sequence);
   const items = colors.map((c, i) => ({ name: `LT test ${c.name} (index ${c.index})`, start: i * 5, duration: 3, color: c.index }));
   const createAdd = need(markers, "createAddMarkerAction", "the markers list");
   await transaction(project, "LuckyTwitch: test markers", (compound) => {
@@ -175,16 +180,16 @@ function members(obj) {
 async function probe(log) {
   const line = (title, obj) => log(`${title}: ${obj == null ? "(none)" : members(obj).join(", ")}`);
   try {
-    log(`premierepro module: ${Object.keys(ppro).sort().join(", ")}`);
-    line("Markers (static)", ppro.Markers);
-    line("Marker (static)", ppro.Marker);
-    line("TickTime (static)", ppro.TickTime);
-    const project = await ppro.Project.getActiveProject();
+    log(`premierepro module: ${Object.keys(P()).sort().join(", ")}`);
+    line("Markers (static)", P().Markers);
+    line("Marker (static)", P().Marker);
+    line("TickTime (static)", P().TickTime);
+    const project = await P().Project.getActiveProject();
     line("Project", project);
     const sequence = project ? await project.getActiveSequence() : null;
     line("Sequence", sequence);
-    if (sequence && ppro.Markers && typeof ppro.Markers.getMarkers === "function") {
-      const markers = await ppro.Markers.getMarkers(sequence);
+    if (sequence && P().Markers && typeof P().Markers.getMarkers === "function") {
+      const markers = await P().Markers.getMarkers(sequence);
       line("markers list", markers);
       const first = (await listMarkers(markers))[0];
       line("a marker", first && first.marker);
@@ -194,4 +199,6 @@ async function probe(log) {
   }
 }
 
-module.exports = { importMarkers, addTestMarkers, probe, PremiereError };
+const LT_ADAPTER_API = { importMarkers, addTestMarkers, probe, PremiereError };
+if (typeof module !== "undefined" && module.exports) module.exports = LT_ADAPTER_API;
+if (typeof window !== "undefined") window.LTAdapter = LT_ADAPTER_API;

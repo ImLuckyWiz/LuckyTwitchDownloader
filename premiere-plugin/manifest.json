@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "com.luckytwitch.premiere-markers",
   "name": "LuckyTwitch Markers",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "main": "index.html",
   "host": {
     "app": "premierepro",
@@ -19,6 +19,7 @@
     }
   ],
   "requiredPermissions": {
-    "localFileSystem": "request"
+    "localFileSystem": "request",
+    "clipboard": "readAndWrite"
   }
 }

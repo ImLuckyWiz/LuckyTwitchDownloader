@@ -187,7 +187,7 @@ function colorName(index) {
   return c ? c.name : `#${index}`;
 }
 
-module.exports = {
+const LT_CORE_API = {
   FORMAT,
   SUPPORTED_VERSION,
   COLORS,
@@ -200,3 +200,5 @@ module.exports = {
   formatTime,
   colorName,
 };
+if (typeof module !== "undefined" && module.exports) module.exports = LT_CORE_API;
+if (typeof window !== "undefined") window.LTCore = LT_CORE_API;
