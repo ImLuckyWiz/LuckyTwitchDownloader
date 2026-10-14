@@ -2,7 +2,7 @@
 
 Imports the `.markers.json` that LuckyTwitch Downloader writes next to each part, as **colored markers on your active sequence**: one color for game changes, clip markers colored by how many views the clip has, the clip's creator, views and link in the marker comment. It adds to the sequence you are editing instead of importing a separate sequence like the XML does.
 
-> **Status: beta (0.1.5).** Checked on a running Premiere Pro 2026: the file picker, importing markers into the active sequence, and coloring work. If a marker color does not match its name, see Diagnostics below.
+> **Status: beta (0.3.0).** Checked on a running Premiere Pro 2026: the file picker, importing markers into the active sequence, and coloring work. If a marker color does not match its name, see Diagnostics below.
 
 Needs Premiere Pro 2026 (UXP panels; `minVersion` in `manifest.json` is 25.6.0).
 
@@ -24,17 +24,22 @@ Alternative: **UXP Developer Tool** (Creative Cloud Desktop > All apps), Add Plu
 
 1. In LuckyTwitch Downloader, tick **Also export a .markers.json for the LuckyTwitch Premiere plugin** (and **Also mark the game / category changes** if you want games). Download as usual. The `.markers.json` appears next to each part.
 2. Put the part on a sequence in Premiere and make that sequence active.
-3. In the panel press **Choose .markers.json…**, pick the file (if the picker will not open on your Premiere, paste the file's text into the box under the button and press **Use pasted text**), adjust colors if you like, and press **Import markers into the active sequence**.
+3. In the panel press **Choose .markers.json…** and pick the file. A card shows the stream, the part and how many game changes and clips it holds. Choose what to import and the colors (the little dots show each color), then press **To sequence** (markers on the timeline at fixed times) or **To clip** (markers on the source of the selected clip, or the first video clip if none is selected; they follow your cuts). If the picker will not open on your Premiere, open **Troubleshooting** and paste the file's text there.
 
 The plain `.markers.xml` option is still there for anyone who does not want the plugin.
 
 - **Colors:** Premiere only has eight marker colors (Green, Red, Purple, Orange, Yellow, White, Blue, Cyan). Clips use three tiers by view count; the thresholds and colors are editable and remembered.
+- **Only what matters is shown:** color menus for games appear when game changes are ticked; the three view tiers appear when *Color by views* is on, otherwise one color for all clips.
 - **Where:** markers are placed from the start of the sequence, or from the playhead if you choose that (use it when the part does not start at 0:00 of the sequence).
 - **Undo:** one Undo removes everything an import added (markers and colors are two steps if coloring runs).
 
 ## Diagnostics
 
+Open **Troubleshooting** at the bottom of the panel (it opens by itself when something goes wrong). It holds the paste box, the two diagnostics buttons and the copyable log.
+
 - **Probe the API** lists what this Premiere build offers on the objects the plugin uses. Paste the result into an issue or a message when something does not work.
+- **Probe clips** (experiment, read-only) lists the clips on the timeline with where each sits and which part of its source it plays.
+- **Test clip markers** (experiment) adds 3 markers to the *source* of the selected clip (or the first clip on the timeline) and reads them back. It is the first step towards markers that follow your cuts; not used by the import yet.
 - **Add test markers** puts eight markers at 0, 5, 10… seconds, each named with the color the plugin *thinks* its color index is. If a marker's color does not match its name, the color order in `src/markers-core.js` (`COLORS`) needs adjusting.
 
 ## Development

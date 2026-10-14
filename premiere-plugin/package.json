@@ -1,6 +1,6 @@
 {
   "name": "luckytwitch-premiere-markers",
-  "version": "0.1.5",
+  "version": "0.3.0",
   "private": true,
   "description": "Premiere Pro (UXP) panel that imports the .markers.json written by LuckyTwitch Downloader",
   "scripts": {

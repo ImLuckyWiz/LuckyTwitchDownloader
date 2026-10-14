@@ -21,8 +21,28 @@ try {
 
 let loaded = null; // the checked file: {file, label}
 
-function log(text, isError = false) {
+function setStatus(text, kind) {
+  const el = $("status");
+  if (!el) return;
+  el.textContent = text;
+  el.className = kind || "muted";
+}
+
+function openTroubleshooting(open) {
+  $("troubleBody").style.display = open ? "block" : "none";
+  $("toggleTrouble").textContent = (open ? "▾ " : "▸ ") + "Troubleshooting";
+}
+
+/** Writes to the log (Troubleshooting) and shows the latest message in the status line under the Import button. */
+function log(text, isError = false, quiet = false) {
   window.__ltLog(text, isError);
+  if (quiet) return;
+  if (isError) {
+    setStatus(text, "err");
+    openTroubleshooting(true);
+  } else {
+    setStatus(text, /^Done/.test(text) ? "ok" : "muted");
+  }
 }
 
 async function copyLog() {
@@ -54,6 +74,30 @@ function fillColorMenus() {
   for (const id of COLOR_FIELDS) $(id).innerHTML = html;
 }
 
+// Approximate looks of Premiere's eight marker colors, for the little dots next to the menus.
+const COLOR_HEX = ["#3fbf5f", "#e5484d", "#9b5de5", "#f5922f", "#f2d03b", "#f5f5f5", "#3b82f6", "#22c5d8"];
+
+function colorHex(index) {
+  return COLOR_HEX[Number(index)] || "#888888";
+}
+
+function updateDots() {
+  for (const id of COLOR_FIELDS) $(id + "Dot").style.backgroundColor = colorHex($(id).value);
+}
+
+/** Shows only the controls that matter for the current choices. */
+function refreshVisibility() {
+  const games = $("importGames").checked;
+  const clips = $("importClips").checked;
+  const byViews = $("colorByViews").checked;
+  const show = (id, on, display = "block") => ($(id).style.display = on ? display : "none");
+  show("gameColorCtl", games, "flex");
+  show("gamePrefixRow", games, "flex");
+  show("clipOptions", clips);
+  show("tierRows", clips && byViews);
+  show("singleColorRow", clips && !byViews, "flex");
+}
+
 function loadSettings() {
   let raw = null;
   try {
@@ -69,6 +113,8 @@ function showSettings(s) {
   for (const id of NUMBER_FIELDS) $(id).value = String(s[id]);
   for (const id of CHECK_FIELDS) $(id).checked = !!s[id];
   $("offsetMode").value = s.offsetMode;
+  updateDots();
+  refreshVisibility();
 }
 
 function readSettings() {
@@ -85,48 +131,67 @@ function saveSettings() {
   } catch (e) {
     /* storage can be unavailable; the settings just won't be remembered */
   }
+  updateDots();
+  refreshVisibility();
   updateSummary();
 }
 
 // ---- file and summary -----------------------------------------------------------------------------------
 function updateSummary() {
   if (!loaded) return;
-  const { items, counts } = core.planMarkers(loaded.file, readSettings());
+  const settings = readSettings();
+  const { items, counts } = core.planMarkers(loaded.file, settings);
   const f = loaded.file;
-  const lines = [loaded.label];
-  if (f.source && f.source.streamer) lines.push(`${f.source.streamer} · ${f.source.title || ""}`.trim());
-  if (f.part) lines.push(`Part: ${core.formatTime(f.part.start)} – ${core.formatTime(f.part.end)} of the VOD`);
-  lines.push(`Will create ${items.length} markers (${counts.games} game, ${counts.clips} clip)` + (counts.hidden ? `, ${counts.hidden} left out by your choices` : ""));
-  if (f.skipped) lines.push(`${f.skipped} entries in the file were not understood and are skipped.`);
-  $("fileInfo").textContent = lines.join("\n");
+  $("fileEmpty").style.display = "none";
+  $("fileDetails").style.display = "block";
+  $("fileName").textContent = loaded.label;
+  $("fileTitle").textContent = f.source && f.source.streamer ? `${f.source.streamer} · ${f.source.title || ""}`.trim() : "";
+  $("filePart").textContent = f.part ? `Part ${core.formatTime(f.part.start)} – ${core.formatTime(f.part.end)} of the VOD` : "";
+  $("pillGames").textContent = `${counts.games} game ${counts.games === 1 ? "change" : "changes"}`;
+  $("pillClips").textContent = `${counts.clips} ${counts.clips === 1 ? "clip" : "clips"}`;
+  $("pillGameDot").style.backgroundColor = colorHex(settings.gameColor);
+  $("pillClipDot").style.backgroundColor = colorHex(settings.colorByViews ? settings.midColor : settings.clipColor);
+  const notes = [];
+  if (counts.hidden) notes.push(`${counts.hidden} left out by your choices.`);
+  if (f.skipped) notes.push(`${f.skipped} entries in the file were not understood and are skipped.`);
+  $("fileNote").textContent = notes.join(" ");
   $("import").disabled = items.length === 0;
+  $("importClip").disabled = items.length === 0;
+  $("import").textContent = items.length ? `${items.length} to sequence` : "To sequence";
+  $("importClip").textContent = items.length ? `${items.length} to clip` : "To clip";
+  setStatus(items.length ? "Ready." : "Nothing to import with these choices.", items.length ? "muted" : "err");
 }
 
 function useFileText(text, label) {
   const file = core.parseMarkersFile(text);
   loaded = { file, label };
+  $("pick").textContent = "Choose another file…";
   updateSummary();
 }
 
 function failLoad(e) {
   loaded = null;
   $("import").disabled = true;
-  $("fileInfo").textContent = "No file chosen.";
+  $("importClip").disabled = true;
+  $("import").textContent = "To sequence";
+  $("importClip").textContent = "To clip";
+  $("fileEmpty").style.display = "block";
+  $("fileDetails").style.display = "none";
   log(e && e.message ? e.message : String(e), true);
 }
 
 async function pickFile() {
-  log("Opening the file picker…");
+  log("Opening the file picker…", false, true);
   try {
     const fs = require("uxp").storage.localFileSystem;
     let entry;
     try {
       entry = await fs.getFileForOpening({ types: ["json"] });
     } catch (e) {
-      log(`The picker with a .json filter failed (${e && e.message ? e.message : e}); trying without a filter.`);
+      log(`The picker with a .json filter failed (${e && e.message ? e.message : e}); trying without a filter.`, false, true);
       entry = await fs.getFileForOpening();
     }
-    if (!entry) return log("No file picked."); // cancelled
+    if (!entry) return log("No file picked.", false, true); // cancelled
     useFileText(await entry.read(), entry.name);
   } catch (e) {
     failLoad(e);
@@ -164,7 +229,16 @@ async function doImport() {
   const { items } = core.planMarkers(loaded.file, settings);
   if (!items.length) return log("Nothing to import with these choices.", true);
   const n = await getAdapter().importMarkers(items, settings.offsetMode, log);
-  log(`Done: ${n} markers on the active sequence.`);
+  log(`Done: ${n} markers added to the active sequence.`);
+}
+
+async function doImportToClip() {
+  if (!loaded) return;
+  const settings = readSettings();
+  const { items } = core.planMarkers(loaded.file, settings);
+  if (!items.length) return log("Nothing to import with these choices.", true);
+  const r = await getAdapter().importMarkersToClip(items, log);
+  log(`Done: ${r.count} markers added to the clip "${r.clipName}" (they follow it through your cuts).`);
 }
 
 function init() {
@@ -173,10 +247,16 @@ function init() {
   on("pick", pickFile);
   on("usePasted", usePasted);
   on("import", doImport);
+  on("importClip", doImportToClip);
   on("copyLog", copyLog);
+  $("toggleTrouble") && $("toggleTrouble").addEventListener("click", () => openTroubleshooting($("troubleBody").style.display === "none"));
   $("clearLog") && $("clearLog").addEventListener("click", () => { $("log").value = ""; $("copyState").textContent = ""; });
   on("probe", () => getAdapter().probe(log));
   on("testMarkers", () => getAdapter().addTestMarkers(core.COLORS, log));
+  // Experiment (clip markers): its messages go to the log only, not to the status line under the Import button.
+  const dlog = (text, isError) => log(text, !!isError, !isError);
+  on("probeClips", () => getAdapter().probeClips(dlog));
+  on("testClipMarkers", () => getAdapter().addClipTestMarkers(core.COLORS, dlog));
   try {
     fillColorMenus();
     showSettings(loadSettings());
@@ -186,7 +266,7 @@ function init() {
   } catch (e) {
     log(`Could not set up the settings: ${e && e.message ? e.message : e}`, true);
   }
-  log(`Panel ready (settings, file picker and buttons are set up). Core: ${core ? "ok" : "missing"}, Premiere adapter: ${window.LTAdapter ? "ok" : "not loaded"}.`);
+  log(`Panel ready (settings, file picker and buttons are set up). Core: ${core ? "ok" : "missing"}, Premiere adapter: ${window.LTAdapter ? "ok" : "not loaded"}.`, false, true);
 }
 
 window.addEventListener("error", (ev) => log(`Error: ${ev.message || ev}`, true));

@@ -3,91 +3,202 @@
 <head>
   <meta charset="utf-8">
   <style>
-    /* Dark by default (Premiere's usual theme); light only when the host says so. Every control gets explicit colors
-       so nothing falls back to black-on-gray. */
+    /* Dark by default (Premiere's usual theme); light only when the host says so.
+       Only CSS that UXP supports: flexbox, borders, radius, margins (no grid, no shadows). */
     :root {
-      --lt-fg: #e6e6e6; --lt-bg: #2b2b2b; --lt-field: #3d3d3d; --lt-field-hover: #4a4a4a;
-      --lt-border: #6a6a6a; --lt-accent: #2680eb; --lt-muted: #a8a8a8;
+      --lt-fg: #e8e8e8; --lt-muted: #a0a0a0; --lt-bg: #1e1e1e; --lt-card: #2a2a2a; --lt-field: #383838;
+      --lt-field-hover: #454545; --lt-border: #4a4a4a; --lt-accent: #2d8cff; --lt-accent-hover: #4a9cff;
+      --lt-ok: #4cc38a; --lt-err: #ff6b6b; --lt-pill: #3a3a3a;
     }
     @media (prefers-color-scheme: light) {
-      :root { --lt-fg: #1d1d1d; --lt-bg: #f0f0f0; --lt-field: #ffffff; --lt-field-hover: #e4e4e4; --lt-border: #9a9a9a; --lt-muted: #5a5a5a; }
+      :root {
+        --lt-fg: #1d1d1d; --lt-muted: #5f5f5f; --lt-bg: #f4f4f4; --lt-card: #ffffff; --lt-field: #ffffff;
+        --lt-field-hover: #e8e8e8; --lt-border: #c4c4c4; --lt-accent: #1473e6; --lt-accent-hover: #2b86f0;
+        --lt-ok: #1f8f5f; --lt-err: #d7373f; --lt-pill: #ebebeb;
+      }
     }
     html, body { height: 100%; margin: 0; padding: 0; }
     body { font-family: sans-serif; font-size: 12px; color: var(--lt-fg); }
     /* UXP panels do not scroll by themselves: the content lives in this box, which does. */
-    #app { height: 100vh; overflow-y: scroll; box-sizing: border-box; padding: 10px 14px 40px 10px; }
-    h2 { font-size: 13px; margin: 14px 0 6px; color: var(--lt-fg); }
-    label { color: var(--lt-fg); }
-    .row { display: flex; align-items: center; margin: 4px 0; }
-    .row label { flex: 1; }
-    .row select, .row input[type="text"] { width: 110px; }
+    #app { height: 100vh; overflow-y: scroll; box-sizing: border-box; padding: 12px 14px 40px 12px; }
+
+    .header { margin: 0 0 12px 0; }
+    .title { font-size: 15px; font-weight: bold; }
+    .sub { color: var(--lt-muted); margin-top: 2px; }
+
+    .card { background-color: var(--lt-card); border: 1px solid var(--lt-border); border-radius: 8px; padding: 10px 12px; margin: 0 0 10px 0; }
+    .card-title { font-size: 12px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; }
+    .num { width: 18px; height: 18px; border-radius: 9px; background-color: var(--lt-accent); color: #ffffff; font-size: 11px;
+           text-align: center; margin-right: 8px; }
     .muted { color: var(--lt-muted); }
-    .block { margin: 6px 0; }
+    .hint { color: var(--lt-muted); margin: 6px 0 0 0; }
+
+    .row { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: 5px 0; flex-wrap: wrap; }
+    .row label { color: var(--lt-fg); margin-right: 8px; }
+    .ctl { display: flex; align-items: center; }
+    .ctl span { color: var(--lt-muted); margin: 0 8px 0 5px; }
+    .dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 6px; border: 1px solid var(--lt-border); background-color: #888888; }
+    .divider { height: 1px; background-color: var(--lt-border); margin: 6px 0; }
+    .sub-block { margin-left: 22px; }
+
     button, select, input[type="text"], textarea {
-      color: var(--lt-fg); background-color: var(--lt-field); border: 1px solid var(--lt-border); border-radius: 4px;
+      color: var(--lt-fg); background-color: var(--lt-field); border: 1px solid var(--lt-border); border-radius: 5px;
     }
-    button { margin: 4px 4px 4px 0; padding: 4px 10px; }
+    select { width: 92px; }
+    input[type="text"] { width: 52px; text-align: right; }
+    button { padding: 5px 12px; margin: 0 6px 0 0; }
     button:hover { background-color: var(--lt-field-hover); }
-    button:disabled { color: var(--lt-muted); opacity: .6; }
-    #import:not(:disabled) { background-color: var(--lt-accent); border-color: var(--lt-accent); color: #ffffff; }
-    textarea { width: 100%; height: 60px; }
-    #fileInfo { margin: 6px 0; white-space: pre-wrap; }
-    #log { width: 100%; height: 240px; margin-top: 4px; white-space: pre-wrap; }
-    .err { color: #ff6b6b; }
+    button:disabled { color: var(--lt-muted); opacity: .55; }
+    .btn-wide { width: 100%; margin: 0; }
+    .btn-row { display: flex; margin: 8px 0 0 0; }
+    .btn-half { flex: 1; margin: 0 6px 0 0; }
+    .btn-half:last-child { margin-right: 0; }
+    .btn-primary { background-color: var(--lt-accent); border-color: var(--lt-accent); color: #ffffff; font-weight: bold; padding: 8px 6px; }
+    .btn-primary:hover { background-color: var(--lt-accent-hover); }
+    .btn-primary:disabled { background-color: var(--lt-field); border-color: var(--lt-border); color: var(--lt-muted); }
+    .btn-link { background-color: transparent; border: none; padding: 2px 0; color: var(--lt-muted); }
+    .btn-link:hover { background-color: transparent; color: var(--lt-fg); }
+
+    .fileinfo { margin: 10px 0 0 0; }
+    .fname { font-weight: bold; }
+    .pills { display: flex; flex-wrap: wrap; margin: 8px 0 0 0; }
+    .pill { display: flex; align-items: center; background-color: var(--lt-pill); border-radius: 10px; padding: 2px 9px; margin: 0 6px 4px 0; }
+    .pill .dot { margin-right: 5px; width: 9px; height: 9px; }
+    .note { margin: 4px 0 0 0; }
+
+    #status { margin: 10px 0 0 0; min-height: 16px; }
+    #status.ok { color: var(--lt-ok); }
+    #status.err { color: var(--lt-err); }
+
+    textarea { width: 100%; box-sizing: border-box; }
+    #pasted { height: 54px; }
+    #log { height: 200px; margin-top: 4px; white-space: pre-wrap; }
+    .trouble-body { margin: 8px 0 0 0; }
   </style>
 </head>
 <body>
 <div id="app">
-  <div class="block">
-    <button id="pick">Choose .markers.json…</button>
-    <div id="fileInfo" class="muted">No file chosen.</div>
-    <div class="muted">Picker not working? Paste the file's text here:</div>
-    <textarea id="pasted"></textarea>
-    <button id="usePasted">Use pasted text</button>
+  <div class="header">
+    <div class="title">LuckyTwitch Markers</div>
+    <div class="sub">Games and clips from your VOD as colored markers</div>
   </div>
 
-  <h2>What to import</h2>
-  <div class="row"><input type="checkbox" id="importGames"><label for="importGames">Game / category markers</label>
-    <select id="gameColor"></select></div>
-  <div class="row"><input type="checkbox" id="gamePrefix"><label for="gamePrefix">Name them «GAME: …»</label></div>
-  <div class="row"><input type="checkbox" id="importClips"><label for="importClips">Clip markers</label></div>
-  <div class="row"><label for="minViews">Only clips with at least … views</label><input type="text" id="minViews"></div>
-
-  <h2>Clip colors</h2>
-  <div class="row"><input type="checkbox" id="colorByViews"><label for="colorByViews">Color by views</label></div>
-  <div class="row"><label for="lowColor">Fewer than the mid tier</label><select id="lowColor"></select></div>
-  <div class="row"><label for="midViews">Mid tier from … views</label><input type="text" id="midViews"></div>
-  <div class="row"><label for="midColor">Mid tier color</label><select id="midColor"></select></div>
-  <div class="row"><label for="highViews">High tier from … views</label><input type="text" id="highViews"></div>
-  <div class="row"><label for="highColor">High tier color</label><select id="highColor"></select></div>
-  <div class="row"><label for="clipColor">One color for all clips (when the above is off)</label><select id="clipColor"></select></div>
-
-  <h2>Where</h2>
-  <div class="row"><label for="offsetMode">The part starts…</label>
-    <select id="offsetMode">
-      <option value="start">at the start of the sequence</option>
-      <option value="playhead">at the playhead</option>
-    </select></div>
-
-  <div class="block">
-    <button id="import" disabled>Import markers into the active sequence</button>
-    <div class="muted">One undo step (Ctrl/Cmd+Z) removes them again.</div>
+  <div class="card">
+    <div class="card-title"><div class="num">1</div>Marker file</div>
+    <button id="pick" class="btn-wide">Choose .markers.json…</button>
+    <div id="fileInfo" class="fileinfo">
+      <div id="fileEmpty" class="muted">No file chosen yet. It is the .markers.json next to your downloaded part.</div>
+      <div id="fileDetails" style="display:none">
+        <div id="fileName" class="fname"></div>
+        <div id="fileTitle" class="muted"></div>
+        <div id="filePart" class="muted"></div>
+        <div class="pills">
+          <div class="pill"><div class="dot" id="pillGameDot"></div><div id="pillGames"></div></div>
+          <div class="pill"><div class="dot" id="pillClipDot"></div><div id="pillClips"></div></div>
+        </div>
+        <div id="fileNote" class="muted note"></div>
+      </div>
+    </div>
   </div>
 
-  <h2>Diagnostics</h2>
-  <div class="muted">Only needed while checking that this plugin and your Premiere agree.</div>
-  <div class="block">
-    <button id="probe">Probe the API</button>
-    <button id="testMarkers">Add test markers</button>
+  <div class="card">
+    <div class="card-title"><div class="num">2</div>What to import</div>
+
+    <div class="row">
+      <div class="ctl"><input type="checkbox" id="importGames"><label for="importGames">Game / category changes</label></div>
+      <div class="ctl" id="gameColorCtl"><div class="dot" id="gameColorDot"></div><select id="gameColor"></select></div>
+    </div>
+    <div class="row sub-block" id="gamePrefixRow">
+      <div class="ctl"><input type="checkbox" id="gamePrefix"><label for="gamePrefix">Name them «GAME: …»</label></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <div class="ctl"><input type="checkbox" id="importClips"><label for="importClips">Clips</label></div>
+    </div>
+    <div id="clipOptions" class="sub-block">
+      <div class="row">
+        <label for="minViews">Only clips with at least</label>
+        <div class="ctl"><input type="text" id="minViews"><span>views</span></div>
+      </div>
+      <div class="row">
+        <div class="ctl"><input type="checkbox" id="colorByViews"><label for="colorByViews">Color by views</label></div>
+      </div>
+
+      <div id="tierRows">
+        <div class="row">
+          <label>Fewer views</label>
+          <div class="ctl"><div class="dot" id="lowColorDot"></div><select id="lowColor"></select></div>
+        </div>
+        <div class="row">
+          <div class="ctl"><label for="midViews">From</label><input type="text" id="midViews"><span>views</span></div>
+          <div class="ctl"><div class="dot" id="midColorDot"></div><select id="midColor"></select></div>
+        </div>
+        <div class="row">
+          <div class="ctl"><label for="highViews">From</label><input type="text" id="highViews"><span>views</span></div>
+          <div class="ctl"><div class="dot" id="highColorDot"></div><select id="highColor"></select></div>
+        </div>
+      </div>
+
+      <div class="row" id="singleColorRow">
+        <label for="clipColor">All clips</label>
+        <div class="ctl"><div class="dot" id="clipColorDot"></div><select id="clipColor"></select></div>
+      </div>
+    </div>
   </div>
 
-  <div class="block">
-    <button id="copyLog">Copy log</button>
-    <button id="clearLog">Clear log</button>
-    <span id="copyState" class="muted"></span>
+  <div class="card">
+    <div class="card-title"><div class="num">3</div>Add the markers</div>
+    <div class="row">
+      <label for="offsetMode">The part starts…</label>
+      <div class="ctl">
+        <select id="offsetMode" style="width: 150px;">
+          <option value="start">at the sequence start</option>
+          <option value="playhead">at the playhead</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="import" class="btn-half btn-primary" disabled>To sequence</button>
+      <button id="importClip" class="btn-half btn-primary" disabled>To clip</button>
+    </div>
+    <div class="hint">Sequence: markers sit on the timeline at fixed times. Clip: markers sit on the video itself (select it first) and follow your cuts.</div>
+    <div id="status" class="muted">Choose a file to begin.</div>
+    <div class="hint">One undo step (Ctrl/Cmd+Z) removes an import again.</div>
   </div>
-  <textarea id="log" readonly></textarea>
 
+  <div class="card">
+    <button id="toggleTrouble" class="btn-link">▸ Troubleshooting</button>
+    <div id="troubleBody" class="trouble-body" style="display:none">
+      <div class="muted">File picker not working? Paste the file's text here:</div>
+      <textarea id="pasted"></textarea>
+      <div style="margin: 6px 0 0 0;"><button id="usePasted">Use pasted text</button></div>
+
+      <div class="divider"></div>
+      <div class="muted">Check that this plugin and your Premiere agree:</div>
+      <div style="margin: 6px 0 0 0;">
+        <button id="probe">Probe the API</button>
+        <button id="testMarkers">Add test markers</button>
+      </div>
+
+      <div class="divider"></div>
+      <div class="muted">Experiment: markers on the clip itself (so they could follow your cuts).</div>
+      <div style="margin: 6px 0 0 0;">
+        <button id="probeClips">Probe clips</button>
+        <button id="testClipMarkers">Test clip markers</button>
+      </div>
+      <div class="hint">Probe clips only reads. Test clip markers adds 3 markers to the source of the selected clip (or the first clip on the timeline); Ctrl+Z removes them.</div>
+
+      <div class="divider"></div>
+      <div style="margin: 0 0 4px 0;">
+        <button id="copyLog">Copy log</button>
+        <button id="clearLog">Clear log</button>
+        <span id="copyState" class="muted"></span>
+      </div>
+      <textarea id="log" readonly></textarea>
+    </div>
+  </div>
 </div>
   <script src="src/boot.js"></script>
   <script src="src/markers-core.js"></script>
