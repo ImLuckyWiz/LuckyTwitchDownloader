@@ -16,6 +16,7 @@ function makeMock() {
         const snapshot = (store.get(owner) || []).slice(); // a copy: later additions are not visible in it
         return {
           getMarkers: () => snapshot,
+          createRemoveMarkerAction: (marker) => () => store.set(owner, (store.get(owner) || []).filter((m) => m !== marker)),
           createAddMarkerAction: (name, type, start, duration) => () => {
             const m = { name, start, createSetColorByIndexAction: (c) => () => colors.push([name, c]) };
             store.set(owner, [...(store.get(owner) || []), { getName: () => name, getStart: () => start, createSetColorByIndexAction: m.createSetColorByIndexAction }]);
@@ -43,7 +44,7 @@ test("sequence import colors every marker even though the first list was taken b
   const { P, colors } = makeMock();
   adapter._setPremiere(P);
   const lines = [];
-  const n = await adapter.importMarkers(
+  const r = await adapter.importMarkers(
     [
       { name: "A", start: 0, duration: 1, color: 1, comment: "" },
       { name: "B", start: 5, duration: 1, color: 6, comment: "" },
@@ -51,6 +52,39 @@ test("sequence import colors every marker even though the first list was taken b
     "start",
     (t) => lines.push(t)
   );
-  assert.strictEqual(n, 2);
+  assert.strictEqual(r.added, 2);
+  assert.strictEqual(r.skipped, 0);
   assert.deepStrictEqual(colors, [["A", 1], ["B", 6]]);
+});
+
+test("running the import twice does not add the markers twice", async () => {
+  const { P } = makeMock();
+  adapter._setPremiere(P);
+  const items = [
+    { name: "A", start: 0, duration: 1, color: 1, comment: "" },
+    { name: "B", start: 5, duration: 1, color: 6, comment: "" },
+  ];
+  const first = await adapter.importMarkers(items, "start", () => {});
+  const second = await adapter.importMarkers(items, "start", () => {});
+  assert.deepStrictEqual([first.added, first.skipped], [2, 0]);
+  assert.deepStrictEqual([second.added, second.skipped], [0, 2]);
+  const added = await adapter.importMarkers([...items, { name: "C", start: 9, duration: 1, color: 3, comment: "" }], "start", () => {});
+  assert.deepStrictEqual([added.added, added.skipped], [1, 2]);
+});
+
+test("remove takes away only the markers of the file, and tells how many", async () => {
+  const { P } = makeMock();
+  adapter._setPremiere(P);
+  const items = [
+    { name: "A", start: 0, duration: 1, color: 1, comment: "" },
+    { name: "B", start: 5, duration: 1, color: 6, comment: "" },
+  ];
+  await adapter.importMarkers(items, "start", () => {});
+  await adapter.importMarkers([{ name: "mine", start: 20, duration: 1, color: 0, comment: "" }], "start", () => {});
+  const gone = await adapter.removeMarkers(items, { placement: "sequence", offsetMode: "start" }, () => {});
+  assert.strictEqual(gone.removed, 2);
+  const again = await adapter.removeMarkers(items, { placement: "sequence", offsetMode: "start" }, () => {});
+  assert.strictEqual(again.removed, 0);
+  const rest = await adapter.importMarkers([{ name: "mine", start: 20, duration: 1, color: 0, comment: "" }], "start", () => {});
+  assert.strictEqual(rest.skipped, 1, "the unrelated marker is still there");
 });

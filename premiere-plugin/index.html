@@ -58,8 +58,18 @@
     .btn-primary:disabled { background-color: var(--lt-field); border-color: var(--lt-border); color: var(--lt-muted); }
     .btn-link { background-color: transparent; border: none; padding: 2px 0; color: var(--lt-muted); }
     .btn-link:hover { background-color: transparent; color: var(--lt-fg); }
+    .btn-link.strong { color: var(--lt-fg); font-weight: bold; padding: 0; }
+    .links { display: flex; margin: 6px 0 0 0; }
+    .links .btn-link { margin: 0 12px 0 0; }
 
+    .fileline { display: flex; align-items: center; justify-content: space-between; }
+    .fileline .fname { flex: 1; margin-right: 8px; }
+    .fileline .btn-link { margin: 0; }
     .fileinfo { margin: 10px 0 0 0; }
+    .ok-dot { width: 9px; height: 9px; border-radius: 5px; background-color: var(--lt-ok); margin-right: 8px; }
+    .btn-stack { margin: 8px 0 0 0; }
+    .tl-info { margin: 8px 0 0 0; }
+    .tl-warn { color: var(--lt-err); }
     .fname { font-weight: bold; }
     .pills { display: flex; flex-wrap: wrap; margin: 8px 0 0 0; }
     .pill { display: flex; align-items: center; background-color: var(--lt-pill); border-radius: 10px; padding: 2px 9px; margin: 0 6px 4px 0; }
@@ -84,111 +94,162 @@
   </div>
 
   <div class="card">
-    <div class="card-title"><div class="num">1</div>Marker file</div>
-    <button id="pick" class="btn-wide">Choose .markers.json…</button>
-    <div id="fileInfo" class="fileinfo">
-      <div id="fileEmpty" class="muted">No file chosen yet. It is the .markers.json next to your downloaded part.</div>
-      <div id="fileDetails" style="display:none">
-        <div id="fileName" class="fname"></div>
-        <div id="fileTitle" class="muted"></div>
-        <div id="filePart" class="muted"></div>
-        <div class="pills">
-          <div class="pill"><div class="dot" id="pillGameDot"></div><div id="pillGames"></div></div>
-          <div class="pill"><div class="dot" id="pillClipDot"></div><div id="pillClips"></div></div>
-        </div>
-        <div id="fileNote" class="muted note"></div>
-      </div>
+    <div id="fileEmpty" class="muted">Looking for the .markers.json next to your video…</div>
+    <div id="fileLine" class="fileline" style="display:none">
+      <div class="ok-dot"></div>
+      <div id="fileSummary" class="fname"></div>
+      <button id="toggleFile" class="btn-link">▸ details</button>
+    </div>
+    <div id="fileDetails" style="display:none; margin: 6px 0 0 0;">
+      <div id="fileName" class="muted"></div>
+      <div id="fileFound" class="muted"></div>
+      <div id="fileTitle" class="muted"></div>
+      <div id="filePart" class="muted"></div>
+      <div id="fileNote" class="muted note"></div>
+    </div>
+    <div class="btn-row" id="pickRow">
+      <button id="pick" class="btn-wide">Choose .markers.json…</button>
+    </div>
+    <div class="links">
+      <button id="detect" class="btn-link">Search again</button>
+      <button id="pick2" class="btn-link" style="display:none">Use another file…</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title"><div class="num">2</div>What to import</div>
-
-    <div class="row">
-      <div class="ctl"><input type="checkbox" id="importGames"><label for="importGames">Game / category changes</label></div>
-      <div class="ctl" id="gameColorCtl"><div class="dot" id="gameColorDot"></div><select id="gameColor"></select></div>
-    </div>
-    <div class="row sub-block" id="gamePrefixRow">
-      <div class="ctl"><input type="checkbox" id="gamePrefix"><label for="gamePrefix">Name them «GAME: …»</label></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="row">
-      <div class="ctl"><input type="checkbox" id="importClips"><label for="importClips">Clips</label></div>
-    </div>
-    <div id="clipOptions" class="sub-block">
-      <div class="row">
-        <label for="minViews">Only clips with at least</label>
-        <div class="ctl"><input type="text" id="minViews"><span>views</span></div>
-      </div>
-      <div class="row">
-        <div class="ctl"><input type="checkbox" id="colorByViews"><label for="colorByViews">Color by views</label></div>
-      </div>
-
-      <div id="tierRows">
-        <div class="row">
-          <label>Fewer views</label>
-          <div class="ctl"><div class="dot" id="lowColorDot"></div><select id="lowColor"></select></div>
-        </div>
-        <div class="row">
-          <div class="ctl"><label for="midViews">From</label><input type="text" id="midViews"><span>views</span></div>
-          <div class="ctl"><div class="dot" id="midColorDot"></div><select id="midColor"></select></div>
-        </div>
-        <div class="row">
-          <div class="ctl"><label for="highViews">From</label><input type="text" id="highViews"><span>views</span></div>
-          <div class="ctl"><div class="dot" id="highColorDot"></div><select id="highColor"></select></div>
-        </div>
-      </div>
-
-      <div class="row" id="singleColorRow">
-        <label for="clipColor">All clips</label>
-        <div class="ctl"><div class="dot" id="clipColorDot"></div><select id="clipColor"></select></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title"><div class="num">3</div>Add the markers</div>
-    <div class="row">
-      <label for="offsetMode">The part starts…</label>
-      <div class="ctl">
-        <select id="offsetMode" style="width: 150px;">
-          <option value="start">at the sequence start</option>
-          <option value="playhead">at the playhead</option>
-        </select>
-      </div>
-    </div>
+    <button id="add" class="btn-wide btn-primary" disabled>Add markers</button>
     <div class="btn-row">
-      <button id="import" class="btn-half btn-primary" disabled>To sequence</button>
-      <button id="importClip" class="btn-half btn-primary" disabled>To clip</button>
+      <button id="cutClips" class="btn-half btn-primary" disabled>Cut at clips</button>
+      <button id="cutChapters" class="btn-half btn-primary" disabled>Cut at chapters</button>
     </div>
-    <div class="hint">Sequence: markers sit on the timeline at fixed times. Clip: markers sit on the video itself (select it first) and follow your cuts.</div>
-    <div id="status" class="muted">Choose a file to begin.</div>
-    <div class="hint">One undo step (Ctrl/Cmd+Z) removes an import again.</div>
+    <div id="status" class="muted" style="margin: 10px 0 0 0;">Choose a file to begin.</div>
+    <div id="timelineInfo" class="hint tl-info"></div>
+    <div id="placeHint" class="hint"></div>
+    <div class="links">
+      <button id="remove" class="btn-link" disabled>Remove these markers</button>
+    </div>
   </div>
 
   <div class="card">
-    <button id="toggleTrouble" class="btn-link">▸ Troubleshooting</button>
+    <button id="toggleSettings" class="btn-link strong">▸ Settings</button>
+    <div id="settingsSummary" class="muted"></div>
+    <div id="settingsBody" class="trouble-body" style="display:none">
+      <div class="row">
+        <label for="placement">Markers go</label>
+        <div class="ctl">
+          <select id="placement" style="width: 150px;">
+            <option value="clip">on the clip (follow cuts)</option>
+            <option value="sequence">on the sequence</option>
+          </select>
+        </div>
+      </div>
+      <div class="row sub-block" id="offsetRow">
+        <label for="offsetMode">The part starts…</label>
+        <div class="ctl">
+          <select id="offsetMode" style="width: 150px;">
+            <option value="start">at the sequence start</option>
+            <option value="playhead">at the playhead</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div class="ctl"><input type="checkbox" id="importGames"><label for="importGames">Game / category changes</label></div>
+        <div class="ctl" id="gameColorCtl"><div class="dot" id="gameColorDot"></div><select id="gameColor"></select></div>
+      </div>
+      <div class="row sub-block" id="gamePrefixRow">
+        <div class="ctl"><input type="checkbox" id="gamePrefix"><label for="gamePrefix">Name them «GAME: …»</label></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div class="ctl"><input type="checkbox" id="importClips"><label for="importClips">Clips</label></div>
+      </div>
+      <div id="clipOptions" class="sub-block">
+        <div class="row">
+          <label for="minViews">Only clips with at least</label>
+          <div class="ctl"><input type="text" id="minViews"><span>views</span></div>
+        </div>
+        <div class="row">
+          <div class="ctl"><input type="checkbox" id="colorByViews"><label for="colorByViews">Color by views</label></div>
+        </div>
+
+        <div id="tierRows">
+          <div class="row">
+            <label>Fewer views</label>
+            <div class="ctl"><div class="dot" id="lowColorDot"></div><select id="lowColor"></select></div>
+          </div>
+          <div class="row">
+            <div class="ctl"><label for="midViews">From</label><input type="text" id="midViews"><span>views</span></div>
+            <div class="ctl"><div class="dot" id="midColorDot"></div><select id="midColor"></select></div>
+          </div>
+          <div class="row">
+            <div class="ctl"><label for="highViews">From</label><input type="text" id="highViews"><span>views</span></div>
+            <div class="ctl"><div class="dot" id="highColorDot"></div><select id="highColor"></select></div>
+          </div>
+        </div>
+
+        <div class="row" id="singleColorRow">
+          <label for="clipColor">All clips</label>
+          <div class="ctl"><div class="dot" id="clipColorDot"></div><select id="clipColor"></select></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="row"><b>Cutting</b></div>
+      <div class="row sub-block">
+        <label for="padBefore">Keep before each clip</label>
+        <div class="ctl"><input type="text" id="padBefore"><span>s</span></div>
+      </div>
+      <div class="row sub-block">
+        <label for="padAfter">Keep after each clip</label>
+        <div class="ctl"><input type="text" id="padAfter"><span>s</span></div>
+      </div>
+      <div class="row sub-block">
+        <label for="mergeGap">Merge clips closer than</label>
+        <div class="ctl"><input type="text" id="mergeGap"><span>s</span></div>
+      </div>
+      <div class="row sub-block">
+        <div class="ctl"><input type="checkbox" id="backup"><label for="backup">Backup copy of the sequence first</label></div>
+      </div>
+      <div class="hint">Clips that touch or overlap are one clip: padding never adds a cut between them. Cutting needs an empty video track and an empty audio track above the clip.</div>
+      <div class="hint">Settings are remembered. One undo step (Ctrl/Cmd+Z) removes what a marker import added; a cut is many steps, so keep the backup on.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <button id="toggleTrouble" class="btn-link strong">▸ Troubleshooting</button>
     <div id="troubleBody" class="trouble-body" style="display:none">
       <div class="muted">File picker not working? Paste the file's text here:</div>
       <textarea id="pasted"></textarea>
       <div style="margin: 6px 0 0 0;"><button id="usePasted">Use pasted text</button></div>
 
       <div class="divider"></div>
-      <div class="muted">Check that this plugin and your Premiere agree:</div>
-      <div style="margin: 6px 0 0 0;">
-        <button id="probe">Probe the API</button>
-        <button id="testMarkers">Add test markers</button>
+      <div class="muted"><b>Probes</b>: they only read. Press the first one, then Copy log and send it.</div>
+      <div class="btn-row"><button id="probeAll" class="btn-wide btn-primary">Run all probes</button></div>
+      <div style="margin: 8px 0 0 0; display: flex; flex-wrap: wrap;">
+        <button id="probe">API</button>
+        <button id="probeClips">Clips</button>
+        <button id="probeAudio">Audio</button>
+        <button id="probeEditor">Editor</button>
+        <button id="probeDetect">File detection</button>
+        <button id="probeCutPlan">Cut plan</button>
+        <button id="probeClasses">Classes</button>
       </div>
+      <div class="hint">Cut plan is a dry run: it shows where the clips would be cut on the target clip (needs a loaded file). Nothing is changed.</div>
 
       <div class="divider"></div>
-      <div class="muted">Experiment: markers on the clip itself (so they could follow your cuts).</div>
-      <div style="margin: 6px 0 0 0;">
-        <button id="probeClips">Probe clips</button>
+      <div class="muted"><b>Experiments</b>: these change the project. Ctrl+Z undoes them.</div>
+      <div style="margin: 6px 0 0 0; display: flex; flex-wrap: wrap;">
+        <button id="testMarkers">Add test markers</button>
         <button id="testClipMarkers">Test clip markers</button>
+        <button id="testCut">Test cut at playhead</button>
+        <button id="testSplit">Test split (clone + trim)</button>
       </div>
-      <div class="hint">Probe clips only reads. Test clip markers adds 3 markers to the source of the selected clip (or the first clip on the timeline); Ctrl+Z removes them.</div>
+      <div class="hint">Test split (clone + trim) is the new method: it needs an EMPTY video track (and audio track) above your clip. Test cut at playhead: put the playhead in the middle of your clip first. It tries to split the clip there (video and audio); up to 3 undo steps.</div>
 
       <div class="divider"></div>
       <div style="margin: 0 0 4px 0;">

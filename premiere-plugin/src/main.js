@@ -1,6 +1,6 @@
 "use strict";
 try {
-/* The panel: file picker, settings, and the Import button. Logic is in markers-core.js, Premiere calls in premiere-adapter.js. */
+/* The panel: finds/loads the marker file, keeps the settings, and the Add button. Logic is in markers-core.js, Premiere calls in premiere-adapter.js. */
 
 const core = window.LTCore || require("./markers-core.js");
 // The Premiere adapter is loaded only when needed, so a problem there can never stop the panel (and the file picker) from starting.
@@ -14,12 +14,14 @@ const $ = (id) => document.getElementById(id);
 const STORE_KEY = "luckytwitch-markers-settings-v1";
 
 try {
-  require("uxp").entrypoints.setup({ panels: { luckytwitchMarkers: { show() {} } } });
+  require("uxp").entrypoints.setup({ panels: { luckytwitchMarkers: { show() { onPanelShow(); } } } });
 } catch (e) {
   /* older hosts do not need / have this */
 }
 
-let loaded = null; // the checked file: {file, label}
+let loaded = null; // the checked file: {file, label, text, path, auto, mediaPath}
+let timeline = null; // what the timeline plays of the file's video: {descs, mediaName, ...}, or null when unknown
+let timelineNote = ""; // why it is unknown
 
 function setStatus(text, kind) {
   const el = $("status");
@@ -28,12 +30,14 @@ function setStatus(text, kind) {
   el.className = kind || "muted";
 }
 
-function openTroubleshooting(open) {
-  $("troubleBody").style.display = open ? "block" : "none";
-  $("toggleTrouble").textContent = (open ? "▾ " : "▸ ") + "Troubleshooting";
+function toggleSection(bodyId, buttonId, label, open) {
+  const show = open === undefined ? $(bodyId).style.display === "none" : open;
+  $(bodyId).style.display = show ? "block" : "none";
+  $(buttonId).textContent = (show ? "▾ " : "▸ ") + label;
 }
+const openTroubleshooting = (open) => toggleSection("troubleBody", "toggleTrouble", "Troubleshooting", open);
 
-/** Writes to the log (Troubleshooting) and shows the latest message in the status line under the Import button. */
+/** Writes to the log (Troubleshooting) and shows the latest message in the status line under the Add button. */
 function log(text, isError = false, quiet = false) {
   window.__ltLog(text, isError);
   if (quiet) return;
@@ -66,8 +70,9 @@ async function copyLog() {
 
 // ---- settings -------------------------------------------------------------------------------------------
 const COLOR_FIELDS = ["gameColor", "lowColor", "midColor", "highColor", "clipColor"];
-const NUMBER_FIELDS = ["minViews", "midViews", "highViews"];
-const CHECK_FIELDS = ["importGames", "gamePrefix", "importClips", "colorByViews"];
+const NUMBER_FIELDS = ["minViews", "midViews", "highViews", "padBefore", "padAfter", "mergeGap"];
+const CHECK_FIELDS = ["importGames", "gamePrefix", "importClips", "colorByViews", "backup"];
+const SELECT_FIELDS = ["offsetMode", "placement"];
 
 function fillColorMenus() {
   const html = core.COLORS.map((c) => `<option value="${c.index}">${c.name}</option>`).join("");
@@ -96,6 +101,11 @@ function refreshVisibility() {
   show("clipOptions", clips);
   show("tierRows", clips && byViews);
   show("singleColorRow", clips && !byViews, "flex");
+  show("offsetRow", $("placement").value === "sequence", "flex");
+  $("placeHint").textContent =
+    $("placement").value === "sequence"
+      ? "Markers go on the active sequence, at fixed times."
+      : "Markers go on the selected clip (else the first video clip) and follow your cuts.";
 }
 
 function loadSettings() {
@@ -112,17 +122,23 @@ function showSettings(s) {
   for (const id of COLOR_FIELDS) $(id).value = String(s[id]);
   for (const id of NUMBER_FIELDS) $(id).value = String(s[id]);
   for (const id of CHECK_FIELDS) $(id).checked = !!s[id];
-  $("offsetMode").value = s.offsetMode;
+  for (const id of SELECT_FIELDS) $(id).value = s[id];
   updateDots();
   refreshVisibility();
+  updateSettingsSummary();
 }
 
 function readSettings() {
-  const raw = { offsetMode: $("offsetMode").value };
+  const raw = {};
+  for (const id of SELECT_FIELDS) raw[id] = $(id).value;
   for (const id of COLOR_FIELDS) raw[id] = Number($(id).value);
   for (const id of NUMBER_FIELDS) raw[id] = $(id).value.trim();
   for (const id of CHECK_FIELDS) raw[id] = $(id).checked;
   return core.normalizeSettings(raw);
+}
+
+function updateSettingsSummary() {
+  $("settingsSummary").textContent = core.summarizeSettings(readSettings());
 }
 
 function saveSettings() {
@@ -133,49 +149,119 @@ function saveSettings() {
   }
   updateDots();
   refreshVisibility();
+  updateSettingsSummary();
   updateSummary();
 }
 
 // ---- file and summary -----------------------------------------------------------------------------------
-function updateSummary() {
+/** The video this file belongs to, so cutting finds every timeline clip of it (not just the selected / first one). */
+const hint = () => (loaded ? { mediaPath: loaded.mediaPath, fileName: /\.markers\.json$/i.test(loaded.label) ? loaded.label : undefined } : undefined);
+const planOpts = (s) => ({ padBefore: s.padBefore, padAfter: s.padAfter, mergeGap: s.mergeGap });
+/** Every clip and game of the file, whatever the marker settings hide: what a cut works from. */
+const cutItems = () => (loaded ? core.planMarkers(loaded.file, { ...readSettings(), importGames: true, importClips: true }).items : null);
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/** Buttons, counts and the timeline line. Does not touch the status line (so a "Done" message stays). */
+function renderCounts() {
   if (!loaded) return;
   const settings = readSettings();
   const { items, counts } = core.planMarkers(loaded.file, settings);
   const f = loaded.file;
+  const all = cutItems();
+  const clipSet = core.planCutSet(all, { ...planOpts(settings), clips: true });
+  const chapSet = core.planCutSet(all, { clips: false, chapters: true });
+  const clipCov = timeline ? core.coverage(clipSet.ranges, timeline.descs) : null;
+  const chapCov = timeline ? core.coverage(chapSet.chapters, timeline.descs) : null;
+  const nClips = clipCov ? clipCov.inside : clipSet.ranges.length;
+  const nChaps = chapCov ? chapCov.inside : chapSet.chapters.length;
+
   $("fileEmpty").style.display = "none";
-  $("fileDetails").style.display = "block";
+  $("fileLine").style.display = "flex";
+  const nGames = f.markers.filter((m) => m.kind === "game").length;
+  const nClipMarkers = f.markers.filter((m) => m.kind === "clip").length;
+  $("fileSummary").textContent = `${loaded.label} · ${plural(nGames, "game", "games")} · ${plural(nClipMarkers, "clip", "clips")}`;
   $("fileName").textContent = loaded.label;
+  $("fileFound").textContent = loaded.found || "";
   $("fileTitle").textContent = f.source && f.source.streamer ? `${f.source.streamer} · ${f.source.title || ""}`.trim() : "";
   $("filePart").textContent = f.part ? `Part ${core.formatTime(f.part.start)} – ${core.formatTime(f.part.end)} of the VOD` : "";
-  $("pillGames").textContent = `${counts.games} game ${counts.games === 1 ? "change" : "changes"}`;
-  $("pillClips").textContent = `${counts.clips} ${counts.clips === 1 ? "clip" : "clips"}`;
-  $("pillGameDot").style.backgroundColor = colorHex(settings.gameColor);
-  $("pillClipDot").style.backgroundColor = colorHex(settings.colorByViews ? settings.midColor : settings.clipColor);
   const notes = [];
-  if (counts.hidden) notes.push(`${counts.hidden} left out by your choices.`);
+  if (counts.hidden) notes.push(`${counts.hidden} left out by your marker settings.`);
   if (f.skipped) notes.push(`${f.skipped} entries in the file were not understood and are skipped.`);
   $("fileNote").textContent = notes.join(" ");
-  $("import").disabled = items.length === 0;
-  $("importClip").disabled = items.length === 0;
-  $("import").textContent = items.length ? `${items.length} to sequence` : "To sequence";
-  $("importClip").textContent = items.length ? `${items.length} to clip` : "To clip";
-  setStatus(items.length ? "Ready." : "Nothing to import with these choices.", items.length ? "muted" : "err");
+
+  $("add").disabled = items.length === 0;
+  $("add").textContent = items.length ? `Add ${items.length} markers` : "Add markers";
+  $("remove").disabled = false;
+  $("cutClips").disabled = nClips === 0;
+  $("cutClips").textContent = clipCov && clipCov.outside ? `Cut at ${nClips} of ${clipSet.ranges.length} clips` : nClips ? `Cut at ${plural(nClips, "clip", "clips")}` : "Cut at clips";
+  $("cutChapters").disabled = nChaps === 0;
+  $("cutChapters").textContent = chapCov && chapCov.outside ? `Cut at ${nChaps} of ${chapSet.chapters.length} chapters` : nChaps ? `Cut at ${plural(nChaps, "chapter", "chapters")}` : "Cut at chapters";
+  $("pickRow").style.display = "none";
+  $("pick2").style.display = "inline-block";
+
+  const info = $("timelineInfo");
+  if (timeline) {
+    const w = clipCov.windows.map((x) => `${core.formatTime(x.start)}–${core.formatTime(x.end)}`).join(", ");
+    const lines = [`Timeline: ${plural(timeline.descs.length, "clip", "clips")} of ${timeline.mediaName || "the video"} on V${timeline.trackIndex + 1}, playing ${w || "nothing"}.`];
+    if (clipCov.outside) lines.push(`${clipCov.outside === 1 ? "1 clip of the file falls" : `${clipCov.outside} clips of the file fall`} outside what the timeline plays and ${clipCov.outside === 1 ? "is" : "are"} ignored.`);
+    if (timeline.elsewhere) lines.push(`${plural(timeline.elsewhere, "more clip", "more clips")} of this video on higher tracks are ignored.`);
+    if (timeline.reversed) lines.push(`${plural(timeline.reversed, "reversed clip", "reversed clips")} ignored.`);
+    info.textContent = lines.join(" ");
+    info.className = "hint tl-info" + (timeline.elsewhere || timeline.reversed ? " tl-warn" : "");
+  } else {
+    info.textContent = timelineNote || "";
+    info.className = "hint tl-info";
+  }
 }
 
-function useFileText(text, label) {
+function updateSummary() {
+  if (!loaded) return;
+  renderCounts();
+  const n = core.planMarkers(loaded.file, readSettings()).items.length;
+  setStatus(n ? "Ready." : "Nothing to add with these settings.", n ? "muted" : "err");
+}
+
+let refreshing = false;
+/** Looks at the timeline (read-only) so the buttons can say how many clips / chapters fall inside what it plays. Never shows an error. */
+async function refreshTimeline() {
+  if (!loaded || busy || refreshing) return;
+  refreshing = true;
+  try {
+    timeline = await getAdapter().inspectTimeline(hint());
+    timelineNote = "";
+  } catch (e) {
+    timeline = null;
+    timelineNote = e && e.message ? e.message : String(e);
+  } finally {
+    refreshing = false;
+  }
+  renderCounts();
+}
+
+function useFileText(text, label, meta) {
   const file = core.parseMarkersFile(text);
-  loaded = { file, label };
-  $("pick").textContent = "Choose another file…";
+  loaded = { file, label, text, path: meta && meta.path, auto: !!(meta && meta.auto), found: meta && meta.found, mediaPath: meta && meta.mediaPath };
+  timeline = null;
+  timelineNote = "";
   updateSummary();
 }
 
 function failLoad(e) {
   loaded = null;
-  $("import").disabled = true;
-  $("importClip").disabled = true;
-  $("import").textContent = "To sequence";
-  $("importClip").textContent = "To clip";
+  timeline = null;
+  $("add").disabled = true;
+  $("remove").disabled = true;
+  $("cutClips").disabled = true;
+  $("cutChapters").disabled = true;
+  $("add").textContent = "Add markers";
+  $("cutClips").textContent = "Cut at clips";
+  $("cutChapters").textContent = "Cut at chapters";
+  $("timelineInfo").textContent = "";
+  $("pickRow").style.display = "flex";
+  $("pick2").style.display = "none";
   $("fileEmpty").style.display = "block";
+  $("fileLine").style.display = "none";
   $("fileDetails").style.display = "none";
   log(e && e.message ? e.message : String(e), true);
 }
@@ -192,7 +278,7 @@ async function pickFile() {
       entry = await fs.getFileForOpening();
     }
     if (!entry) return log("No file picked.", false, true); // cancelled
-    useFileText(await entry.read(), entry.name);
+    useFileText(await entry.read(), entry.name, { auto: false, path: entry.nativePath, found: "Chosen by hand." });
   } catch (e) {
     failLoad(e);
     log("If the picker will not open on your Premiere, open the .markers.json in Notepad, copy everything, paste it in the box below and press «Use pasted text».", true);
@@ -203,10 +289,56 @@ function usePasted() {
   const text = $("pasted").value.trim();
   if (!text) return log("Paste the contents of the .markers.json first.", true);
   try {
-    useFileText(text, "(pasted text)");
+    useFileText(text, "(pasted text)", { auto: false, found: "Pasted by hand." });
   } catch (e) {
     failLoad(e);
   }
+}
+
+// ---- finding the file by itself --------------------------------------------------------------------------
+let detecting = false;
+let detectedOnce = false;
+
+/**
+ * Looks for the .markers.json next to the target clip's video (then next to the Premiere project).
+ * manual = the user pressed "Search again": it may replace a file that was chosen by hand and it reports "not found".
+ */
+async function autoDetect(manual) {
+  if (detecting || busy) return;
+  if (loaded && !loaded.auto && !manual) return; // a file chosen by hand stays until the user says otherwise
+  detecting = true;
+  const why = [];
+  try {
+    const found = await getAdapter().findMarkersFile(why);
+    if (found) {
+      if (loaded && loaded.auto && loaded.path === found.path && loaded.text === found.text) return;
+      useFileText(found.text, found.name, { auto: true, path: found.path, mediaPath: found.mediaPath, found: `Found ${found.where} (${found.how}).` });
+      log(`Found the markers file ${found.where}: ${found.name} (${found.how}).`, false, true);
+      refreshTimeline();
+    } else if (manual || !detectedOnce) {
+      why.forEach((w) => window.__ltLog(`(detect) ${w}`));
+      if (!loaded) {
+        $("fileEmpty").textContent = "No .markers.json found next to the video or the project. Put the video on the timeline (select it) and press Search again, or choose the file by hand.";
+        setStatus("Choose a file to begin.", "muted");
+      } else if (manual) {
+        setStatus("Nothing found automatically; keeping the file you have.", "muted");
+      }
+    }
+  } catch (e) {
+    if (manual) log(`Search failed: ${e && e.message ? e.message : e}`, true);
+    else window.__ltLog(`(detect) stopped: ${e && e.message ? e.message : e}`);
+  } finally {
+    detectedOnce = true;
+    detecting = false;
+  }
+}
+
+let lastShow = 0;
+function onPanelShow() {
+  const now = Date.now();
+  if (now - lastShow < 2000) return;
+  lastShow = now;
+  autoDetect(false).then(() => refreshTimeline());
 }
 
 // ---- actions --------------------------------------------------------------------------------------------
@@ -221,52 +353,101 @@ async function guarded(fn) {
   } finally {
     busy = false;
   }
+  refreshTimeline();
 }
 
-async function doImport() {
+async function doAdd() {
   if (!loaded) return;
   const settings = readSettings();
   const { items } = core.planMarkers(loaded.file, settings);
-  if (!items.length) return log("Nothing to import with these choices.", true);
-  const n = await getAdapter().importMarkers(items, settings.offsetMode, log);
-  log(`Done: ${n} markers added to the active sequence.`);
+  if (!items.length) return log("Nothing to add with these settings.", true);
+  const r = await getAdapter().addMarkers(items, { placement: settings.placement, offsetMode: settings.offsetMode }, log);
+  const follow = settings.placement === "clip" ? " They follow your cuts." : "";
+  if (r.added === 0) log(`Done: nothing new, all ${r.skipped} markers were already on ${r.what} (colors refreshed).`);
+  else log(`Done: ${r.added} markers added to ${r.what}${r.skipped ? ` (${r.skipped} were already there)` : ""}.${follow}`);
 }
 
-async function doImportToClip() {
+async function doRemove() {
   if (!loaded) return;
   const settings = readSettings();
-  const { items } = core.planMarkers(loaded.file, settings);
-  if (!items.length) return log("Nothing to import with these choices.", true);
-  const r = await getAdapter().importMarkersToClip(items, log);
-  log(`Done: ${r.count} markers added to the clip "${r.clipName}" (they follow it through your cuts).`);
+  // Every marker this file could have produced, whatever the settings were when it was added (with and without the GAME: prefix).
+  const all = [];
+  for (const gamePrefix of [false, true]) {
+    all.push(...core.planMarkers(loaded.file, { ...settings, importGames: true, importClips: true, minViews: 0, gamePrefix }).items);
+  }
+  const r = await getAdapter().removeMarkers(all, { placement: settings.placement, offsetMode: settings.offsetMode }, log);
+  if (r.removed) log(`Done: ${r.removed} markers removed from ${r.what}.`);
+  else log(`Nothing to remove: none of this file's markers are on ${r.what}.`);
 }
+
+/** kind: "clips" = the start and end of every clip; "chapters" = every game / category boundary. */
+async function doCut(kind) {
+  if (!loaded) return;
+  const settings = readSettings();
+  const clips = kind === "clips";
+  const r = await getAdapter().cutAtClipEdges(
+    cutItems(),
+    { backup: settings.backup, clips, chapters: !clips, plan: planOpts(settings), hint: hint() },
+    log
+  );
+  if (!r.cuts && !r.points) return log(`Nothing to cut: every ${clips ? "clip" : "chapter"} edge is already a cut, or falls outside what the timeline plays.`, true);
+  log(`Done: ${r.cuts} cuts made in ${plural(r.clips, "clip", "clips")}${r.skipped ? ` (${r.skipped} points already had a cut)` : ""}. Look at the timeline.`);
+}
+
+const plannedItems = () => cutItems();
 
 function init() {
   // Buttons first: whatever fails after this, they still react.
   const on = (id, fn) => $(id) && $(id).addEventListener("click", () => guarded(fn));
   on("pick", pickFile);
+  on("pick2", pickFile);
+  on("detect", () => autoDetect(true));
   on("usePasted", usePasted);
-  on("import", doImport);
-  on("importClip", doImportToClip);
+  on("add", doAdd);
+  on("cutClips", () => doCut("clips"));
+  on("cutChapters", () => doCut("chapters"));
+  on("remove", doRemove);
   on("copyLog", copyLog);
-  $("toggleTrouble") && $("toggleTrouble").addEventListener("click", () => openTroubleshooting($("troubleBody").style.display === "none"));
+  $("toggleTrouble") && $("toggleTrouble").addEventListener("click", () => openTroubleshooting());
+  $("toggleFile") && $("toggleFile").addEventListener("click", () => toggleSection("fileDetails", "toggleFile", "details"));
+  $("toggleSettings") && $("toggleSettings").addEventListener("click", () => toggleSection("settingsBody", "toggleSettings", "Settings"));
   $("clearLog") && $("clearLog").addEventListener("click", () => { $("log").value = ""; $("copyState").textContent = ""; });
-  on("probe", () => getAdapter().probe(log));
-  on("testMarkers", () => getAdapter().addTestMarkers(core.COLORS, log));
-  // Experiment (clip markers): its messages go to the log only, not to the status line under the Import button.
+  // Probes and experiments: their messages go to the log only, not to the status line under the Add button.
   const dlog = (text, isError) => log(text, !!isError, !isError);
+  on("probe", () => getAdapter().probe(dlog));
   on("probeClips", () => getAdapter().probeClips(dlog));
+  on("probeAudio", () => getAdapter().probeAudio(dlog));
+  on("probeEditor", () => getAdapter().probeEditor(dlog));
+  on("probeClasses", () => getAdapter().probeClasses(dlog));
+  on("probeDetect", () => getAdapter().probeDetection(dlog));
+  on("probeCutPlan", async () => {
+    const items = plannedItems();
+    if (!items || !items.length) return dlog("Cut plan needs a loaded markers file with clips (nothing to plan yet).", true);
+    const st = readSettings();
+    await getAdapter().probeCutPlan(items, dlog, planOpts(st), hint());
+  });
+  on("probeAll", () => getAdapter().probeAll(dlog, plannedItems, hint));
+  on("testMarkers", () => getAdapter().addTestMarkers(core.COLORS, dlog));
   on("testClipMarkers", () => getAdapter().addClipTestMarkers(core.COLORS, dlog));
+  on("testCut", () => getAdapter().testCutAtPlayhead(dlog));
+  on("testSplit", () => getAdapter().testSplitAtPlayhead(dlog));
   try {
     fillColorMenus();
     showSettings(loadSettings());
-    for (const id of [...COLOR_FIELDS, ...NUMBER_FIELDS, ...CHECK_FIELDS, "offsetMode"]) {
+    for (const id of [...COLOR_FIELDS, ...NUMBER_FIELDS, ...CHECK_FIELDS, ...SELECT_FIELDS]) {
       $(id).addEventListener("change", saveSettings);
     }
   } catch (e) {
     log(`Could not set up the settings: ${e && e.message ? e.message : e}`, true);
   }
-  log(`Panel ready (settings, file picker and buttons are set up). Core: ${core ? "ok" : "missing"}, Premiere adapter: ${window.LTAdapter ? "ok" : "not loaded"}.`, false, true);
+  log(`Panel ready (0.5.0). Core: ${core ? "ok" : "missing"}.`, false, true);
+  // Look for the marker file now, again when the panel is shown / focused, and every few seconds until one is loaded
+  // (so it also works when the video is put on the timeline after the panel was opened).
+  setTimeout(() => autoDetect(false), 400);
+  window.addEventListener("focus", onPanelShow);
+  setInterval(() => {
+    if (!loaded && !busy) autoDetect(false);
+  }, 4000);
 }
 
 window.addEventListener("error", (ev) => log(`Error: ${ev.message || ev}`, true));
