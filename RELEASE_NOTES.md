@@ -1,9 +1,25 @@
-## v1.10.1
+## v1.11.0
 
-### Fixed
-- **Long parts crashed Premiere Pro when imported.** Parts longer than about 1 h 40 min (a 2 h 09 min part was the one that showed it) opened fine in video players but made Premiere Pro quit while importing them. Newer ffmpeg builds write the MP4 header with a very fine time unit (1/720000 s instead of 1/1000 s), and on long parts the numbers in the edit list stop fitting in 32 bits, which Premiere's importer cannot handle. The app now always asks ffmpeg for the normal unit. Audio and video stay in sync, nothing is re-encoded, and the parts are the same size.
-- A part that was already finished by yt-dlp with the wrong header is rewritten (stream copy, header only, a few seconds) instead of just being moved.
+A redesign of the rest of the app, to match the new Options tab from v1.10. Nothing was removed and nothing works differently: saved settings, the queue and the files the app writes are the same as before.
 
-### Good to know
-- Parts you already downloaded keep the problem. To fix one without downloading it again: `ffmpeg -i "part.mp4" -map 0 -c copy -movie_timescale 1000 "part-fixed.mp4"`
-- MKV output is not affected.
+### Search tab
+- When you are not signed in, a purple banner says so and has a **Sign in...** button. Searching is switched off until you sign in.
+- Every list explains itself while it is empty: what to do first, "nothing found for ..." after a search with no results, "this streamer has no VODs" with the reason, and "loading..." while a page is being fetched.
+- The VOD header counts the videos (and says when there are more to load). "Double-click a VOD to use it" now sits next to the **Use this VOD** button.
+- Results and Recent streamers are cards. Column headings line up with their columns.
+- At the smallest window size the title above the VOD list wraps instead of squeezing the video-type drop-down.
+
+### Plan tab
+- The page is three cards: **Timeline**, **Cut points** and **Clips -> chapters**.
+- The chapters option is a switch, like the ones in Options (the last checkbox in the app is gone).
+- The **Add to queue** buttons and the one-line summary of your cuts stay visible at the bottom while you scroll. The summary turns red only while the cuts are wrong.
+- Hints wrap to the width of their card, and the chapter column is wide enough for its title.
+- The timeline's help line wraps instead of being cut off at the smallest window size.
+- Keyboard: Tab now goes through the Plan tab from top to bottom and ends on **Add to queue**, then **Add & start** (before, the bottom bar came first).
+
+### Queue & log tab
+- Each job is coloured by its status, with a small icon in front: grey `○ queued`, purple `▶ running...`, green `✓ done (3 files)`, red `✕ failed`, amber `■ cancelled`.
+- A one-line count sits above the list, for example "1 running · 2 queued · 1 done · 1 failed".
+- An empty queue says "Nothing in the queue yet" and has a **Go to the Plan tab** button.
+- The log is coloured: errors red, warnings amber, successes green, timestamps and "Queued:" lines muted.
+- New **Copy log** and **Clear log** buttons under the log, handy for bug reports.

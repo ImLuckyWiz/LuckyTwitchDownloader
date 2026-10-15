@@ -115,6 +115,7 @@ def test_plan_tab_has_its_widgets(gui):
             walk(c)
 
     walk(app.tab_plan.body)
+    walk(app.tab_plan.footer)  # «Add to queue» / «Add & start» sit in the bar that stays visible
     assert {"Split at selected clip", "Download only selected clip", "Add to queue", "Add & start"} <= button_texts
 
 

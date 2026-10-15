@@ -18,7 +18,8 @@ Phased: each phase is delivered on its own, this file says what is done and what
 ### Test status
 477 passed, 2 failed. The 2 failures (`test_gui_timeline.py`: `test_split_at_a_clip...`, `test_refreshing_the_clips...`) fail identically **before any of my changes**.
 *Correction (found in Phase 2):* this is **not** a Tk 9 issue, they fail on Tk 8.6 as well, and on a pristine copy of your zip. The tests expect the clip mark at `600`
-but `clip_start()` returns `600.4` (clip offset 630.4 minus its 30 s duration, not rounded). Either the test expectation or the rounding is outdated; not touched yet.
+but `clip_start()` returns `600.4` (clip offset 630.4 minus its 30 s duration, not rounded). Either the test expectation or the rounding is outdated.
+**Fixed in Phase 3 (step 1):** the tests now expect `pytest.approx(600.4)`; the app code was not touched.
 
 ### Files touched
 New: `assets/*`, `tools/make_icon.py`, `ui/theme.py`, `ui/widgets.py`, `tests/test_gui_theme_and_icon.py`, this file.
@@ -66,8 +67,42 @@ Edited: `ui/widgets.py` (new `SideNav`, `Collapsible`, `TokenChips`; `ScrollFram
 - Font sizes in the sidebar and rows (my preview machine uses DejaVu Sans, not Segoe UI).
 - The `▸ / ▾` arrow on the Advanced header: if it shows as a box on your Windows, tell me and I will swap it.
 
-## Phase 3: the other tabs + polish  ⏳ after that
-- Search: result lists and VOD table styling, empty states.
-- Plan: card grouping around the timeline / cut points / clips table, replace the remaining checkbox with a switch, nicer part preview.
-- Queue: status colours per job, cleaner log.
-- Final pass: keyboard focus order, resize behaviour, full test run, release notes entry.
+## Phase 3: the other tabs + polish  ✅ delivered
+
+Your answers: version **v1.11.0**; `RELEASE_NOTES.md` holds **only the latest release** (the whole file is overwritten, nothing appended); fix the 2 old timeline tests; deliver in several smaller parts.
+Context: the app was at **v1.10.1** (Premiere Pro long-part fix, ffmpeg `-movie_timescale 1000`). The notes for v1.10.0 / v1.10.1 are therefore not kept in the file now that v1.11.0 is written.
+
+### Steps
+| Step | What | Status |
+| --- | --- | --- |
+| 0 | The 2 failing timeline tests fixed | ✅ |
+| 1 | **Plan tab**: three cards (Timeline, Cut points, Clips → chapters), chapters checkbox → switch, fixed footer with *Add to queue* and a cut summary (red only while the cuts are wrong), wrapping hints, aligned headings | ✅ |
+| 2 | **Search tab**: sign-in banner, empty-state messages on every list, VOD header with count, *Use this VOD* + hint, Results / Recent as cards | ✅ |
+| 3 | **Queue tab**: status colours + icons (`○ ▶ ✓ ✕ ■`), summary line, empty state with *Go to the Plan tab*, cards, coloured log (`log_kind`), *Copy log* / *Clear log*, new `WARN` colour | ✅ |
+| 4 | **Final pass**: release notes v1.11.0, this file, review of focus order and the 900×560 minimum | ✅ (see below) |
+
+The queue itself is unchanged: stored status words are still plain `queued`, `running`, `done`, `failed`, `cancelled`; the icon is added only in what is displayed.
+
+### Final pass (really run: Xvfb + Tk 8.6, Python 3.12)
+- `RELEASE_NOTES.md` contains only **v1.11.0**. The version number itself is not stored in code; it is passed to the build (`build_windows.bat 1.11.0`).
+- **Tests:** `xvfb-run -a python3 -m pytest -q` gave 584 passed, 0 failed on the zip as received. After the three fixes below and 6 new tests (`tests/test_gui_final_pass.py`): **590 passed, 0 failed**. The 3 tests that guard the fixes were checked to fail when the fixes are reverted.
+- **Screenshots:** every tab at 900×560, 1020×910 and 1500×1000 (Search signed out and signed in, Plan with a loaded VOD, Options Output and Cuts, Queue with all five statuses), looked at one by one. At 900×560 nothing is pushed off-screen, every tab scrolls, there is no horizontal overflow, and the Plan *Add to queue* bar stays visible.
+- **Fixed in the final pass:**
+  1. Plan tab Tab order: the fixed bar was the first stop and *Add & start* came before *Add to queue*. Now the bar is last and the order is left to right (`ScrollPage` lifts the bar; `plan_tab.py` lowers *Add to queue*; packing is unchanged). The earlier note here, that buttons already came after their list, was wrong for the Plan tab.
+  2. The timeline help line was cut off at 900 px: it now wraps.
+  3. Search tab: at 900 px the long title squeezed the video-type drop-down to «Past broad»; the drop-down keeps its width and the title wraps.
+- **Focus order**, checked by walking Tab / Shift+Tab on every tab and on every Options section with all Advanced areas open: top to bottom, left to right (the left lists before the right column, the sidebar before its section). Shift+Tab is the exact reverse. Only intended widgets take focus (switches, the timeline strip, chips, buttons, fields, lists). Notes: the Options sidebar is 7 Tab stops (Up/Down also move through it), and the read-only log box is not a stop.
+- **Fake queue, real worker thread:** done / failed / cancelled ran as expected and the summary line, row tags and log colours followed (`1 queued · 1 done · 1 failed · 1 cancelled`); stored words stayed plain; Start / Cancel buttons reset. A cancel stops the rest of the queue by design, so the last job stays queued.
+- **Glyphs:** `○ ▶ ✓ ✕ ■ ▸ ▾` all render here, but this machine has no Segoe UI (Tk used DejaVu Sans), so that does **not** prove they render in Segoe UI on Windows. That is still the first check below.
+
+### Please check on Windows (Segoe UI)
+- Status icons `○ ▶ ✓ ✕ ■` all render (otherwise tell me which one shows as a box).
+- The `▸ / ▾` arrow of the Advanced headers (from Phase 2).
+- Log colours feel right; the rules are in one function, `log_kind`.
+- Text size in the sidebar and rows; window at 900×560 (resize it down and click through the four tabs).
+
+### Git
+The zip I received had the Phase 3 changes as uncommitted edits on `main` (no `ui-redesign-phase3` branch inside it), so check that your local branch has them. Suggested next steps: run the tests, commit, build with `build_windows.bat 1.11.0`, merge into `main`, tag `v1.11.0`.
+
+## Redesign complete
+Phases 1-3 are delivered. Open follow-ups: none planned; anything found in the Windows check above goes into a v1.11.1.

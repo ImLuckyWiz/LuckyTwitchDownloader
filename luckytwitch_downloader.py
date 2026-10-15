@@ -66,10 +66,12 @@ from luckytwitch_engine import (
     stream_dir,
     user_data_dir,
 )
-from ui.common import ACCENT, BG, BG2, BG3, ERR, FG, MONO_FONT, MUTED, bmp, set_app_icon
+from ui.common import (
+    ACCENT, ACCENT_DIM, ACCENT_HOVER, BG, BG2, BG3, ERR, FG, MONO_FONT, MUTED, OK, UI_FONT, WARN, WHITE, bmp, set_app_icon,
+)
 from ui.options_tab import OptionsTabMixin
 from ui.plan_tab import PlanTabMixin
-from ui.widgets import ScrollFrame  # noqa: F401  (re-exported: tests and other modules import it from here)
+from ui.widgets import Card, EmptyState, ScrollFrame, ScrollPage, wrap_to  # noqa: F401  (ScrollFrame is re-exported: tests and other modules import it from here)
 from ui.theme import apply_dark_theme as _apply_base_theme, dark_titlebar
 
 # From source: keep config next to the script (as before). Packaged app: the app
@@ -258,6 +260,51 @@ def apply_dark_theme(root):
 
 
 # --------------------------------------------------------------------------- #
+# Queue tab: how a job's status and a log line are shown
+# --------------------------------------------------------------------------- #
+STATUS_ICONS = {"queued": "○", "running": "▶", "done": "✓", "failed": "✕", "cancelled": "■"}
+STATUS_COLOURS = {"queued": MUTED, "running": ACCENT_HOVER, "done": OK, "failed": ERR, "cancelled": WARN}
+FINISHED = ("done", "failed", "cancelled")
+
+
+def status_word(status: str) -> str:
+    """«done (3 files)» -> «done», «running…» -> «running»."""
+    words = status.split()
+    return words[0].rstrip("…:") if words else ""
+
+
+def status_label(status: str) -> str:
+    """What the Status column shows: the text with a small icon in front («✓ done (3 files)»)."""
+    icon = STATUS_ICONS.get(status_word(status))
+    return f"{icon} {status}" if icon else status
+
+
+def log_kind(msg: str) -> str:
+    """How a log line is coloured: err | warn | ok | muted | plain."""
+    m = msg.lstrip()
+    low = m.lower()
+    if m.startswith("ERROR"):
+        return "err"
+    if (m.startswith(("Warning", "Could not", "Cancelled", "Server busy")) or " failed" in low
+            or "skipped" in low or "not found" in low):
+        return "warn"
+    if m.startswith("✔") or low.endswith(("installed.", "is up to date.")) or "up to date" in low:
+        return "ok"
+    if m.startswith("Queued:"):
+        return "muted"
+    return "plain"
+
+
+def queue_summary(statuses: list[str]) -> str:
+    """«1 running · 2 queued · 1 done · 1 failed» (nothing while the queue is empty: the list says so itself)."""
+    if not statuses:
+        return ""
+    words = [status_word(s) for s in statuses]
+    parts = [f"{words.count(w)} {w}" for w in ("running", "queued", "done", "failed", "cancelled") if w in words]
+    return "  ·  ".join(parts)
+
+
+# --------------------------------------------------------------------------- #
 # App
 # --------------------------------------------------------------------------- #
 class App(PlanTabMixin, OptionsTabMixin):
@@ -284,6 +331,8 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.sv_gen = 0  # bumped on every new channel / type: results of older requests are ignored
         self.sv_channel: dict | None = None
         self.sv_results: list[dict] = []
+        self.sv_query = ""  # what the last search looked for (to say «nothing found for …»)
+        self.sv_loading = False  # a page of VODs is being fetched
         self.sv_videos: list[dict] = []
         self.sv_cursor: str | None = None
         self.sv_images: dict[str, object] = {}  # keeps the thumbnails alive (Tk drops unreferenced images)
@@ -373,10 +422,22 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.status.set(text)
 
     def log(self, msg: str):
+        t = self.log_text
+        t.config(state="normal")
+        t.insert("end", f"[{time.strftime('%H:%M:%S')}] ", "stamp")
+        t.insert("end", f"{msg}\n", log_kind(msg))
+        t.see("end")
+        t.config(state="disabled")
+
+    def clear_log(self):
         self.log_text.config(state="normal")
-        self.log_text.insert("end", f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-        self.log_text.see("end")
+        self.log_text.delete("1.0", "end")
         self.log_text.config(state="disabled")
+
+    def copy_log(self):
+        self.root.clipboard_clear()
+        self.root.clipboard_append(self.log_text.get("1.0", "end").rstrip("\n"))
+        self.set_status("Log copied to the clipboard.")
 
     # ---------------------------- UI ---------------------------- #
     def build_ui(self):
@@ -407,7 +468,7 @@ class App(PlanTabMixin, OptionsTabMixin):
         # Search / Plan / Queue are ScrollFrames: content goes in `.body` and scrolls if the window is short.
         # Options is a plain frame: a sidebar on the left and one scrolling section on the right.
         self.tab_search = ScrollFrame(nb)
-        self.tab_plan = ScrollFrame(nb)
+        self.tab_plan = ScrollPage(nb)  # scrolls, with a fixed bar (.footer) for the Add to queue buttons
         self.tab_options = ttk.Frame(nb)
         self.tab_queue = ScrollFrame(nb)
         nb.add(self.tab_search, text="  Search  ")
@@ -436,44 +497,53 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.search_btn = ttk.Button(top, text="Search", style="Accent.TButton", command=self.on_search)
         self.search_btn.pack(side="left")
 
-        # --- shown while not signed in --- #
-        self.signin_bar = ttk.Frame(t)
-        self.signin_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        ttk.Label(self.signin_bar, text="⚠ Sign in with Twitch to search streamers and list their VODs.",
-                  foreground=ERR).pack(side="left")
-        ttk.Button(self.signin_bar, text="Sign in…", command=self.ask_credentials).pack(side="left", padx=8)
+        # --- shown while not signed in: a tinted banner with the way out --- #
+        self.signin_bar = tk.Frame(t, bg=ACCENT_DIM, padx=14, pady=8)
+        self.signin_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        tk.Label(self.signin_bar, text="Sign in with Twitch to search streamers and list their VODs.",
+                 bg=ACCENT_DIM, fg=WHITE, font=(UI_FONT, 10)).pack(side="left")
+        ttk.Button(self.signin_bar, text="Sign in…", style="Accent.TButton",
+                   command=self.ask_credentials).pack(side="right")
 
         # --- left: found channels + recent streamers --- #
         left = ttk.Frame(t)
-        left.grid(row=2, column=0, sticky="ns", padx=(0, 10), pady=(8, 0))
+        left.grid(row=2, column=0, sticky="ns", padx=(0, 12), pady=(10, 0))
 
-        def mini_tree(title: str, height: int) -> ttk.Treeview:
-            tr = ttk.Treeview(left, columns=("name",), show="headings", selectmode="browse", height=height)
-            tr.heading("name", text=title)
-            tr.column("name", width=220, anchor="w")
+        def mini_card(title: str, subtitle: str, height: int):
+            card = Card(left, title, subtitle, padding=12)
+            body = card.body
+            body.rowconfigure(0, weight=1)
+            tr = ttk.Treeview(body, columns=("name",), show=(), selectmode="browse", height=height)
+            tr.column("name", width=216, anchor="w")
             tr.bind("<<TreeviewSelect>>", self.on_pick_channel)
-            return tr
+            tr.grid(row=0, column=0, sticky="nsew")
+            return card, tr
 
-        self.ch_tree = mini_tree("Results  (● = live now)", 6)
-        self.ch_tree.pack(fill="x")
-        ttk.Label(left, text="").pack()
-        self.recent_tree = mini_tree("Recent streamers", 8)
-        self.recent_tree.pack(fill="both", expand=True)
-        ttk.Button(left, text="Clear recent", command=self.clear_recent).pack(anchor="e", pady=(4, 0))
-        self.refresh_recent()
+        res_card, self.ch_tree = mini_card("Results", "● = live now", 6)
+        res_card.pack(fill="x")
+        rec_card, self.recent_tree = mini_card("Recent streamers", "The ones you opened lately", 8)
+        rec_card.pack(fill="both", expand=True, pady=(10, 0))
+        rec_card.rowconfigure(1, weight=1)
+        self.clear_recent_btn = ttk.Button(rec_card.body, text="Clear recent", style="Ghost.TButton",
+                                           command=self.clear_recent)
+        self.clear_recent_btn.grid(row=1, column=0, sticky="e", pady=(6, 0))
+        self.ch_empty = EmptyState(self.ch_tree, compact=True)
+        self.recent_empty = EmptyState(self.recent_tree, compact=True)
 
         # --- right: the VODs --- #
         right = ttk.Frame(t)
-        right.grid(row=2, column=1, sticky="nsew", pady=(8, 0))
+        right.grid(row=2, column=1, sticky="nsew", pady=(10, 0))
         right.columnconfigure(0, weight=1)
         right.rowconfigure(1, weight=1)
         hdr = ttk.Frame(right)
-        hdr.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 4))
+        hdr.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
         self.sv_title = tk.StringVar(value="Search for a streamer, or pick one from your recent list.")
-        ttk.Label(hdr, textvariable=self.sv_title, style="Muted.TLabel").pack(side="left")
+        title_lbl = ttk.Label(hdr, textvariable=self.sv_title, style="Heading.TLabel", justify="left")
         self.sv_type = tk.StringVar(value="Past broadcasts")
         kind = ttk.Combobox(hdr, textvariable=self.sv_type, values=list(VIDEO_KINDS), state="readonly", width=16)
-        kind.pack(side="right")
+        kind.pack(side="right")  # packed before the title: at the minimum window width the title wraps, the list never gets cut
+        title_lbl.pack(side="left", fill="x", expand=True)
+        wrap_to(title_lbl, hdr, margin=200)
         kind.bind("<<ComboboxSelected>>",
                   lambda e: self.sv_channel and self.load_channel(self.sv_channel, remember=False))
 
@@ -485,7 +555,7 @@ class App(PlanTabMixin, OptionsTabMixin):
             ("title", "Title", 360, "w"), ("date", "Date", 90, "center"),
             ("dur", "Length", 80, "center"), ("views", "Views", 70, "center"),
         ]:
-            self.sv_tree.heading(col, text=text)
+            self.sv_tree.heading(col, text=text, anchor=anchor)  # the heading lines up with its column
             self.sv_tree.column(col, width=width, anchor=anchor, stretch=(col == "title"))
         sb = ttk.Scrollbar(right, orient="vertical", command=self.sv_tree.yview)
         self.sv_tree.configure(yscrollcommand=sb.set)
@@ -493,45 +563,90 @@ class App(PlanTabMixin, OptionsTabMixin):
         sb.grid(row=1, column=1, sticky="ns")
         self.sv_tree.bind("<Double-1>", lambda e: self.sv_tree.identify_row(e.y) and self.use_selected_vod())
         self.sv_tree.bind("<Return>", lambda e: self.use_selected_vod())
+        self.sv_empty = EmptyState(self.sv_tree, top=34)  # under the column headings
         brow = ttk.Frame(right)
-        brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         self.more_btn = ttk.Button(brow, text="Load more", command=self.load_more, state="disabled")
         self.more_btn.pack(side="left")
         ttk.Button(brow, text="Use this VOD", style="Accent.TButton", command=self.use_selected_vod).pack(side="right")
+        ttk.Label(brow, text="Double-click a VOD to use it", style="Muted.TLabel").pack(side="right", padx=12)
+        self.refresh_recent()  # fills the recent list and shows the empty-state messages
 
     def build_queue_tab(self):
         t = self.tab_queue.body
         t.columnconfigure(0, weight=1)
         t.rowconfigure(0, weight=1)
-        t.rowconfigure(2, weight=1)
+        t.rowconfigure(1, weight=1)
+
+        # --- the jobs --- #
+        qc = Card(t, "Queue")
+        qc.grid(row=0, column=0, sticky="nsew")
+        qc.rowconfigure(1, weight=1)
+        qb = qc.body
+        qb.rowconfigure(1, weight=1)
+        self.queue_summary_var = tk.StringVar()
+        ttk.Label(qb, textvariable=self.queue_summary_var, style="CardMuted.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 8))
+        tf = ttk.Frame(qb, style="Card.TFrame")
+        tf.grid(row=1, column=0, sticky="nsew")
+        tf.columnconfigure(0, weight=1)
+        tf.rowconfigure(0, weight=1)
         cols = ("n", "video", "parts", "mode", "status")
-        self.qtree = ttk.Treeview(t, columns=cols, show="headings", selectmode="browse", height=6)
+        self.qtree = ttk.Treeview(tf, columns=cols, show="headings", selectmode="browse", height=6)
         for col, text, width, anchor in [
             ("n", "#", 40, "center"), ("video", "Video", 420, "w"), ("parts", "Parts", 70, "center"),
             ("mode", "Strategy", 140, "center"), ("status", "Status", 200, "w"),
         ]:
-            self.qtree.heading(col, text=text)
+            self.qtree.heading(col, text=text, anchor=anchor)  # the heading lines up with its column
             self.qtree.column(col, width=width, anchor=anchor, stretch=(col == "video"))
+        for word, colour in STATUS_COLOURS.items():  # each row is coloured by how its job is doing
+            self.qtree.tag_configure(word, foreground=colour)
+        qsb = ttk.Scrollbar(tf, orient="vertical", command=self.qtree.yview)
+        self.qtree.configure(yscrollcommand=qsb.set)
         self.qtree.grid(row=0, column=0, sticky="nsew")
-        btns = ttk.Frame(t)
-        btns.grid(row=1, column=0, sticky="ew", pady=6)
+        qsb.grid(row=0, column=1, sticky="ns")
+        self.queue_empty = EmptyState(self.qtree, top=34)  # under the column headings
+        btns = ttk.Frame(qb, style="Card.TFrame")
+        btns.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         self.start_btn = ttk.Button(btns, text="Start queue", style="Accent.TButton", command=self.start_queue)
         self.start_btn.pack(side="left")
-        self.cancel_btn = ttk.Button(btns, text="Cancel current", command=self.cancel_current, state="disabled")
+        self.cancel_btn = ttk.Button(btns, text="Cancel current", style="Card.TButton", command=self.cancel_current,
+                                     state="disabled")
         self.cancel_btn.pack(side="left", padx=6)
-        ttk.Button(btns, text="Remove selected", command=self.remove_selected).pack(side="left")
-        ttk.Button(btns, text="Clear finished", command=self.clear_finished).pack(side="left", padx=6)
-        ttk.Button(btns, text="Open folder", command=self.open_queue_folder).pack(side="right")
-        lf = ttk.LabelFrame(t, text="Log", padding=4)
-        lf.grid(row=2, column=0, sticky="nsew")
-        lf.columnconfigure(0, weight=1)
-        lf.rowconfigure(0, weight=1)
-        self.log_text = tk.Text(lf, height=8, bg=BG2, fg=FG, relief="flat", state="disabled",
-                                font=(MONO_FONT, 10), wrap="word")
+        ttk.Button(btns, text="Remove selected", style="Card.TButton", command=self.remove_selected).pack(side="left")
+        ttk.Button(btns, text="Clear finished", style="Card.TButton", command=self.clear_finished).pack(
+            side="left", padx=6)
+        ttk.Button(btns, text="Open folder", style="Card.TButton", command=self.open_queue_folder).pack(side="right")
+
+        # --- the log --- #
+        lc = Card(t, "Log")
+        lc.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
+        lc.rowconfigure(1, weight=1)
+        lb = lc.body
+        lb.rowconfigure(0, weight=1)
+        self.log_text = tk.Text(lb, height=8, bg=BG, fg=FG, relief="flat", state="disabled", padx=8, pady=6,
+                                font=(MONO_FONT, 10), wrap="word", highlightthickness=0)
         self.log_text.grid(row=0, column=0, sticky="nsew")
-        sb = ttk.Scrollbar(lf, orient="vertical", command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=sb.set)
-        sb.grid(row=0, column=1, sticky="ns")
+        lsb = ttk.Scrollbar(lb, orient="vertical", command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=lsb.set)
+        lsb.grid(row=0, column=1, sticky="ns")
+        for tag, colour in (("stamp", MUTED), ("muted", MUTED), ("err", ERR), ("warn", WARN), ("ok", OK)):
+            self.log_text.tag_configure(tag, foreground=colour)
+        lbtns = ttk.Frame(lb, style="Card.TFrame")
+        lbtns.grid(row=1, column=0, columnspan=2, sticky="e", pady=(8, 0))
+        ttk.Button(lbtns, text="Copy log", style="Card.TButton", command=self.copy_log).pack(side="left")
+        ttk.Button(lbtns, text="Clear log", style="Card.TButton", command=self.clear_log).pack(side="left", padx=(6, 0))
+        self.refresh_queue_summary()
+
+    def refresh_queue_summary(self):
+        """The one-line count above the list, and the message over it while the queue is empty."""
+        self.queue_summary_var.set(queue_summary([it["status"] for it in self.items]))
+        if self.items:
+            self.queue_empty.hide()
+        else:
+            self.queue_empty.show("Nothing in the queue yet",
+                                  "Set your cut points in the Plan tab and press «Add to queue».",
+                                  button=("Go to the Plan tab", lambda: self.notebook.select(self.tab_plan)))
 
     # ---------------------------- tools (yt-dlp / ffmpeg) ---------------------------- #
     def start_tools_setup(self, force: bool = False):
@@ -806,11 +921,47 @@ class App(PlanTabMixin, OptionsTabMixin):
         else:
             self.signin_bar.grid()
         self.search_btn.config(state="normal" if self.client else "disabled")
+        self.refresh_search_empty_states()
+
+    def refresh_search_empty_states(self):
+        """Show a friendly message over each list of the Search tab that has nothing in it (and only then)."""
+        # the VODs of the picked streamer
+        if self.sv_videos:
+            self.sv_empty.hide()
+        elif self.sv_loading:
+            self.sv_empty.show("Loading VODs…", "One moment.")
+        elif not self.client and self.sv_channel is None:
+            self.sv_empty.show("Sign in to browse VODs",
+                               "Use the «Sign in…» button above. Or paste a VOD link at the top "
+                               "and press «Get info»: that works without signing in.")
+        elif self.sv_channel is None:
+            self.sv_empty.show("Pick a streamer",
+                               "Search for a name above, or choose one from your recent streamers. "
+                               "You can also paste a VOD link at the top and press «Get info».")
+        else:
+            self.sv_empty.show(bmp(f"No {self.sv_type.get().lower()} found"),
+                               "Twitch deletes VODs after a while, and some streamers don't save them. "
+                               "Try another kind of video in the list above.")
+        # the search results
+        if self.sv_results:
+            self.ch_empty.hide()
+        elif self.sv_query:
+            self.ch_empty.show(bmp(f"No streamers found for «{self.sv_query}»"), "Check the spelling.")
+        else:
+            self.ch_empty.show("", "Search results show up here.")
+        # the recent streamers
+        if self.recent:
+            self.recent_empty.hide()
+        else:
+            self.recent_empty.show("", "Streamers you open show up here.")
+        self.clear_recent_btn.config(state="normal" if self.recent else "disabled")
 
     def refresh_recent(self):
         self.recent_tree.delete(*self.recent_tree.get_children())
         for i, c in enumerate(self.recent):
             self.recent_tree.insert("", "end", iid=str(i), values=(bmp(c["name"]),))
+        if hasattr(self, "sv_empty"):  # (not yet while the tab is being built)
+            self.refresh_search_empty_states()
 
     def add_recent(self, ch: dict):
         entry = {"id": ch["id"], "login": ch.get("login", ""), "name": ch.get("name") or ch.get("login", "")}
@@ -848,9 +999,11 @@ class App(PlanTabMixin, OptionsTabMixin):
     def on_search_ok(self, query: str, results: list[dict]):
         self.search_btn.config(state="normal" if self.client else "disabled")
         self.sv_results = results
+        self.sv_query = query
         self.ch_tree.delete(*self.ch_tree.get_children())
         for i, c in enumerate(results):
             self.ch_tree.insert("", "end", iid=str(i), values=(bmp(("● " if c["live"] else "") + c["name"]),))
+        self.refresh_search_empty_states()
         if not results:
             self.set_status(bmp(f"No streamers found for «{query}»."))
             return
@@ -898,6 +1051,8 @@ class App(PlanTabMixin, OptionsTabMixin):
         kind = VIDEO_KINDS.get(self.sv_type.get(), "archive")
         after = self.sv_cursor if more else None
         self.more_btn.config(state="disabled")
+        self.sv_loading = True
+        self.refresh_search_empty_states()
         self.sv_title.set(bmp(f"{ch['name']}: loading…"))
         client = self.client
 
@@ -918,6 +1073,7 @@ class App(PlanTabMixin, OptionsTabMixin):
     def on_videos_ok(self, gen: int, videos: list[dict], cursor: str | None):
         if gen != self.sv_gen or not self.sv_channel:
             return  # the user already picked something else
+        self.sv_loading = False
         start = len(self.sv_videos)
         for i, v in enumerate(videos):
             iid = str(start + i)
@@ -929,16 +1085,18 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.sv_cursor = cursor
         self.more_btn.config(state="normal" if cursor else "disabled")
         name = bmp(self.sv_channel["name"])
+        self.refresh_search_empty_states()
         if not self.sv_videos:
-            self.sv_title.set(bmp(f"{name}: no {self.sv_type.get().lower()} found. Twitch deletes VODs after a "
-                                  "while, and some streamers don't save them."))
+            self.sv_title.set(bmp(f"{name}: no {self.sv_type.get().lower()} found"))
         else:
-            self.sv_title.set(f"{name}: {len(self.sv_videos)} VOD(s)" + ("  ·  more available" if cursor else "")
-                              + "  ·  double-click one to use it")
+            n = len(self.sv_videos)
+            self.sv_title.set(f"{name}  ·  {n} VOD{'s' if n != 1 else ''}" + ("  ·  more available" if cursor else ""))
 
     def on_videos_err(self, gen: int, msg: str):
         if gen != self.sv_gen:
             return
+        self.sv_loading = False
+        self.refresh_search_empty_states()
         self.sv_title.set("Could not load the VODs.")
         self.set_status("Could not load the VODs.")
         if "sign in" in msg.lower():
@@ -1005,8 +1163,10 @@ class App(PlanTabMixin, OptionsTabMixin):
             self.set_status(f"Added to queue ({len(self.items)} item(s)).")
 
     def enqueue(self, job: Job, label: str, n_parts: int, strat: str):
-        iid = self.qtree.insert("", "end", values=(len(self.items) + 1, label, n_parts, strat, "queued"))
+        iid = self.qtree.insert("", "end", values=(len(self.items) + 1, label, n_parts, strat, status_label("queued")),
+                                tags=("queued",))
         self.items.append({"job": job, "iid": iid, "status": "queued"})
+        self.refresh_queue_summary()
         self.log(f"Queued: {label} ({n_parts} parts, {strat})")
 
     def download_clips(self):
@@ -1044,11 +1204,14 @@ class App(PlanTabMixin, OptionsTabMixin):
                             "Open «Queue & log» and press «Start queue».")
 
     def set_item_status(self, iid: str, status: str):
+        word = status_word(status)
         for it in self.items:
             if it["iid"] == iid:
-                it["status"] = status.split()[0].rstrip("…:")  # "done (3 files)" -> "done"
+                it["status"] = word  # "done (3 files)" -> "done"
         if self.qtree.exists(iid):
-            self.qtree.set(iid, "status", status)
+            self.qtree.set(iid, "status", status_label(status))
+            self.qtree.item(iid, tags=(word,) if word in STATUS_COLOURS else ())
+        self.refresh_queue_summary()
 
     def start_queue(self):
         if self.worker and self.worker.is_alive():
@@ -1134,12 +1297,14 @@ class App(PlanTabMixin, OptionsTabMixin):
             return
         self.items = [i for i in self.items if i["iid"] != sel[0]]
         self.qtree.delete(sel[0])
+        self.refresh_queue_summary()
 
     def clear_finished(self):
         for it in list(self.items):
-            if it["status"] in ("done", "failed", "cancelled"):
+            if it["status"] in FINISHED:
                 self.items.remove(it)
                 self.qtree.delete(it["iid"])
+        self.refresh_queue_summary()
 
     # ---------------------------- events from threads ---------------------------- #
     def set_progress(self, frac: float, text: str):

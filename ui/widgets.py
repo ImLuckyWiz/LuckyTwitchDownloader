@@ -1,5 +1,6 @@
 """Small reusable widgets for the refined UI: ``Toggle`` (switch), ``Tooltip``, ``Card``, ``SettingRow``,
-``SideNav`` (sidebar), ``Collapsible`` (Advanced area), ``TokenChips`` and ``ScrollFrame``.
+``SideNav`` (sidebar), ``Collapsible`` (Advanced area), ``TokenChips``, ``ScrollFrame``, ``ScrollPage`` (a scroll page with
+a fixed footer bar) and ``EmptyState`` (a message over an empty list).
 
 All of them are plain Tk / ttk with the palette of ``ui.common``; Pillow is used (when present) only to
 draw the switch smoothly.
@@ -103,14 +104,19 @@ class Toggle(tk.Canvas):
                 pass
             if self._anim:
                 try:
-                    self.after_cancel(self._anim)
+                    self._clock().after_cancel(self._anim)
                 except Exception:  # noqa: BLE001
                     pass
+
+    def _clock(self):
+        """The window that owns the animation timer. Using the toplevel (not this widget) means destroying the switch
+        never has to delete a timer command somebody else already cancelled (Tk's own 'after cancel' does that)."""
+        return self.winfo_toplevel()
 
     def _animate(self, target: float) -> None:
         if self._anim:
             try:
-                self.after_cancel(self._anim)
+                self._clock().after_cancel(self._anim)
             except Exception:  # noqa: BLE001
                 pass
             self._anim = None
@@ -122,7 +128,7 @@ class Toggle(tk.Canvas):
                 self._anim = None
             else:
                 self._pos += step if target > self._pos else -step
-                self._anim = self.after(14, tick)
+                self._anim = self._clock().after(14, tick)
             self._draw()
 
         tick()
@@ -369,6 +375,41 @@ class ScrollFrame(ttk.Frame):
         self.canvas.yview_scroll(units, "units")
 
 
+class ScrollPage(ttk.Frame):
+    """A ``ScrollFrame`` with a fixed bar underneath that never scrolls away.
+
+    Content goes in ``.body`` (as with ScrollFrame); the always-visible bar is ``.footer``. ``refit()`` works too.
+    """
+
+    def __init__(self, parent, padding: int = 8):
+        super().__init__(parent)
+        self.footer_line = tk.Frame(self, bg=BORDER, height=1)
+        self.footer = ttk.Frame(self, padding=(12, 10, 12, 10))
+        self.footer.pack(side="bottom", fill="x")
+        self.footer_line.pack(side="bottom", fill="x")
+        self.scroll = ScrollFrame(self, padding=padding)
+        self.scroll.pack(side="top", fill="both", expand=True)
+        self.body = self.scroll.body
+        self.canvas = self.scroll.canvas
+        # Tab follows the stacking order: the bar was created first, so lift it to be the LAST stop (after the page)
+        self.footer_line.lift()
+        self.footer.lift()
+
+    def refit(self) -> None:
+        self.scroll.refit()
+
+
+def wrap_to(label: ttk.Label, container, margin: int = 0, minimum: int = 200) -> None:
+    """Keep ``label`` wrapped to the current width of ``container`` (minus ``margin``), so hint text follows resizes."""
+
+    def fit(event=None):
+        w = (event.width if event is not None else container.winfo_width()) - margin
+        if w > 1:
+            label.configure(wraplength=max(minimum, w))
+
+    container.bind("<Configure>", fit, add="+")
+
+
 # --------------------------------------------------------------------------- #
 # Sidebar navigation (one section visible at a time)
 # --------------------------------------------------------------------------- #
@@ -476,3 +517,44 @@ class TokenChips(ttk.Frame):
     def set_enabled(self, on: bool) -> None:
         for b in self.chips:
             b.state(["!disabled"] if on else ["disabled"])
+
+
+# --------------------------------------------------------------------------- #
+# Empty state: a friendly message laid over an empty list
+# --------------------------------------------------------------------------- #
+class EmptyState(tk.Frame):
+    """A message centred over a ``Treeview`` (or any list) while it has nothing to show.
+
+    ``show(title, text, button=("Sign in…", command))`` fills and shows it, ``hide()`` removes it. It sits on top of
+    the list, below ``top`` pixels (so the column headings stay visible). Use ``compact=True`` for narrow lists.
+    """
+
+    def __init__(self, target, top: int = 0, compact: bool = False):
+        super().__init__(target.master, bg=BG2, borderwidth=0, highlightthickness=0)
+        self._target, self._top = target, top
+        self._wrap = 190 if compact else 380
+        self._inner = tk.Frame(self, bg=BG2)
+        self._inner.place(relx=0.5, rely=0.42, anchor="center")
+        self.shown = False
+
+    def show(self, title: str = "", text: str = "", button: tuple[str, object] | None = None) -> None:
+        for w in self._inner.winfo_children():
+            w.destroy()
+        if title:
+            tk.Label(self._inner, text=title, bg=BG2, fg="#e6e6e6", font=(UI_FONT, 11, "bold"),
+                     wraplength=self._wrap, justify="center").pack()
+        if text:
+            tk.Label(self._inner, text=text, bg=BG2, fg=MUTED, font=(UI_FONT, 10), wraplength=self._wrap,
+                     justify="center").pack(pady=(4 if title else 0, 0))
+        if button:
+            label, command = button
+            ttk.Button(self._inner, text=label, style="Accent.TButton", command=command).pack(pady=(12, 0))
+        if not self.shown:
+            self.place(in_=self._target, x=0, y=self._top, relwidth=1, relheight=1, height=-self._top)
+            self.shown = True
+        self.lift()
+
+    def hide(self) -> None:
+        if self.shown:
+            self.place_forget()
+            self.shown = False

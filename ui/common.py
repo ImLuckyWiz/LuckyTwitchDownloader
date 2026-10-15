@@ -21,6 +21,7 @@ FG = "#e6e6e6"
 MUTED = "#9a9da4"
 ERR = "#ff6b6b"
 OK = "#6bd49a"
+WARN = "#e5b567"   # cancelled jobs, warnings in the log
 ACCENT = "#9146ff"
 # extra tokens used by the refined theme (same family as the colours above)
 BORDER = "#35373c"        # hairlines around cards and fields

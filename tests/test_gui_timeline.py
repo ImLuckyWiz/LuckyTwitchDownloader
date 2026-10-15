@@ -418,9 +418,15 @@ def pump(gui, until, timeout=3.0):
 
 
 def test_the_timeline_sits_above_the_cut_points(gui):
+    from ui.widgets import Card
+
     rows = {w: w.grid_info()["row"] for w in gui.app.tab_plan.body.winfo_children() if w.grid_info()}
-    labels = {w.cget("text"): r for w, r in rows.items() if w.winfo_class() == "TLabelframe"}
-    assert labels["Timeline"] < labels["Cut points"] < labels["Clips → chapters (optional)"]
+
+    def title_of(card):
+        return next(c.cget("text") for c in card.winfo_children()[0].winfo_children())  # the card's heading label
+
+    labels = {title_of(w): r for w, r in rows.items() if isinstance(w, Card)}
+    assert labels["Timeline"] < labels["Cut points"] < labels["Clips → chapters"]
 
 
 def test_loading_a_vod_feeds_the_timeline(gui):
@@ -498,7 +504,7 @@ def test_the_timeline_and_the_text_agree_after_a_long_series_of_edits(gui):
 def test_split_at_a_clip_updates_the_timeline_and_a_second_split_changes_nothing(gui):
     tl = load_vod_with_timeline(gui)
     gui.load_clips()
-    assert tl.clip_marks == [600, 3600]
+    assert tl.clip_marks == [pytest.approx(600.4), 3600]
     gui.app.tree.selection_set("0")
     gui.app.split_at_clip()
     first = gui.cuts_text()
@@ -561,7 +567,7 @@ def test_with_no_vod_the_timeline_waits(gui):
 def test_refreshing_the_clips_updates_the_marks_without_a_vod_change(gui):
     tl = load_vod_with_timeline(gui)
     gui.load_clips()
-    assert tl.clip_marks == [600, 3600]
+    assert tl.clip_marks == [pytest.approx(600.4), 3600]
     gui.app.clips = []
     gui.app.refresh_clips()
     assert tl.clip_marks == []

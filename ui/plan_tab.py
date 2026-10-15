@@ -32,6 +32,7 @@ from luckytwitch_engine import (
 from ui import timeline as timeline_module
 from ui.common import BG, BG2, ERR, FG, MONO_FONT, MUTED, OK, UI_FONT, bmp
 from ui.timeline import Timeline
+from ui.widgets import Card, Toggle, wrap_to
 
 
 class PlanTabMixin:
@@ -41,31 +42,36 @@ class PlanTabMixin:
         t.rowconfigure(2, weight=1)
 
         # --- timeline --- #
-        tlf = ttk.LabelFrame(t, text="Timeline", padding=8)
-        tlf.grid(row=0, column=0, sticky="ew")
+        tlc = Card(t, "Timeline")  # the strip explains itself in its own hint line
+        tlc.grid(row=0, column=0, sticky="ew")
+        well = tk.Frame(tlc.body, bg=BG, padx=8, pady=8)  # the timeline is drawn on the page colour: an inset well
+        well.grid(row=0, column=0, sticky="ew")
         self._timeline_src = None  # the SourceInfo the timeline is showing (see sync_timeline)
-        self.timeline = Timeline(tlf, on_edit=self.on_timeline_edit)
+        self.timeline = Timeline(well, on_edit=self.on_timeline_edit)
         self.timeline.pack(fill="x")
 
         # --- cut points --- #
-        cutf = ttk.LabelFrame(t, text="Cut points", padding=8)
-        cutf.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        cutf.columnconfigure(0, weight=1)
-        self.cuts = tk.Text(cutf, height=3, bg=BG2, fg=FG, insertbackground=FG, relief="flat",
-                            font=(MONO_FONT, 11), padx=6, pady=4, wrap="word")
+        cutc = Card(t, "Cut points", "")
+        cutc.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        cb = cutc.body
+        self.cuts = tk.Text(cb, height=3, bg=BG, fg=FG, insertbackground=FG, relief="flat",
+                            font=(MONO_FONT, 11), padx=8, pady=6, wrap="word")
         self.cuts.grid(row=0, column=0, sticky="ew")
         self.cuts.bind("<KeyRelease>", self.update_preview)
-        ttk.Label(
-            cutf,
+        hint = ttk.Label(
+            cb,
             text="Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
                  "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end",
-            style="Muted.TLabel", wraplength=940, justify="left",
-        ).grid(row=1, column=0, sticky="w", pady=(4, 4))
-        pf = ttk.Frame(cutf)
+            style="CardMuted.TLabel", justify="left",
+        )
+        hint.grid(row=1, column=0, sticky="w", pady=(6, 8))
+        wrap_to(hint, cb, margin=40)  # the card body has 16 px of padding on each side
+        pf = ttk.Frame(cb, style="Card.TFrame")
         pf.grid(row=2, column=0, sticky="ew")
         pf.columnconfigure(0, weight=1)
-        self.preview = tk.Text(pf, height=5, bg=BG, fg=MUTED, relief="flat", state="disabled",
-                               font=(UI_FONT, 10), wrap="word", cursor="arrow")
+        self.preview = tk.Text(pf, height=4, bg=BG2, fg=MUTED, relief="flat", state="disabled",
+                               font=(UI_FONT, 10), wrap="word", cursor="arrow", padx=2, pady=2,
+                               highlightthickness=0)
         self.preview.grid(row=0, column=0, sticky="ew")
         psb = ttk.Scrollbar(pf, orient="vertical", command=self.preview.yview)
         self.preview.configure(yscrollcommand=psb.set)
@@ -75,57 +81,77 @@ class PlanTabMixin:
         self.preview.tag_configure("muted", foreground=MUTED)
 
         # --- clips -> chapters --- #
-        chf = ttk.LabelFrame(t, text="Clips → chapters (optional)", padding=8)
-        chf.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
-        chf.columnconfigure(0, weight=1)
-        chf.rowconfigure(1, weight=1)
+        chc = Card(t, "Clips → chapters", "Optional: put the VOD's clips in the files as chapters.")
+        chc.grid(row=2, column=0, sticky="nsew", pady=(10, 0))
+        chb = chc.body
+        chc.rowconfigure(1, weight=1)  # the body (row 1, under the title) takes the spare height
+        chb.rowconfigure(2, weight=1)
 
-        frow = ttk.Frame(chf)
-        frow.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
-        ttk.Checkbutton(frow, text="Add clips as chapters", variable=self.var("chapters"),
-                        command=self.refresh_clips).pack(side="left")
+        row = chc.add_row(
+            "Add clips as chapters", "Each clip that passes the filter becomes a chapter.",
+            info="Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video "
+                 "files; the Premiere Pro outputs (Options → Premiere Pro) have their own switches.")
+        Toggle(row.control, self.var("chapters"), command=self.refresh_clips, bg=BG2).pack()
 
-        def num_field(label, name, width=6):
-            ttk.Label(frow, text=label).pack(side="left", padx=(14, 4))
+        frow = ttk.Frame(chb, style="Card.TFrame")
+        frow.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+
+        def num_field(label, name, width=6, first=False):
+            ttk.Label(frow, text=label, style="CardMuted.TLabel").pack(side="left", padx=(0 if first else 14, 6))
             sp = ttk.Spinbox(frow, textvariable=self.var(name), from_=0, to=1_000_000, width=width,
-                             command=self.refresh_clips)
+                             command=self.refresh_clips, style="Card.TSpinbox")
             sp.pack(side="left")
             sp.bind("<KeyRelease>", lambda e: self.refresh_clips())
 
-        num_field("Min views", "min_views")
+        num_field("Min views", "min_views", first=True)
         num_field("Min duration (s)", "min_duration", 5)
         num_field("Top N by views (0 = all)", "top_n", 5)
         num_field("Lead-in (s)", "pad_before", 4)
 
         cols = ("at", "views", "dur", "title", "creator", "chap")
-        self.tree = ttk.Treeview(chf, columns=cols, show="headings", selectmode="extended", height=6)
+        tf = ttk.Frame(chb, style="Card.TFrame")
+        tf.grid(row=2, column=0, sticky="nsew")
+        tf.columnconfigure(0, weight=1)
+        tf.rowconfigure(0, weight=1)
+        self.tree = ttk.Treeview(tf, columns=cols, show="headings", selectmode="extended", height=6)
         for col, text, width, anchor in [
             ("at", "At", 80, "center"), ("views", "Views", 70, "center"), ("dur", "Dur", 60, "center"),
-            ("title", "Title", 380, "w"), ("creator", "Creator", 140, "w"), ("chap", "Chapter", 70, "center"),
+            ("title", "Title", 380, "w"), ("creator", "Creator", 140, "w"), ("chap", "Chapter", 84, "center"),
         ]:
-            self.tree.heading(col, text=text)
-            self.tree.column(col, width=width, anchor=anchor, stretch=(col == "title"))
-        sb = ttk.Scrollbar(chf, orient="vertical", command=self.tree.yview)
+            self.tree.heading(col, text=text, anchor=anchor)  # the heading lines up with its column
+            self.tree.column(col, width=width, minwidth=width if col != "title" else 120, anchor=anchor,
+                             stretch=(col == "title"))
+        sb = ttk.Scrollbar(tf, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
-        self.tree.grid(row=1, column=0, sticky="nsew")
-        sb.grid(row=1, column=1, sticky="ns")
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        sb.grid(row=0, column=1, sticky="ns")
         self.tree.bind("<Double-1>", self.open_clip)
         self.clips_lbl = tk.StringVar()
-        brow = ttk.Frame(chf)
-        brow.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0))
-        ttk.Button(brow, text="Split at selected clip", command=self.split_at_clip).pack(side="left")
-        ttk.Button(brow, text="Download only selected clip", command=self.download_clips).pack(side="left", padx=(6, 0))
-        ttk.Label(brow, textvariable=self.clips_lbl, style="Muted.TLabel").pack(side="left", padx=10)
+        lbl = ttk.Label(chb, textvariable=self.clips_lbl, style="CardMuted.TLabel", justify="left")
+        lbl.grid(row=3, column=0, sticky="w", pady=(8, 0))
+        wrap_to(lbl, chb, margin=40)  # long messages wrap instead of running off the card
+        brow = ttk.Frame(chb, style="Card.TFrame")
+        brow.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        ttk.Button(brow, text="Split at selected clip", style="Card.TButton", command=self.split_at_clip).pack(side="left")
+        ttk.Button(brow, text="Download only selected clip", style="Card.TButton",
+                   command=self.download_clips).pack(side="left", padx=(6, 0))
 
-        # --- add buttons --- #
-        act = ttk.Frame(t)
-        act.grid(row=3, column=0, sticky="e", pady=(8, 0))
-        ttk.Button(act, text="Add to queue", command=lambda: self.add_to_queue(False)).pack(side="left")
-        ttk.Button(act, text="Add & start", command=lambda: self.add_to_queue(True)).pack(side="left", padx=(6, 0))
+        # --- the bar that stays visible: summary + add buttons --- #
+        act = self.tab_plan.footer
+        self.plan_summary = tk.StringVar()
+        self.plan_summary_lbl = ttk.Label(act, textvariable=self.plan_summary, style="Muted.TLabel")
+        self.plan_summary_lbl.pack(side="left")
+        start_btn = ttk.Button(act, text="Add & start", style="Accent.TButton", command=lambda: self.add_to_queue(True))
+        start_btn.pack(side="right")
+        queue_btn = ttk.Button(act, text="Add to queue", command=lambda: self.add_to_queue(False))
+        queue_btn.pack(side="right", padx=(0, 8))
+        queue_btn.lower(start_btn)  # Tab goes left to right: «Add to queue», then «Add & start» (packing order is not affected)
 
-    def set_preview(self, text: str, kind: str):
-        """kind: ok | err | muted"""
+    def set_preview(self, text: str, kind: str, summary: str = ""):
+        """kind: ok | err | muted. ``summary`` is the short line in the bar at the bottom of the tab."""
         self.preview_kind = kind
+        self.plan_summary.set(summary)
+        self.plan_summary_lbl.configure(style="Muted.TLabel", foreground=ERR if kind == "err" else MUTED)
         self.preview.config(state="normal")
         self.preview.delete("1.0", "end")
         self.preview.insert("1.0", text, kind)
@@ -145,14 +171,16 @@ class PlanTabMixin:
         try:
             plan = make_plan(text, dur, opts.strategy, opts.full_threshold)
         except EngineError as e:
-            self.set_preview(f"⚠ {e}", "err")
+            self.set_preview(f"⚠ {e}", "err", "Fix the cut points to add this VOD")
             return
         lines = [f"Part {p.index}:  {fmt_hms(p.start)} → {fmt_hms(p.end)}   ({fmt_hms(p.duration)})" for p in plan.parts]
         if plan.duration:
             how = ("download the full VOD once, then split it" if plan.strategy == "full"
                    else "download only these parts")
             lines.append(f"→ {how}   (parts cover {plan.coverage * 100:.0f}% of the VOD)")
-        self.set_preview("\n".join(lines), "ok")
+        n = len(plan.parts)
+        self.set_preview("\n".join(lines), "ok",
+                         f"{n} part{'s' if n != 1 else ''} · {fmt_hms(sum(p.duration for p in plan.parts))} in total")
 
     def refresh_clips(self, *_):
         self.tree.delete(*self.tree.get_children())

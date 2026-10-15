@@ -135,8 +135,9 @@ def test_booleans_are_switches_not_checkboxes(gui):
 
 def test_the_chapters_switch_stays_in_the_plan_tab(gui):
     app = gui.app
-    plan_vars = {str(w.cget("variable")) for w in walk(app.tab_plan) if w.winfo_class() == "TCheckbutton"}
+    plan_vars = {str(w.variable) for w in walk(app.tab_plan) if isinstance(w, Toggle)}
     assert str(app.vars["chapters"]) in plan_vars
+    assert not [w for w in walk(app.tab_plan) if w.winfo_class() == "TCheckbutton"]  # no checkbox left in Plan
 
 
 # --------------------------------------------------------------------------- the approved split

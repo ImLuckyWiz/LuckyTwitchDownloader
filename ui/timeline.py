@@ -177,7 +177,11 @@ class Timeline(ttk.Frame):
         self.hbar = ttk.Scrollbar(self, orient="horizontal", command=self._hscroll)
         self.hbar.pack(fill="x", pady=(2, 0))
         # the hint gets a line of its own under the strip: next to the buttons it would be cut off
-        ttk.Label(self, textvariable=self.hint, style="Muted.TLabel").pack(fill="x", pady=(4, 0))
+        hint_lbl = ttk.Label(self, textvariable=self.hint, style="Muted.TLabel", justify="left")
+        hint_lbl.pack(fill="x", pady=(4, 0))
+        # the hint wraps to the width of the strip (at the minimum window width it is longer than one line)
+        self.bind("<Configure>", lambda e: hint_lbl.configure(wraplength=max(200, e.width - 4)) if e.widget is self else None,
+                  add="+")
 
         c = self.canvas
         c.bind("<Configure>", lambda e: self.invalidate())
