@@ -92,6 +92,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare release notes for this tag
+        shell: bash
+        run: |
+          awk -v tag="$GITHUB_REF_NAME" '
+            { sub(/\r$/, "") }
+            $0 == "## " tag { found=1; print; next }
+            found && /^## / { exit }
+            found { print }
+            END { if (!found) exit 1 }
+          ' RELEASE_NOTES.md > RELEASE_NOTES_FOR_TAG.md
       - uses: actions/download-artifact@v4
         with:
           pattern: LuckyTwitch-*
@@ -104,4 +114,4 @@ jobs:
             release/*.dmg
             release/*.zip
             release/*.ccx
-          body_path: RELEASE_NOTES.md
+          body_path: RELEASE_NOTES_FOR_TAG.md
