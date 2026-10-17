@@ -1,4 +1,4 @@
-## v1.12.0
+## v1.13.0
 
 Muted audio (the parts Twitch silenced), feedback while «Get info» works, and a second Premiere Pro panel that does the whole edit in one button. Nothing was removed; the new option is off by default and the existing Premiere plugin is unchanged.
 
@@ -23,6 +23,20 @@ Muted audio (the parts Twitch silenced), feedback while «Get info» works, and 
 - **Which one?** The CEP panel needs a fresh sequence with the video alone on V1/A1 and does not make a backup copy (save the project first); in return it needs no empty tracks above and does everything in one go. The UXP plugin accepts any timeline, also one you already trimmed, and installs with a double-click. The comparison is in the CEP README.
 - **Checked on:** Premiere Pro 26.5 on Windows. The macOS installer follows the same rules but has not been tried on a Mac yet.
 - **Build:** the release workflow tests and packages the CEP panel in its own job (`plugin-cep`), and fails if its `markers-core.js` ever differs from the UXP plugin's.
+
+## v1.12.0
+
+This release updates the Premiere Pro plugin (0.5.0). The downloader itself is unchanged; existing downloads, settings and marker exports continue to work as before.
+
+### Premiere Pro plugin
+
+- **Cut at clips** and **Cut at chapters** add timeline cuts at clip markers or game/category changes from a `.markers.json` file.
+- Cuts are mapped from the video's source time onto the timeline, so they work with footage that has already been trimmed or cut. The plugin targets the matching video, ignores points outside the played source range, and avoids adding cuts where one already exists.
+- Choose how much footage to keep before and after clips, merge nearby clips, and make a backup sequence before cutting. The dry-run cut plan now matches the actual cut plan.
+- A more compact panel shows the loaded marker file and the portion of the video present on the timeline, with live counts for the available cuts.
+- Existing marker import and `.markers.xml` export remain available.
+
+**Before cutting:** leave an empty video track and an empty audio track above the footage. Cutting uses multiple Premiere edits and has not yet been verified on a real Premiere project with multiple clips in one run. Keep the backup enabled and try it on a copy of your project first.
 
 ## v1.11.0
 
