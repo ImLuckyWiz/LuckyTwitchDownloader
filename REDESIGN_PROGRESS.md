@@ -72,7 +72,7 @@ Edited: `ui/widgets.py` (new `SideNav`, `Collapsible`, `TokenChips`; `ScrollFram
 - Queue: status colours per job, cleaner log.
 - Final pass: keyboard focus order, resize behaviour, full test run, release notes entry.
 
-## Phase 4: muted audio + Get info feedback  ✅ done, waiting for your check (v1.12.0)
+## Phase 4: muted audio + Get info feedback  ✅ done, waiting for your check (v1.13.0)
 
 Not part of the redesign, but done in the same pass. Nothing was removed; the new option is off by default.
 
@@ -84,7 +84,7 @@ Not part of the redesign, but done in the same pass. Nothing was removed; the ne
 | **Timeline** | Thin red line along the bottom of the game bars (at least 2 px wide at any zoom), summary next to the zoom buttons, hover note, **Show muted** switch, cuts snap to muted edges while it is on. |
 | **Parts list** | Each part shows `· H:MM:SS muted`; the bottom line adds up the total. |
 | **Premiere export** | Options → Premiere Pro → **Muted audio** (needs the plugin file option on). Writes `kind: "muted"` markers into the `.markers.json`, in part time, cut at the part's edges. **`version` stays 1** so the current plugin still opens the files and skips what it does not know. |
-| **Docs / tests** | `docs/markers-format.md` (new "Muted markers" section, including what the plugin team has to do), `README.md`, `RELEASE_NOTES.md` (v1.12.0), `tests/test_muted_audio.py` (40 tests), fixtures `tests/fixtures/markers_sample_muted.json` and `playlist_muted_excerpt.m3u8` (the start of your real VOD's playlist). |
+| **Docs / tests** | `docs/markers-format.md` (new "Muted markers" section, including what the plugin team has to do), `README.md`, `RELEASE_NOTES.md` (v1.13.0), `tests/test_muted_audio.py` (40 tests), fixtures `tests/fixtures/markers_sample_muted.json` and `playlist_muted_excerpt.m3u8` (the start of your real VOD's playlist). |
 
 ### Checked against a real VOD
 Your VOD 2880250748 (its real playlist, 3,438 segments): 684 muted segments → 25 stretches, 1:54:00 of 9:33:00, the first one starting at exactly 1:27:00 as you said.
