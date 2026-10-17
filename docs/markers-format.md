@@ -1,8 +1,8 @@
 # `.markers.json` format (version 1)
 
-Written by LuckyTwitch Downloader next to each part when **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin** is on. Read by the plugin in [`premiere-plugin/`](../premiere-plugin). This file is the contract between the two, so a change here means a change on both sides.
+Written by LuckyTwitch Downloader next to each part when **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin** is on. Read by both Premiere Pro panels: the UXP plugin in [`premiere-plugin/`](../premiere-plugin) and the CEP panel in [`premiere-plugin-cep/`](../premiere-plugin-cep) (they share one `markers-core.js`, byte for byte). This file is the contract between the app and the panels, so a change here means a change on both sides.
 
-The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (it must be exactly what the app writes) and by the plugin's tests (it must be readable), so the two cannot drift apart without a test failing. Regenerate it with `python tests/test_premiere_plugin_json.py`.
+The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (it must be exactly what the app writes) and by both panels' tests (it must be readable), so the two cannot drift apart without a test failing. Regenerate it with `python tests/test_premiere_plugin_json.py`.
 
 ```json
 {
@@ -31,12 +31,27 @@ The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (
 | `fps` | Frame rate read from the part with ffprobe (30 if it could not be read). |
 | `part.start` / `part.end` | Where the part sits in the original VOD, in seconds. Useful to line up the chat file, whose times count from the start of the VOD. |
 | `source` | The VOD the part came from (omitted if unknown). |
-| `markers[].kind` | `"game"` (a game / category stretch) or `"clip"` (a Twitch clip). |
+| `markers[].kind` | `"game"` (a game / category stretch), `"clip"` (a Twitch clip) or `"muted"` (a stretch Twitch silenced, see below). A plugin that does not know a kind must skip it, not fail. |
 | `markers[].start` / `end` | Seconds **from the start of the part** (not the VOD). `end > start` for a range; a marker can also be a single point. |
-| `markers[].name` | Clip: the title built from the chapter title template. Game: the game's name, with no `GAME:` prefix (the plugin adds it if asked). |
-| `markers[].comment` | Text for the marker's comment field. |
+| `markers[].name` | Clip: the title built from the chapter title template. Game: the game's name, with no `GAME:` prefix (the plugin adds it if asked). Muted: always `"Muted audio"`. |
+| `markers[].comment` | Text for the marker's comment field. Muted: `"Silenced by Twitch (usually copyrighted audio)"`. |
 | `markers[].views` | Clips only. Total views of the clip (the largest, if several clips were merged into one chapter). |
 | `markers[].game` | Games only. The game's name. |
 | `markers[].clips` | Clips only. Every Twitch clip behind the marker (several when overlapping clips were merged). |
 
 Markers are sorted by start time (game markers first when they start together). Colors are **not** in the file on purpose: the plugin chooses them from `kind` and `views`, so you can change the scheme without re-downloading.
+
+## Muted markers (`kind: "muted"`)
+
+Twitch silences copyrighted audio in a VOD, in whole HLS segments (10 s each; in practice usually 3-minute blocks). LuckyTwitch reads which segments are silenced from the VOD's playlist (a silenced segment is named `<n>-muted.<ext>`, e.g. `522-muted.mp4`) when you press **Get info**, merges touching segments into one stretch, and writes each stretch that overlaps a part as one marker. They are written only when **Options → Premiere Pro → Muted audio** is on (it needs the plugin file option on too).
+
+```json
+{ "kind": "muted", "name": "Muted audio", "start": 12.0, "end": 30.0, "comment": "Silenced by Twitch (usually copyrighted audio)" }
+```
+
+- `start` / `end` are seconds from the start of the part, like every other marker, and are cut at the part's edges (a stretch that begins before the part starts at `0`).
+- A muted marker has no `views`, `game` or `clips`.
+- **`version` stays `1`.** The plugin refuses any file with a higher version, so bumping it would stop the current plugin from opening these files at all. The plugin as it is today skips markers of a kind it does not know and reports them in its "skipped" count, so files with muted markers open fine and simply show nothing for them.
+- The sample is `tests/fixtures/markers_sample_muted.json` (checked by the Python tests: it must be exactly what the app writes). `markers_sample.json`, the one the plugin's own tests read, is deliberately unchanged and has no muted marker.
+
+**For the plugin (not done here):** accept `"muted"` as a marker kind in the validation (`markers-core.js`), add an import switch and a color (red suggested; Premiere's marker colors are the eight presets), and name the marker from `name`. Nothing else in the file needs to change.

@@ -86,9 +86,47 @@ jobs:
             dist/LuckyTwitch-Premiere-Plugin.ccx
             dist/LuckyTwitch-Premiere-Plugin.zip
 
+  plugin-cep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check and test the Premiere CEP panel
+        working-directory: premiere-plugin-cep
+        run: |
+          npm run check
+          npm test
+      - name: Package the Premiere CEP panel
+        run: |
+          mkdir -p dist
+          cd premiere-plugin-cep
+          # A CEP panel is a folder, not a single installable file like a .ccx: the zip holds the panel, its shared code and the install scripts
+          # (they copy it into Premiere's CEP extensions folder and switch on "allow unsigned panels"). The tests above already checked that
+          # src/markers-core.js is exactly the UXP plugin's file.
+          chmod +x install-mac.command
+          zip -X -r ../dist/LuckyTwitch-Premiere-Plugin-CEP.zip README.md install.bat install.ps1 install-mac.command cep-panel src -x "*.DS_Store"
+      - name: Check the packaged CEP panel
+        run: |
+          rm -rf /tmp/cep-check && mkdir /tmp/cep-check
+          unzip -q dist/LuckyTwitch-Premiere-Plugin-CEP.zip -d /tmp/cep-check
+          cd /tmp/cep-check
+          for f in README.md install.bat install.ps1 install-mac.command cep-panel/CSXS/manifest.xml cep-panel/index.html cep-panel/.debug \
+                   cep-panel/js/runner.js cep-panel/js/ui.js cep-panel/jsx/host.jsx src/markers-core.js src/guard.js src/timecode.js src/progress.js; do
+            test -s "$f" || { echo "::error::missing or empty in the CEP zip: $f"; exit 1; }
+          done
+          test -x install-mac.command || { echo "::error::install-mac.command lost its executable bit"; exit 1; }
+          for f in src/*.js cep-panel/js/*.js; do node --check "$f"; done
+          cmp src/markers-core.js "$GITHUB_WORKSPACE/premiere-plugin/src/markers-core.js"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LuckyTwitch-plugin-cep
+          path: dist/LuckyTwitch-Premiere-Plugin-CEP.zip
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, plugin]
+    needs: [build, plugin, plugin-cep]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

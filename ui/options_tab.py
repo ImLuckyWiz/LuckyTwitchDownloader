@@ -276,10 +276,17 @@ class OptionsTabMixin:
                                 "It works even if chapters are off.")
         self._switch(row, "premiere_plugin", command=self.refresh_clips)
 
-        row = card.add_row("Game / category changes", "Also marks every time the game changes.", divider=False,
+        row = card.add_row("Game / category changes", "Also marks every time the game changes.",
                            info="Adds markers named «GAME: ...» to the .markers.xml and as game markers in the "
                                 ".markers.json. Works for full VODs and for parts, even if chapters are off.")
         self._switch(row, "game_markers")
+
+        row = card.add_row("Muted audio", "Also marks the stretches Twitch silenced.", divider=False,
+                           info="Twitch mutes copyrighted audio in a VOD. Those stretches are added to the "
+                                ".markers.json as «muted» markers (the plugin decides the color), so you can see "
+                                "them in Premiere. It needs the plugin file above to be on. The same stretches "
+                                "show in red on the Plan tab's timeline.")
+        self._switch(row, "muted_markers")
 
         adv = self._advanced(card, "plain markers and clip list")
         row = adv.add_row("Plain Premiere markers", "Saves a .markers.xml you can import without the plugin.",

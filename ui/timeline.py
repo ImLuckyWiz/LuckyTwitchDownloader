@@ -4,7 +4,8 @@ Timeline: the whole VOD on one strip, to see where the games change and to place
 Rows, top to bottom:
     ruler    time marks (green triangles = clips). Drag to move along the VOD.
     games    one bar per game / category the streamer was in. Double-click one to make it its own part
-             (Shift + double-click: keep only that game).
+             (Shift + double-click: keep only that game). A thin red line along its bottom edge marks the
+             stretches Twitch silenced (muted audio); it can be switched off with the «Show muted» switch.
     thumbs   preview frames of the VOD. Click to cut there, drag a cut line to move it.
     parts    the parts that will be downloaded (purple); skipped sections are dark. Click a part to skip
              it, click a skipped section to bring it back.
@@ -12,7 +13,7 @@ Right-click a cut line (between two touching parts) to remove it. Mouse wheel = 
 scroll bar = move. "Undo" (or Ctrl+Z) takes back the last timeline edit.
 
 The widget knows nothing about the rest of the app. The owner feeds it with set_source() / set_frames() /
-set_ranges() / set_clip_marks() and gets every edit back through `on_edit(ranges)`; the cut text is
+set_ranges() / set_clip_marks() / set_muted() and gets every edit back through `on_edit(ranges)`; the cut text is
 rebuilt from those ranges by the engine (see "Editing the parts" in luckytwitch_engine.py).
 """
 
@@ -41,6 +42,7 @@ from luckytwitch_engine import (
     toggle_part,
 )
 from ui.common import ACCENT, BG, BG2, BG3, ERR, FG, MUTED, OK, UI_FONT
+from ui.widgets import Toggle
 
 try:  # thumbnails need Pillow; everything else works without it
     from PIL import Image, ImageEnhance, ImageTk
@@ -63,6 +65,8 @@ PREVIEW_MAX_W = 160
 GAME_COLOURS = ["#3b5b8c", "#8c3b6e", "#3b8c6a", "#8c6a3b", "#6a3b8c", "#3b7f8c", "#8c4a3b", "#5d8c3b"]
 CUT_COLOUR = "#ffffff"
 EDGE_COLOUR = "#d2b8ff"
+MUTED_COLOUR = "#ff4d4d"  # Twitch-silenced stretches (the plugin shows them red in Premiere too)
+MUTED_H = 4  # height of the red line along the bottom of the games bar
 IDLE_HINT = ("Click the thumbnails to cut · click a part to skip it · drag a cut line to move it · "
              "right-click a cut line to remove it · wheel = zoom")
 
@@ -151,6 +155,8 @@ class Timeline(ttk.Frame):
         self.frames_state = "none"  # none | loading | ready | failed
         self.ranges: list[Range] | None = None  # None = the cut text is invalid
         self.clip_marks: list[float] = []
+        self.muted: list[Range] = []  # stretches Twitch silenced (VOD seconds)
+        self.show_muted = tk.BooleanVar(value=True)
         self.vp = Viewport()
         self._history: list[list[Range]] = []
         self._drag: Edge | None = None
@@ -170,6 +176,13 @@ class Timeline(ttk.Frame):
         for b in (self.btn_out, self.btn_in, self.btn_fit):
             b.pack(side="left", padx=(0, 4))
         self.btn_undo.pack(side="left", padx=(8, 0))
+        # only shown for a VOD that has muted stretches (see set_muted)
+        self.muted_box = ttk.Frame(bar)
+        ttk.Label(self.muted_box, text="Show muted", style="Muted.TLabel").pack(side="left", padx=(0, 6))
+        self.muted_switch = Toggle(self.muted_box, self.show_muted, command=self._toggle_muted, bg=BG)
+        self.muted_switch.pack(side="left")
+        self.muted_lbl = tk.StringVar(value="")
+        self.muted_info = ttk.Label(bar, textvariable=self.muted_lbl, style="Muted.TLabel")
         self.hint = tk.StringVar(value=IDLE_HINT)
 
         self.canvas = tk.Canvas(self, height=HEIGHT, bg=BG, highlightthickness=0, borderwidth=0, takefocus=1)
@@ -211,6 +224,7 @@ class Timeline(ttk.Frame):
         self.frames_state = "loading" if storyboard else "none"
         self.ranges = None
         self.clip_marks = []
+        self.set_muted(None, redraw=False)
         self._history.clear()
         self._photos.clear()
         self._preview_photos.clear()
@@ -241,11 +255,38 @@ class Timeline(ttk.Frame):
         self._rebuild_snap_points()
         self.invalidate()
 
+    def set_muted(self, ranges: Sequence[Range] | None, redraw: bool = True) -> None:
+        """The stretches Twitch silenced (None / empty = none, or not known). Drawn as a red line; cuts snap to them."""
+        self.muted = sorted((float(s), float(e)) for s, e in (ranges or []) if e > s)
+        if self.muted:
+            total = sum(e - s for s, e in self.muted)
+            n = len(self.muted)
+            self.muted_lbl.set(f"{n} stretch{'es' if n != 1 else ''} · {fmt_hms(total)} silenced by Twitch")
+            self.muted_box.pack(side="left", padx=(16, 0))
+            self.muted_info.pack(side="left", padx=(6, 0))
+        else:
+            self.muted_lbl.set("")
+            self.muted_box.pack_forget()
+            self.muted_info.pack_forget()
+        self._rebuild_snap_points()
+        if redraw:
+            self.invalidate()
+
+    def _toggle_muted(self) -> None:
+        self._rebuild_snap_points()  # hidden stretches are not snapped to either
+        self.invalidate()
+
+    def _muted_at(self, t: float) -> Range | None:
+        return next(((s, e) for s, e in self.muted if s <= t < e), None) if self.show_muted.get() else None
+
     def _rebuild_snap_points(self) -> None:
         pts = {0.0, self.duration}
         for g in self.segments:
             pts.update((g.start, g.end))
         pts.update(self.clip_marks)
+        if self.show_muted.get():
+            for s, e in self.muted:
+                pts.update((s, e))
         self._snap_points = sorted(pts)
 
     # ------------------------------------------------------------------ zoom / scroll / undo
@@ -452,6 +493,9 @@ class Timeline(ttk.Frame):
         edge = self._edge_at(event.x) if zone != "ruler" else None
         seg = self._segment_at(t)
         where = f"{fmt_hms(max(0, min(t, self.duration)))}" + (f"  ·  {seg.title}" if seg and seg.title else "")
+        mu = self._muted_at(t)
+        if mu is not None:
+            where += f"  ·  muted by Twitch ({fmt_hms(mu[0])} → {fmt_hms(mu[1])})"
         if edge is not None:
             what = "drag to move" + (", right-click to remove" if edge.kind == "cut" else "")
             cursor = "sb_h_double_arrow"
@@ -557,6 +601,7 @@ class Timeline(ttk.Frame):
         self.vp.clamp()
         self._draw_ruler()
         self._draw_games()
+        self._draw_muted()
         self._draw_thumbs()
         self._draw_parts()
         self._update_scrollbar()
@@ -606,6 +651,20 @@ class Timeline(ttk.Frame):
             if room >= 3 and g.title:
                 text = g.title if len(g.title) <= room else g.title[: room - 1] + "…"
                 c.create_text(x0 + 4, Y_GAMES + GAMES_H // 2, text=text, anchor="w", fill="#ffffff", font=(UI_FONT, 9))
+
+    def _draw_muted(self) -> None:
+        """A thin red line along the bottom of the games bar wherever Twitch silenced the audio."""
+        if not self.muted or not self.show_muted.get():
+            return
+        c = self.canvas
+        y0 = Y_GAMES + GAMES_H - MUTED_H
+        for s, e in self.muted:
+            span = self._x_range(s, e)
+            if span is None:
+                continue
+            x0, x1 = span
+            # at "fit" a 3-minute stretch of a 9-hour VOD is about 1 px: keep each one at least 2 px so it can be seen
+            c.create_rectangle(x0, y0, max(x1, x0 + 2), Y_GAMES + GAMES_H, fill=MUTED_COLOUR, outline="")
 
     def _draw_thumbs(self) -> None:
         c, vp = self.canvas, self.vp

@@ -123,6 +123,7 @@ DEFAULTS = {
     "premiere_xml": False,
     "premiere_plugin": False,
     "game_markers": False,
+    "muted_markers": False,
     "chat": False,
     "chat_format": "json",
     "chat_embed": False,
@@ -326,6 +327,11 @@ class App(PlanTabMixin, OptionsTabMixin):
         self._job_prefix = ""
         self.tools_busy = False
         self.tools_ctx: Ctx | None = None
+        self._info_busy = False  # «Get info» is working (see set_info_busy)
+        self._info_job = None
+        self._info_before = ""
+        self._info_tick = 0
+        self._info_own_bar = False
         # Search tab state
         self.recent = load_recent()
         self.sv_gen = 0  # bumped on every new channel / type: results of older requests are ignored
@@ -403,6 +409,7 @@ class App(PlanTabMixin, OptionsTabMixin):
             premiere_xml=bool(v["premiere_xml"].get()),
             premiere_plugin=bool(v["premiere_plugin"].get()),
             game_markers=bool(v["game_markers"].get()),
+            muted_markers=bool(v["muted_markers"].get()),
             chat=bool(v["chat"].get()),
             chat_format=v["chat_format"].get() if v["chat_format"].get() in CHAT_FORMATS else "json",
             chat_embed=bool(v["chat_embed"].get()),
@@ -457,7 +464,7 @@ class App(PlanTabMixin, OptionsTabMixin):
         entry = ttk.Entry(top, textvariable=self.vod_var)
         entry.pack(side="left", fill="x", expand=True, padx=8)
         entry.bind("<Return>", lambda e: self.on_get_info())
-        self.info_btn = ttk.Button(top, text="Get info", style="Accent.TButton", command=self.on_get_info)
+        self.info_btn = ttk.Button(top, text="Get info", style="Accent.TButton", command=self.on_get_info, width=10)
         self.info_btn.pack(side="left")
         ttk.Button(top, text="Twitch API…", command=self.ask_credentials).pack(side="left", padx=(8, 0))
         self.info_var = tk.StringVar(value="No VOD loaded.")
@@ -877,7 +884,7 @@ class App(PlanTabMixin, OptionsTabMixin):
         if self.tools_busy:
             self.set_status("Still preparing yt-dlp / ffmpeg, one moment…")
             return
-        self.info_btn.config(state="disabled")
+        self.set_info_busy(True)
         self.set_status("Reading VOD info…")
         client = self.client
 
@@ -899,8 +906,40 @@ class App(PlanTabMixin, OptionsTabMixin):
 
         threading.Thread(target=work, daemon=True).start()
 
+    def set_info_busy(self, busy: bool):
+        """Feedback while «Get info» works (it takes a couple of seconds): the button and the line under it show
+        "Loading…" with moving dots, and the bar at the bottom runs, unless a download owns it."""
+        if busy == self._info_busy:
+            return
+        self._info_busy = busy
+        if busy:
+            self._info_before = self.info_var.get()
+            self._info_tick = 0
+            self.info_btn.config(state="disabled")
+            self._info_own_bar = not (self.worker and self.worker.is_alive())
+            if self._info_own_bar:
+                self.set_progress(-1, "Reading VOD info…")
+            self._info_animate()
+            return
+        if self._info_job is not None:
+            self.root.after_cancel(self._info_job)
+            self._info_job = None
+        self.info_btn.config(text="Get info", state="normal")
+        if self._info_own_bar:
+            self.set_progress(0, "")
+        self.info_var.set(self._info_before)  # (a loaded VOD replaces this right after)
+
+    def _info_animate(self):
+        if not self._info_busy:
+            return
+        dots = "." * (self._info_tick % 3 + 1)
+        self.info_btn.config(text="Loading" + dots)
+        self.info_var.set("Reading VOD info" + dots)
+        self._info_tick += 1
+        self._info_job = self.root.after(350, self._info_animate)
+
     def on_info_ok(self, info, clips, loaded, warn):
-        self.info_btn.config(state="normal")
+        self.set_info_busy(False)
         self.source, self.clips, self.clips_loaded = info, clips, loaded
         extra = f" · {len(clips)} clips" if loaded else ""
         self.info_var.set(bmp(f"{info.uploader} · {info.title} · {fmt_hms(info.duration)} · {info.date}{extra}"))
@@ -1189,7 +1228,7 @@ class App(PlanTabMixin, OptionsTabMixin):
                 # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
                 opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
                                keep_full=False, sidecar=False, premiere_xml=False,
-                               premiere_plugin=False, game_markers=False, chat=False)
+                               premiere_plugin=False, game_markers=False, muted_markers=False, chat=False)
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
                 messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")
@@ -1330,6 +1369,7 @@ class App(PlanTabMixin, OptionsTabMixin):
                 if kind == "info_ok":
                     self.on_info_ok(*msg[1:])
                 elif kind == "error":
+                    self.set_info_busy(False)
                     self.info_btn.config(state="normal")
                     self.set_status("Error.")
                     messagebox.showerror("Error", msg[1])

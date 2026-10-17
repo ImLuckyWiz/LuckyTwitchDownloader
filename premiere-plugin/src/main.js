@@ -22,6 +22,16 @@ try {
 let loaded = null; // the checked file: {file, label, text, path, auto, mediaPath}
 let timeline = null; // what the timeline plays of the file's video: {descs, mediaName, ...}, or null when unknown
 let timelineNote = ""; // why it is unknown
+let limitIdx = null; // "Only in chapter": index into core.chapterList(file), null = the whole file (not saved: it belongs to the file)
+let lastPre = null; // the latest pre-flight result (core.evaluatePreflight), or null when unknown
+let running = false; // a cut / Do it all is in progress (buttons are locked, Stop is shown)
+let stopRequested = false;
+let stopNoun = "round"; // what Stop finishes: a cutting round or a delete batch
+let lastFacts = null; // the facts of the latest pre-flight (buildFacts), for the Do it all label and its delete preview
+let armed = null; // 0.7.0: {kind: "gaps" | "doAll", key, until}: the first click of a delete shows the preview, the second one (same preview) runs it
+const ARM_MS = 30000;
+let autoRanKey = ""; // the file the opt-in auto-run already handled (once per detected file)
+let autoWhyKey = ""; // the last "auto-run skipped" reason that was logged, so it is not repeated
 
 function setStatus(text, kind) {
   const el = $("status");
@@ -70,9 +80,9 @@ async function copyLog() {
 
 // ---- settings -------------------------------------------------------------------------------------------
 const COLOR_FIELDS = ["gameColor", "lowColor", "midColor", "highColor", "clipColor"];
-const NUMBER_FIELDS = ["minViews", "midViews", "highViews", "padBefore", "padAfter", "mergeGap"];
-const CHECK_FIELDS = ["importGames", "gamePrefix", "importClips", "colorByViews", "backup"];
-const SELECT_FIELDS = ["offsetMode", "placement"];
+const NUMBER_FIELDS = ["minViews", "midViews", "highViews", "padBefore", "padAfter", "mergeGap", "minClips", "maxDeletePct", "minKeepPieces"];
+const CHECK_FIELDS = ["importGames", "gamePrefix", "importClips", "colorByViews", "backup", "recipeMarkers", "recipeCutClips", "recipeCutChapters", "recipeDeleteGaps", "autoRun"];
+const SELECT_FIELDS = ["placement"];
 
 function fillColorMenus() {
   const html = core.COLORS.map((c) => `<option value="${c.index}">${c.name}</option>`).join("");
@@ -101,11 +111,10 @@ function refreshVisibility() {
   show("clipOptions", clips);
   show("tierRows", clips && byViews);
   show("singleColorRow", clips && !byViews, "flex");
-  show("offsetRow", $("placement").value === "sequence", "flex");
   $("placeHint").textContent =
     $("placement").value === "sequence"
-      ? "Markers go on the active sequence, at fixed times."
-      : "Markers go on the selected clip (else the first video clip) and follow your cuts.";
+      ? "Markers go on the active sequence, each where the clip that plays it has it (the video must be on the timeline)."
+      : "Markers go on the video's clip (selected in the Project panel, else on the timeline) and follow your cuts.";
 }
 
 function loadSettings() {
@@ -142,6 +151,7 @@ function updateSettingsSummary() {
 }
 
 function saveSettings() {
+  disarm(); // any change of a setting cancels a pending delete confirmation
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(readSettings()));
   } catch (e) {
@@ -156,21 +166,111 @@ function saveSettings() {
 // ---- file and summary -----------------------------------------------------------------------------------
 /** The video this file belongs to, so cutting finds every timeline clip of it (not just the selected / first one). */
 const hint = () => (loaded ? { mediaPath: loaded.mediaPath, fileName: /\.markers\.json$/i.test(loaded.label) ? loaded.label : undefined } : undefined);
-const planOpts = (s) => ({ padBefore: s.padBefore, padAfter: s.padAfter, mergeGap: s.mergeGap });
+/** "Only in chapter": {min, max, name} or null. */
+const scope = () => (loaded ? core.chapterScope(loaded.file, limitIdx) : null);
+/** Padding / merge gap, and the chapter range when one is chosen (planCutSet clamps to min / max). */
+const planOpts = (s) => {
+  const sc = scope();
+  return { padBefore: s.padBefore, padAfter: s.padAfter, mergeGap: s.mergeGap, ...(sc ? { min: sc.min, max: sc.max } : {}) };
+};
+const isArmed = (kind, key) => !!armed && armed.kind === kind && armed.key === key && Date.now() < armed.until;
+const arm = (kind, key) => { armed = { kind, key, until: Date.now() + ARM_MS }; };
+function disarm() { armed = null; }
+
+/** The delete plan for these pieces with the current settings (the keep ranges are the clips, padded and merged like the cut did). */
+function gapPlan(pieces, frame, audioUnmatched) {
+  const st = readSettings();
+  const set = core.planCutSet(cutItems(), { ...planOpts(st), clips: true, chapters: false });
+  return core.planGapDelete(pieces, set.ranges, { frame, scope: scope(), maxDeletePct: st.maxDeletePct, minKeep: st.minKeepPieces, audioUnmatched: audioUnmatched || 0 });
+}
+/** What the adapter's deleteGaps / probeGapPlan need besides the items. */
+const gapArgs = (st) => ({ plan: planOpts(st), scope: scope(), hint: hint(), maxDeletePct: st.maxDeletePct, minKeep: st.minKeepPieces });
+
 /** Every clip and game of the file, whatever the marker settings hide: what a cut works from. */
 const cutItems = () => (loaded ? core.planMarkers(loaded.file, { ...readSettings(), importGames: true, importClips: true }).items : null);
+/** The markers Add / Do it all would put on: the marker settings, limited to the chosen chapter. */
+const markerItems = () => (loaded ? core.restrictItems(core.planMarkers(loaded.file, readSettings()).items, scope()) : []);
+const markerOpts = (s) => ({ placement: s.placement, hint: hint() });
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/** The "Only in chapter" menu: whole file + the file's chapters. Hidden when the file has none. */
+function fillChapterMenu() {
+  const list = loaded ? core.chapterList(loaded.file) : [];
+  const opts = ['<option value="">Whole file</option>'].concat(
+    list.map((c) => `<option value="${c.index}">${c.index + 1}. ${String(c.name).replace(/[<>&"]/g, "")} (${core.formatTime(c.start)}–${core.formatTime(c.end)})</option>`)
+  );
+  $("limitChapter").innerHTML = opts.join("");
+  $("limitChapter").value = limitIdx === null ? "" : String(limitIdx);
+  $("limitRow").style.display = list.length ? "block" : "none";
+}
+
+/**
+ * The facts the pre-flight needs, from what is loaded, the settings and what Premiere reported (tl = inspectTimeline result or null,
+ * mk = checkMarkers result or null). Pure bookkeeping: nothing here talks to Premiere.
+ */
+function buildFacts(tl, tlError, mk, mkError) {
+  const st = readSettings();
+  const all = cutItems();
+  const plan = planOpts(st);
+  const r = { markers: st.recipeMarkers, clips: st.recipeCutClips, chapters: st.recipeCutChapters, deleteGaps: st.recipeDeleteGaps };
+  const clipSet = core.planCutSet(all, { ...plan, clips: true });
+  const chapSet = core.planCutSet(all, { ...(plan.min === undefined ? {} : { min: plan.min, max: plan.max }), clips: false, chapters: true });
+  const both = core.planCutSet(all, { ...plan, clips: r.clips, chapters: r.chapters });
+  const pendingPoints = tl ? core.pendingCutPoints(both.points, tl.descs, tl.frame) : [];
+  // 0.7.0: what the delete step would do. When the recipe cuts first, the pieces do not exist yet: work on the pieces the cut WILL make.
+  let gaps = null;
+  if (r.deleteGaps && tl) gaps = gapPlan(r.clips || r.chapters ? core.simulatePieces(tl.descs, pendingPoints) : tl.descs, tl.frame, tl.audioUnmatched || 0);
+  return {
+    gaps,
+    loaded: !!loaded, recipe: r, minClips: st.minClips, markerCount: markerItems().length, markers: mk, markersError: mkError || "",
+    timeline: tl, timelineError: tlError || "", workspace: tl ? tl.workspace : null,
+    clipsInside: tl ? core.coverage(clipSet.ranges, tl.descs).inside : 0, clipsTotal: clipSet.ranges.length,
+    chaptersInside: tl ? core.coverage(chapSet.chapters, tl.descs).inside : 0, chaptersTotal: chapSet.chapters.length,
+    pending: pendingPoints.length, rounds: tl ? core.roundsFor(pendingPoints, tl.descs, tl.frame) : 0, backup: st.backup,
+  };
+}
+
+/** Reads Premiere (read-only) and evaluates the pre-flight. `tl` may be passed when the timeline was just inspected. */
+async function runPreflight(tl, tlError) {
+  const st = readSettings();
+  let mk = null, mkError = "";
+  if (st.recipeMarkers && markerItems().length) {
+    try {
+      mk = await getAdapter().checkMarkers(markerItems(), markerOpts(st));
+    } catch (e) {
+      mkError = e && e.message ? e.message : String(e);
+    }
+  }
+  lastFacts = buildFacts(tl, tlError, mk, mkError);
+  return core.evaluatePreflight(lastFacts);
+}
+
+function showPreflight(pre) {
+  const line = $("preSummary");
+  if (!pre) {
+    line.textContent = "";
+    $("preLinks").style.display = "none";
+    $("preChecks").style.display = "none";
+    return;
+  }
+  line.textContent = pre.ok ? (pre.alreadyDone ? "Everything in the recipe is already done." : pre.summary ? `Will ${pre.summary}` : "") : `Not ready: ${pre.problems[0]}`;
+  line.className = "hint pre-line" + (pre.ok ? "" : " bad");
+  $("preChecks").textContent = pre.checks.map((c) => `${c.ok ? "✓" : "✗"} ${c.text}`).join("\n");
+  $("preLinks").style.display = pre.checks.length ? "flex" : "none";
+}
 
 /** Buttons, counts and the timeline line. Does not touch the status line (so a "Done" message stays). */
 function renderCounts() {
   if (!loaded) return;
   const settings = readSettings();
-  const { items, counts } = core.planMarkers(loaded.file, settings);
+  const items = markerItems();
+  const counts = core.planMarkers(loaded.file, settings).counts;
   const f = loaded.file;
   const all = cutItems();
+  const sc = scope();
   const clipSet = core.planCutSet(all, { ...planOpts(settings), clips: true });
-  const chapSet = core.planCutSet(all, { clips: false, chapters: true });
+  const chapSet = core.planCutSet(all, { min: sc ? sc.min : 0, max: sc ? sc.max : Infinity, clips: false, chapters: true });
   const clipCov = timeline ? core.coverage(clipSet.ranges, timeline.descs) : null;
   const chapCov = timeline ? core.coverage(chapSet.chapters, timeline.descs) : null;
   const nClips = clipCov ? clipCov.inside : clipSet.ranges.length;
@@ -190,12 +290,40 @@ function renderCounts() {
   if (f.skipped) notes.push(`${f.skipped} entries in the file were not understood and are skipped.`);
   $("fileNote").textContent = notes.join(" ");
 
-  $("add").disabled = items.length === 0;
+  $("add").disabled = items.length === 0 || running;
   $("add").textContent = items.length ? `Add ${items.length} markers` : "Add markers";
-  $("remove").disabled = false;
-  $("cutClips").disabled = nClips === 0;
+  $("remove").disabled = running;
+  const steps = core.recipeSteps(settings);
+  $("doAll").disabled = !steps.length || running;
+  const rg = lastFacts && lastFacts.gaps && lastFacts.gaps.ok ? lastFacts.gaps : null;
+  if (armed && armed.kind === "doAll" && !(rg && core.gapKey(rg) === armed.key && Date.now() < armed.until)) disarm();
+  const label = core.recipeLabel(settings, { markers: items.length, clips: nClips, chapters: nChaps, gaps: rg ? rg.deleteCount : undefined });
+  $("doAll").textContent = armed && armed.kind === "doAll" ? `Click again to confirm: ${label}` : label;
+
+  // the red button: classification of the pieces on the timeline right now (pure: it only needs what the last look at the timeline read)
+  const gp = timeline ? gapPlan(timeline.descs, timeline.frame, timeline.audioUnmatched || 0) : null;
+  if (armed && armed.kind === "gaps" && !(gp && gp.ok && core.gapKey(gp) === armed.key && Date.now() < armed.until)) disarm();
+  const dg = $("deleteGaps");
+  if (!gp) {
+    dg.disabled = true;
+    dg.textContent = "Delete the gaps";
+    $("gapPreview").textContent = "";
+  } else if (!gp.ok) {
+    dg.disabled = true;
+    dg.textContent = "Delete the gaps";
+    $("gapPreview").textContent = gp.problems[0];
+  } else if (gp.nothing) {
+    dg.disabled = true;
+    dg.textContent = "Delete the gaps (none left)";
+    $("gapPreview").textContent = "No gap piece is left: every piece of the timeline is a clip.";
+  } else {
+    dg.disabled = running;
+    dg.textContent = armed && armed.kind === "gaps" ? `Click again to delete ${plural(gp.deleteCount, "piece", "pieces")}` : `Delete the gaps: ${plural(gp.deleteCount, "piece", "pieces")}`;
+    $("gapPreview").textContent = `Will delete ${gp.text}${settings.backup ? ", after one backup." : ". NO backup: the box is off in Settings."}`;
+  }
+  $("cutClips").disabled = nClips === 0 || running;
   $("cutClips").textContent = clipCov && clipCov.outside ? `Cut at ${nClips} of ${clipSet.ranges.length} clips` : nClips ? `Cut at ${plural(nClips, "clip", "clips")}` : "Cut at clips";
-  $("cutChapters").disabled = nChaps === 0;
+  $("cutChapters").disabled = nChaps === 0 || running;
   $("cutChapters").textContent = chapCov && chapCov.outside ? `Cut at ${nChaps} of ${chapSet.chapters.length} chapters` : nChaps ? `Cut at ${plural(nChaps, "chapter", "chapters")}` : "Cut at chapters";
   $("pickRow").style.display = "none";
   $("pick2").style.display = "inline-block";
@@ -218,32 +346,50 @@ function renderCounts() {
 function updateSummary() {
   if (!loaded) return;
   renderCounts();
-  const n = core.planMarkers(loaded.file, readSettings()).items.length;
+  const n = markerItems().length;
   setStatus(n ? "Ready." : "Nothing to add with these settings.", n ? "muted" : "err");
 }
 
 let refreshing = false;
-/** Looks at the timeline (read-only) so the buttons can say how many clips / chapters fall inside what it plays. Never shows an error. */
+/**
+ * Looks at the timeline (read-only) so the buttons can say how many clips / chapters fall inside what it plays, and re-runs the pre-flight
+ * for the Do it all line. Never shows an error. At the end it offers the opt-in auto-run its chance.
+ */
 async function refreshTimeline() {
   if (!loaded || busy || refreshing) return;
   refreshing = true;
+  let tlError = "";
   try {
     timeline = await getAdapter().inspectTimeline(hint());
     timelineNote = "";
   } catch (e) {
     timeline = null;
     timelineNote = e && e.message ? e.message : String(e);
+    tlError = timelineNote;
+  }
+  try {
+    lastPre = await runPreflight(timeline, tlError);
+  } catch (e) {
+    lastPre = null;
   } finally {
     refreshing = false;
   }
   renderCounts();
+  showPreflight(lastPre);
+  await maybeAutoRun();
 }
 
 function useFileText(text, label, meta) {
   const file = core.parseMarkersFile(text);
+  disarm();
+  lastFacts = null;
   loaded = { file, label, text, path: meta && meta.path, auto: !!(meta && meta.auto), found: meta && meta.found, mediaPath: meta && meta.mediaPath };
   timeline = null;
   timelineNote = "";
+  lastPre = null;
+  limitIdx = null;
+  fillChapterMenu();
+  showPreflight(null);
   updateSummary();
 }
 
@@ -254,6 +400,14 @@ function failLoad(e) {
   $("remove").disabled = true;
   $("cutClips").disabled = true;
   $("cutChapters").disabled = true;
+  $("doAll").disabled = true;
+  $("doAll").textContent = "Do it all";
+  $("deleteGaps").disabled = true;
+  $("deleteGaps").textContent = "Delete the gaps";
+  $("gapPreview").textContent = "";
+  $("limitRow").style.display = "none";
+  lastPre = null;
+  showPreflight(null);
   $("add").textContent = "Add markers";
   $("cutClips").textContent = "Cut at clips";
   $("cutChapters").textContent = "Cut at chapters";
@@ -298,6 +452,7 @@ function usePasted() {
 // ---- finding the file by itself --------------------------------------------------------------------------
 let detecting = false;
 let detectedOnce = false;
+let lastDetectLog = ""; // the last "(detect) stopped" text: the 4-second poll must not repeat it
 
 /**
  * Looks for the .markers.json next to the target clip's video (then next to the Premiere project).
@@ -314,7 +469,9 @@ async function autoDetect(manual) {
       if (loaded && loaded.auto && loaded.path === found.path && loaded.text === found.text) return;
       useFileText(found.text, found.name, { auto: true, path: found.path, mediaPath: found.mediaPath, found: `Found ${found.where} (${found.how}).` });
       log(`Found the markers file ${found.where}: ${found.name} (${found.how}).`, false, true);
-      refreshTimeline();
+      lastDetectLog = "";
+      detecting = false; // refreshTimeline may start the auto-run, which must not be blocked by this flag
+      await refreshTimeline();
     } else if (manual || !detectedOnce) {
       why.forEach((w) => window.__ltLog(`(detect) ${w}`));
       if (!loaded) {
@@ -325,8 +482,16 @@ async function autoDetect(manual) {
       }
     }
   } catch (e) {
-    if (manual) log(`Search failed: ${e && e.message ? e.message : e}`, true);
-    else window.__ltLog(`(detect) stopped: ${e && e.message ? e.message : e}`);
+    const m = e && e.message ? e.message : String(e);
+    if (/No project is open/i.test(m)) {
+      // not an error: there is just nothing to look at yet. Say it in the panel, never in the log (the poll would repeat it every 4 s).
+      if (!loaded) $("fileEmpty").textContent = "Open or create a project: the panel then looks for the .markers.json by itself.";
+      if (manual) log("No project is open.", true);
+    } else if (manual) log(`Search failed: ${m}`, true);
+    else if (m !== lastDetectLog) {
+      lastDetectLog = m;
+      window.__ltLog(`(detect) stopped: ${m}`);
+    }
   } finally {
     detectedOnce = true;
     detecting = false;
@@ -359,9 +524,9 @@ async function guarded(fn) {
 async function doAdd() {
   if (!loaded) return;
   const settings = readSettings();
-  const { items } = core.planMarkers(loaded.file, settings);
+  const items = markerItems();
   if (!items.length) return log("Nothing to add with these settings.", true);
-  const r = await getAdapter().addMarkers(items, { placement: settings.placement, offsetMode: settings.offsetMode }, log);
+  const r = await getAdapter().addMarkers(items, markerOpts(settings), log);
   const follow = settings.placement === "clip" ? " They follow your cuts." : "";
   if (r.added === 0) log(`Done: nothing new, all ${r.skipped} markers were already on ${r.what} (colors refreshed).`);
   else log(`Done: ${r.added} markers added to ${r.what}${r.skipped ? ` (${r.skipped} were already there)` : ""}.${follow}`);
@@ -375,23 +540,194 @@ async function doRemove() {
   for (const gamePrefix of [false, true]) {
     all.push(...core.planMarkers(loaded.file, { ...settings, importGames: true, importClips: true, minViews: 0, gamePrefix }).items);
   }
-  const r = await getAdapter().removeMarkers(all, { placement: settings.placement, offsetMode: settings.offsetMode }, log);
+  const r = await getAdapter().removeMarkers(all, markerOpts(settings), log);
   if (r.removed) log(`Done: ${r.removed} markers removed from ${r.what}.`);
   else log(`Nothing to remove: none of this file's markers are on ${r.what}.`);
 }
+
+// ---- progress and Stop ----------------------------------------------------------------------------------
+function setStopNoun(noun) {
+  stopNoun = noun;
+  if (!stopRequested) $("stop").textContent = `Stop after this ${noun}`;
+}
+
+function setRunning(on, noun) {
+  running = on;
+  stopRequested = false;
+  stopNoun = noun || "round";
+  $("runBox").style.display = on ? "block" : "none";
+  $("stop").disabled = false;
+  $("stop").textContent = `Stop after this ${stopNoun}`;
+  $("progressText").textContent = "";
+  $("progressFill").style.width = "0%";
+  $("limitChapter").disabled = on;
+  renderCounts();
+}
+
+/** p = {step, steps, label, round, rounds, done, total} */
+function showProgress(p) {
+  $("progressText").textContent = core.progressText(p);
+  $("progressFill").style.width = p.total ? `${Math.min(100, Math.round((100 * p.done) / p.total))}%` : "0%";
+}
+
+function onStop() {
+  if (!running || stopRequested) return;
+  stopRequested = true;
+  $("stop").disabled = true;
+  $("stop").textContent = `Stopping after this ${stopNoun}…`;
+  window.__ltLog(`Stop requested: the current ${stopNoun} will be finished.`);
+}
+
+/** What a cut run needs from the panel: progress display and the Stop check. */
+const cutHooks = (extra) => ({ onProgress: (e) => showProgress({ ...extra, ...e }), shouldStop: () => stopRequested });
+/** The same for the delete: its rounds are batches of gap pieces. */
+const deleteHooks = (extra) => ({ onProgress: (e) => showProgress({ ...extra, unit: "gap pieces", roundLabel: "batch", ...e }), shouldStop: () => stopRequested });
 
 /** kind: "clips" = the start and end of every clip; "chapters" = every game / category boundary. */
 async function doCut(kind) {
   if (!loaded) return;
   const settings = readSettings();
   const clips = kind === "clips";
-  const r = await getAdapter().cutAtClipEdges(
-    cutItems(),
-    { backup: settings.backup, clips, chapters: !clips, plan: planOpts(settings), hint: hint() },
-    log
-  );
+  setRunning(true);
+  let r;
+  try {
+    r = await getAdapter().cutAtClipEdges(
+      cutItems(),
+      { backup: settings.backup, clips, chapters: !clips, plan: planOpts(settings), hint: hint(), ...cutHooks({ label: "cutting" }) },
+      log
+    );
+  } finally {
+    setRunning(false);
+  }
+  if (r.stopped) return log(`Stopped on request after round ${r.rounds}: ${r.cuts} of ${r.points} cuts are made. Run it again to finish; points that already have a cut are skipped.`);
   if (!r.cuts && !r.points) return log(`Nothing to cut: every ${clips ? "clip" : "chapter"} edge is already a cut, or falls outside what the timeline plays.`, true);
   log(`Done: ${r.cuts} cuts made in ${plural(r.clips, "clip", "clips")}${r.skipped ? ` (${r.skipped} points already had a cut)` : ""}. Look at the timeline.`);
+}
+
+// ---- Delete the gaps (the red button) ---------------------------------------------------------------------
+/**
+ * First click: reads the timeline fresh, shows what would be deleted, and arms the button (nothing is changed). Second click, with the same
+ * preview: runs. The run re-checks everything and refuses if the timeline no longer matches the preview.
+ */
+async function doDeleteGaps() {
+  if (!loaded) return;
+  const settings = readSettings();
+  let tl;
+  try {
+    tl = await getAdapter().inspectTimeline(hint());
+  } catch (e) {
+    return log(`Nothing was changed. ${e && e.message ? e.message : e}`, true);
+  }
+  timeline = tl;
+  timelineNote = "";
+  const plan = gapPlan(tl.descs, tl.frame, tl.audioUnmatched || 0);
+  renderCounts();
+  if (!plan.ok) return log(`Nothing was changed. ${plan.problems.join(" ")}`, true);
+  if (plan.nothing) return log("Done: no gap piece is left, every piece of the timeline is a clip.");
+  const key = core.gapKey(plan);
+  if (!isArmed("gaps", key)) {
+    arm("gaps", key);
+    renderCounts();
+    return log(`Will delete ${plan.text}. Click the red button again to confirm${settings.backup ? " (one backup of the sequence first)" : " (NO backup: the box is off in Settings)"}.`);
+  }
+  disarm();
+  setRunning(true, "batch");
+  let r;
+  try {
+    r = await getAdapter().deleteGaps(cutItems(), { ...gapArgs(settings), backup: settings.backup, expect: { deleteCount: plan.deleteCount, keepCount: plan.keepCount }, ...deleteHooks({ label: "deleting gaps" }) }, log);
+  } finally {
+    setRunning(false);
+  }
+  if (r.stopped) return log(`Stopped on request after batch ${r.rounds}: ${r.deleted} of ${r.total} gap pieces are deleted. Press the red button again to finish: it shows what is left and asks you to confirm again.`);
+  const holeNote = r.holes ? ` Premiere's ripple left ${plural(r.holes, "hole", "holes")} of up to one frame (${(r.holeSeconds * 1000).toFixed(0)} ms in all); each was closed by lengthening the clip in front of it, so a clip can end up to one frame longer at its end.` : "";
+  log(`Done: ${plural(r.deleted, "gap piece", "gap pieces")} deleted (${core.fmtSeconds(r.deletedSeconds)}). ${plural(r.keepPieces, "clip", "clips")} left back to back (${core.fmtSeconds(r.keepSeconds)}).${holeNote} Look at the timeline.`);
+}
+
+// ---- Do it all ------------------------------------------------------------------------------------------
+/**
+ * The saved recipe, in one go: pre-flight (fresh reads, nothing touched until it passes), one backup, then the ticked steps in order,
+ * stopping at the first failure or when Stop is pressed, and saying what is done and what is left.
+ */
+async function doItAll() {
+  if (!loaded) return;
+  const settings = readSettings();
+  const steps = core.recipeSteps(settings);
+  setStatus("Checking before touching anything…", "muted");
+  let tl = null, tlError = "";
+  try {
+    tl = await getAdapter().inspectTimeline(hint());
+  } catch (e) {
+    tlError = e && e.message ? e.message : String(e);
+  }
+  timeline = tl;
+  timelineNote = tlError;
+  const pre = await runPreflight(tl, tlError);
+  lastPre = pre;
+  renderCounts();
+  showPreflight(pre);
+  if (!pre.ok) return log(`Nothing was changed. ${pre.problems.join(" ")}`, true);
+  if (pre.alreadyDone) return log("Done: everything in the recipe is already done, nothing to do.");
+
+  // A recipe that deletes asks for confirmation BEFORE the run starts (so a run never stops to ask): the first press shows the preview, the second one runs.
+  const g = lastFacts && lastFacts.gaps;
+  if (settings.recipeDeleteGaps && g && g.ok && !g.nothing) {
+    const key = core.gapKey(g);
+    if (!isArmed("doAll", key)) {
+      arm("doAll", key);
+      renderCounts();
+      return log(`This run will delete the gaps at the end: ${g.text}. Press Do it all again to confirm${settings.backup ? " (one backup of the sequence first)" : " (NO backup: the box is off in Settings)"}.`);
+    }
+  }
+  disarm();
+  const expect = settings.recipeDeleteGaps && g && g.ok ? { deleteCount: g.deleteCount, keepCount: g.keepCount } : undefined;
+
+  const items = markerItems();
+  const quiet = (text, isError) => log(text, isError, !isError); // the status line shows the progress, the details go to the log
+  setRunning(true);
+  let out;
+  try {
+    out = await core.runRecipe(steps, {
+      backup: settings.backup ? () => getAdapter().backupSequence(quiet) : null,
+      markers: () => getAdapter().addMarkers(items, markerOpts(settings), quiet),
+      cut: () =>
+        getAdapter().cutAtClipEdges(
+          cutItems(),
+          { backup: false, clips: settings.recipeCutClips, chapters: settings.recipeCutChapters, plan: planOpts(settings), hint: hint(), ...cutHooks(stepInfo) },
+          quiet
+        ),
+      delete: () => getAdapter().deleteGaps(cutItems(), { ...gapArgs(settings), backup: false, expect, ...deleteHooks(stepInfo) }, quiet),
+      shouldStop: () => stopRequested,
+      onStep: (n, total, step) => {
+        stepInfo = { step: n, steps: total, label: step.id === "markers" ? "adding markers" : step.id === "delete" ? "deleting gaps" : "cutting" };
+        setStopNoun(step.id === "delete" ? "batch" : "round");
+        showProgress(stepInfo);
+      },
+    });
+  } finally {
+    setRunning(false);
+  }
+  const text = core.outcomeText(out, steps);
+  log(text, !!(out.failed || out.backupFailed));
+}
+let stepInfo = {};
+
+// ---- the opt-in auto-run --------------------------------------------------------------------------------
+/** Runs the recipe by itself, once per detected file, when the setting is on, the pre-flight passes and something is left to do. */
+async function maybeAutoRun() {
+  const s = readSettings();
+  if (!s.autoRun || !loaded || !loaded.auto || busy || running) return;
+  const key = `${loaded.path || loaded.label}|${loaded.text.length}`;
+  const v = core.autoRunVerdict({ enabled: true, autoLoaded: true, key, ranKey: autoRanKey, pre: lastPre, deletes: s.recipeDeleteGaps });
+  if (!v.run) {
+    if (v.why && `${key}|${v.why}` !== autoWhyKey) {
+      autoWhyKey = `${key}|${v.why}`;
+      log(v.why);
+    }
+    return;
+  }
+  autoRanKey = key;
+  log("Auto-run: running the recipe once for this file…", false, true);
+  await guarded(doItAll);
 }
 
 const plannedItems = () => cutItems();
@@ -403,11 +739,20 @@ function init() {
   on("pick2", pickFile);
   on("detect", () => autoDetect(true));
   on("usePasted", usePasted);
+  on("doAll", doItAll);
   on("add", doAdd);
   on("cutClips", () => doCut("clips"));
   on("cutChapters", () => doCut("chapters"));
+  on("deleteGaps", doDeleteGaps);
   on("remove", doRemove);
   on("copyLog", copyLog);
+  $("stop") && $("stop").addEventListener("click", onStop); // not through guarded: a run is busy, Stop must still work
+  $("limitChapter") && $("limitChapter").addEventListener("change", () => {
+    limitIdx = $("limitChapter").value === "" ? null : Number($("limitChapter").value);
+    updateSummary();
+    refreshTimeline();
+  });
+  $("togglePre") && $("togglePre").addEventListener("click", () => toggleSection("preChecks", "togglePre", "pre-flight checks"));
   $("toggleTrouble") && $("toggleTrouble").addEventListener("click", () => openTroubleshooting());
   $("toggleFile") && $("toggleFile").addEventListener("click", () => toggleSection("fileDetails", "toggleFile", "details"));
   $("toggleSettings") && $("toggleSettings").addEventListener("click", () => toggleSection("settingsBody", "toggleSettings", "Settings"));
@@ -417,30 +762,54 @@ function init() {
   on("probe", () => getAdapter().probe(dlog));
   on("probeClips", () => getAdapter().probeClips(dlog));
   on("probeAudio", () => getAdapter().probeAudio(dlog));
+  on("probeMarkerOwners", () => getAdapter().probeMarkerOwners(dlog));
   on("probeEditor", () => getAdapter().probeEditor(dlog));
   on("probeClasses", () => getAdapter().probeClasses(dlog));
   on("probeDetect", () => getAdapter().probeDetection(dlog));
+  on("probeSelection", () => getAdapter().probeSelection(dlog));
   on("probeCutPlan", async () => {
     const items = plannedItems();
     if (!items || !items.length) return dlog("Cut plan needs a loaded markers file with clips (nothing to plan yet).", true);
     const st = readSettings();
     await getAdapter().probeCutPlan(items, dlog, planOpts(st), hint());
   });
-  on("probeAll", () => getAdapter().probeAll(dlog, plannedItems, hint));
+  on("probeGapPlan", async () => {
+    const items = plannedItems();
+    if (!items || !items.length) return dlog("Gap plan needs a loaded markers file with clips (nothing to plan yet).", true);
+    await getAdapter().probeGapPlan(items, dlog, gapArgs(readSettings()), hint());
+  });
+  on("probeAll", () => getAdapter().probeAll(dlog, plannedItems, hint, () => gapArgs(readSettings())));
+  // The ripple experiment changes the project: the first click only arms it.
+  let rippleArmed = false;
+  on("testRipple", async () => {
+    if (!rippleArmed) {
+      rippleArmed = true;
+      $("testRipple").textContent = "Click again: changes THIS project";
+      setTimeout(() => { rippleArmed = false; $("testRipple").textContent = "Test ripple delete"; }, 10000);
+      return log("Test ripple delete removes pieces from the timeline (many undo steps): run it on a COPY of the project, on a timeline that is already cut. Click the button again to run it.");
+    }
+    rippleArmed = false;
+    $("testRipple").textContent = "Test ripple delete";
+    await getAdapter().testRippleDelete(dlog, hint());
+  });
   on("testMarkers", () => getAdapter().addTestMarkers(core.COLORS, dlog));
   on("testClipMarkers", () => getAdapter().addClipTestMarkers(core.COLORS, dlog));
   on("testCut", () => getAdapter().testCutAtPlayhead(dlog));
   on("testSplit", () => getAdapter().testSplitAtPlayhead(dlog));
+  on("testAlign", () => getAdapter().testAlignToVideo(dlog));
   try {
     fillColorMenus();
     showSettings(loadSettings());
     for (const id of [...COLOR_FIELDS, ...NUMBER_FIELDS, ...CHECK_FIELDS, ...SELECT_FIELDS]) {
       $(id).addEventListener("change", saveSettings);
     }
+    for (const id of ["recipeMarkers", "recipeCutClips", "recipeCutChapters", "recipeDeleteGaps", "minClips", "placement", "autoRun", "maxDeletePct", "minKeepPieces", "padBefore", "padAfter", "mergeGap"]) {
+      $(id).addEventListener("change", () => refreshTimeline()); // the pre-flight depends on these
+    }
   } catch (e) {
     log(`Could not set up the settings: ${e && e.message ? e.message : e}`, true);
   }
-  log(`Panel ready (0.5.0). Core: ${core ? "ok" : "missing"}.`, false, true);
+  log(`Panel ready (0.7.3). Core: ${core ? "ok" : "missing"}.`, false, true);
   // Look for the marker file now, again when the panel is shown / focused, and every few seconds until one is loaded
   // (so it also works when the video is put on the timeline after the panel was opened).
   setTimeout(() => autoDetect(false), 400);

@@ -51,8 +51,9 @@ def test_the_three_sections_are_cards(gui):
 def test_the_chapters_switch_drives_the_clips_table(gui):
     gui.load_vod()
     gui.load_clips()
-    toggle = next(w for w in walk(gui.app.tab_plan.body) if isinstance(w, Toggle))
-    assert str(toggle.variable) == str(gui.app.vars["chapters"])
+    # (the timeline has a switch of its own, «Show muted»: pick the one that belongs to the chapters setting)
+    toggle = next(w for w in walk(gui.app.tab_plan.body)
+                  if isinstance(w, Toggle) and str(w.variable) == str(gui.app.vars["chapters"]))
     assert "[chapters are OFF]" in gui.app.clips_lbl.get()
     toggle._click()  # the user flips it: the table is refreshed through the switch's command
     assert gui.app.vars["chapters"].get() is True

@@ -1,0 +1,43 @@
+{
+  "format": "luckytwitch-markers",
+  "version": 1,
+  "name": "Streamer - 2026-01-01 - 1 - part1",
+  "duration": 70.0,
+  "fps": 29.97,
+  "part": {
+    "start": 1200.0,
+    "end": 1270.0
+  },
+  "source": {
+    "url": "https://www.twitch.tv/videos/1",
+    "vod_id": "1",
+    "title": "Big stream",
+    "streamer": "Streamer",
+    "date": "2026-01-01"
+  },
+  "markers": [
+    {
+      "kind": "game",
+      "name": "Just Chatting",
+      "start": 0,
+      "end": 50,
+      "game": "Just Chatting",
+      "comment": "Game / category"
+    },
+    {
+      "kind": "muted",
+      "name": "Muted audio",
+      "start": 12,
+      "end": 30,
+      "comment": "Silenced by Twitch (usually copyrighted audio)"
+    },
+    {
+      "kind": "game",
+      "name": "Resident Evil 2",
+      "start": 50,
+      "end": 70,
+      "game": "Resident Evil 2",
+      "comment": "Game / category"
+    }
+  ]
+}

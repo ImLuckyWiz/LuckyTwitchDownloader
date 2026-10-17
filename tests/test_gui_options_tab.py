@@ -20,7 +20,7 @@ from ui.widgets import Collapsible, SideNav, Toggle  # noqa: E402
 OPTIONS_VARS = {
     "out_dir", "container", "threads", "strategy", "threshold", "name_template", "subfolders", "folder_template",
     "exact", "keep_full", "title_tpl", "pad_after", "gap_title", "sidecar", "premiere_xml", "premiere_plugin",
-    "game_markers", "clip_name_template", "clip_pad_before", "clip_pad_after", "chat", "chat_format",
+    "game_markers", "muted_markers", "clip_name_template", "clip_pad_before", "clip_pad_after", "chat", "chat_format",
     "chat_embed", "auto_update",
 }
 
@@ -128,7 +128,7 @@ def test_booleans_are_switches_not_checkboxes(gui):
     app = gui.app
     assert not [w for w in walk(app.tab_options) if isinstance(w, tk.Widget) and w.winfo_class() == "TCheckbutton"]
     switches = {str(w.variable) for w in walk(app.tab_options) if isinstance(w, Toggle)}
-    for name in ("exact", "keep_full", "subfolders", "premiere_plugin", "game_markers", "premiere_xml", "sidecar",
+    for name in ("exact", "keep_full", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml", "sidecar",
                  "chat", "chat_embed", "auto_update"):
         assert str(app.vars[name]) in switches, name
 
@@ -144,7 +144,7 @@ def test_the_chapters_switch_stays_in_the_plan_tab(gui):
 UP_FRONT = {
     "output": {"out_dir", "container"},
     "cuts": {"strategy", "exact", "keep_full"},
-    "premiere": {"premiere_plugin", "game_markers"},
+    "premiere": {"premiere_plugin", "game_markers", "muted_markers"},
     "chat": {"chat"},
 }
 IN_ADVANCED = {

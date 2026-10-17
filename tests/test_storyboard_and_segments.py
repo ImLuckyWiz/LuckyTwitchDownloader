@@ -238,9 +238,11 @@ def test_get_source_info_passes_the_new_data_through(monkeypatch):
     monkeypatch.setattr(
         subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=raw, stderr="")
     )
+    monkeypatch.setattr(eng, "muted_from_playlist_url", lambda url, duration=None: [(10.0, 20.0)])  # no network
     info = eng.get_source_info("2888990596")
     assert info.url == "https://www.twitch.tv/videos/2888990596"
     assert len(info.segments) == 3 and info.storyboard.count == 200
+    assert info.muted == [(10.0, 20.0)]
 
 
 # --------------------------------------------------------------------------- Storyboard geometry

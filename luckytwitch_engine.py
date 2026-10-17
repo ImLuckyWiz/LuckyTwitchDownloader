@@ -681,7 +681,7 @@ class Chapter:
     title: str
     views: int = 0
     clips: list[dict] = field(default_factory=list)
-    kind: str = "clip"  # "clip" (a Twitch clip) or "game" (a game / category change)
+    kind: str = "clip"  # "clip" (a Twitch clip), "game" (a game / category change) or "muted" (silenced by Twitch)
 
 
 class _SafeDict(dict):
@@ -775,6 +775,15 @@ def chapters_for_part(chapters: list[Chapter], start: float, end: float) -> list
 def game_chapters(segments: list[GameSegment]) -> list[Chapter]:
     """The game / category changes of a VOD as chapters of kind "game" (absolute VOD time)."""
     return [Chapter(g.start, g.end, g.title or "(no category)", kind="game") for g in segments]
+
+
+MUTED_TITLE = "Muted audio"
+MUTED_COMMENT = "Silenced by Twitch (usually copyrighted audio)"
+
+
+def muted_chapters(ranges: list[Range] | None) -> list[Chapter]:
+    """The stretches Twitch silenced as chapters of kind "muted" (absolute VOD time)."""
+    return [Chapter(s, e, MUTED_TITLE, kind="muted") for s, e in (ranges or [])]
 
 
 def fill_gaps(chapters: list[Chapter], total: float, title: str) -> list[Chapter]:
@@ -936,11 +945,12 @@ def premiere_markers_json(
     The markers of one part as JSON for the Premiere Pro plugin. Unlike the XML it keeps what each marker is
     (a clip or a game) and the numbers behind it (views...), so the plugin can choose colors and names itself.
     Times are seconds from the start of the part; part_start / part_end say where the part sits in the VOD.
+    Kinds: "clip", "game" and "muted" (a stretch Twitch silenced). A plugin that does not know "muted" skips those.
     """
     markers = []
     for ch in sorted(chapters, key=lambda c: (c.start, c.kind)):
         m: dict = {
-            "kind": "game" if ch.kind == "game" else "clip",
+            "kind": ch.kind if ch.kind in ("game", "muted") else "clip",
             "name": ch.title,
             "start": round(ch.start, 3),
             "end": round(ch.end, 3),
@@ -948,6 +958,8 @@ def premiere_markers_json(
         if ch.kind == "game":
             m["game"] = ch.title
             m["comment"] = "Game / category"
+        elif ch.kind == "muted":
+            m["comment"] = MUTED_COMMENT
         else:
             m["views"] = ch.views
             m["comment"] = _clip_marker_comment(ch.clips)
@@ -1051,6 +1063,8 @@ class SourceInfo:
     twitch_vod_id: str | None
     segments: list[GameSegment] = field(default_factory=list)  # game changes; [] when yt-dlp gives none
     storyboard: Storyboard | None = None  # None when the site has no preview thumbnails
+    # Stretches Twitch silenced, in VOD seconds. [] = checked, none; None = not checked or could not be told.
+    muted: list[Range] | None = None
 
 
 def normalize_url(text: str) -> str:
@@ -1097,7 +1111,10 @@ def get_source_info(text: str) -> SourceInfo:
         info = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
         raise EngineError("yt-dlp returned unreadable data for that URL.") from e
-    return parse_source_info(info, url)
+    src = parse_source_info(info, url)
+    if src.twitch_vod_id:  # one more small request; a failure only means "no muted ranges to show"
+        src.muted = fetch_muted_ranges(info.get("formats"), src.duration)
+    return src
 
 
 def parse_source_info(info: dict, url: str) -> SourceInfo:
@@ -1175,6 +1192,92 @@ def parse_storyboard(formats, duration: float, prefer: str = "low") -> Storyboar
     return best[1] if best else None
 
 
+# --------------------------------------------------------------------------- #
+# Muted stretches (Twitch silences copyrighted audio; the HLS playlist says which segments)
+# --------------------------------------------------------------------------- #
+# Twitch names a silenced segment "<n>-muted.<ext>" (e.g. "522-muted.mp4") and a normal one "<n>.<ext>".
+_MUTED_SEGMENT = re.compile(r"-muted(?:\.[A-Za-z0-9]+)?$", re.IGNORECASE)
+
+
+def parse_muted_ranges(text: str, duration: float | None = None) -> list[Range]:
+    """
+    A media playlist -> the stretches (start, end in VOD seconds) made of "-muted" segments; touching
+    segments are merged. Deliberately lenient (unlike parse_hls_playlist): tags it does not know are
+    ignored, because all it needs is the length of each segment and whether its name says "muted".
+    """
+    from urllib.parse import urlsplit
+
+    out: list[list[float]] = []
+    t, length = 0.0, 0.0
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            if line.startswith("#EXTINF:"):
+                try:
+                    length = float(line[8:].split(",", 1)[0])
+                except ValueError:
+                    length = 0.0
+            continue
+        name = urlsplit(line).path.rsplit("/", 1)[-1]
+        if _MUTED_SEGMENT.search(name) and length > 0:
+            if out and abs(out[-1][1] - t) < 0.01:
+                out[-1][1] = t + length
+            else:
+                out.append([t, t + length])
+        t += length
+        length = 0.0
+    top = duration if duration and duration > 0 else None
+    ranges: list[Range] = []
+    for s, e in out:
+        if top is not None:
+            s, e = min(s, top), min(e, top)
+        if e - s >= 0.5:
+            ranges.append((round(s, 3), round(e, 3)))
+    return ranges
+
+
+def pick_playlist_url(formats) -> str | None:
+    """The HLS media playlist of the best video quality in yt-dlp's format list (the one the downloads use)."""
+    if not isinstance(formats, list):
+        return None
+    best: tuple[tuple[float, float, float], str] | None = None
+    for f in formats:
+        if not isinstance(f, dict):
+            continue
+        url = f.get("url")
+        if not isinstance(url, str) or ".m3u8" not in url.split("?", 1)[0]:
+            continue
+        if f.get("vcodec") == "none" or f.get("format_note") == "storyboard":  # audio-only / thumbnails
+            continue
+        key = tuple(float(f.get(k) or 0) for k in ("height", "fps", "tbr"))
+        if best is None or key > best[0]:
+            best = (key, url)  # type: ignore[assignment]
+    return best[1] if best else None
+
+
+def muted_from_playlist_url(url: str, duration: float | None = None) -> list[Range] | None:
+    """Download a playlist and read its muted stretches. None = could not be told (any failure)."""
+    try:
+        resp = requests.get(url, headers={"User-Agent": HLS_USER_AGENT}, timeout=15)
+        resp.raise_for_status()
+        return parse_muted_ranges(resp.text, duration)
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def fetch_muted_ranges(formats, duration: float | None = None) -> list[Range] | None:
+    """The muted stretches of a VOD from yt-dlp's format list: [] = none, None = could not be told."""
+    url = pick_playlist_url(formats)
+    return muted_from_playlist_url(url, duration) if url else None
+
+
+def muted_overlap(muted: list[Range] | None, start: float, end: float) -> float:
+    """Seconds of [start, end] that fall inside muted stretches."""
+    return sum(max(0.0, min(e, end) - max(s, start)) for s, e in (muted or []))
+
+
 def fetch_storyboard_sheet(url: str) -> Path | None:
     """Download one sprite sheet once into the per-user cache and return its path (None on failure)."""
     if not url:
@@ -1247,6 +1350,7 @@ class JobOptions:
     premiere_xml: bool = False  # also write a Premiere Pro XML (clips as markers) next to each part
     game_markers: bool = False  # also put the game / category changes into that XML as markers ("GAME: ...")
     premiere_plugin: bool = False  # also write a .markers.json for the LuckyTwitch Premiere Pro plugin (colors, details)
+    muted_markers: bool = False  # ... and put the stretches Twitch silenced into that .markers.json (kind "muted")
     chat: bool = False  # also download the chat of each part with TwitchDownloaderCLI (Twitch VODs only)
     chat_format: str = "json"  # json | txt | html
     chat_embed: bool = False  # embed emotes / badges in the chat file (bigger, but it renders offline)
@@ -2771,6 +2875,27 @@ def _load_chapters(ctx: Ctx, job: Job) -> list[Chapter]:
     return chapters
 
 
+def _load_muted(ctx: Ctx, job: Job) -> list[Chapter]:
+    """The stretches Twitch silenced, as chapters, when the .markers.json should carry them (else [])."""
+    src, opts = job.source, job.opts
+    if not (opts.muted_markers and opts.premiere_plugin) or job.single_clip:
+        return []
+    ranges = src.muted  # normally read at «Get info»
+    if ranges is None and src.twitch_vod_id:  # it could not be read then (or the VOD came from elsewhere): try once more
+        try:
+            ranges = muted_from_playlist_url(get_playlist_url(ctx, src.url), src.duration)
+        except Cancelled:
+            raise
+        except EngineError:
+            ranges = None
+    if ranges is None:
+        ctx.log("Muted audio: could not read which parts Twitch silenced, so no muted markers this time.")
+        return []
+    if ranges:
+        ctx.log(f"Muted audio: {len(ranges)} stretch(es), {fmt_hms(sum(e - s for s, e in ranges))} in total")
+    return muted_chapters(ranges)
+
+
 def run_job(job: Job, ctx: Ctx) -> list[Path]:
     src, opts = job.source, job.opts
     if not find_tool("ffmpeg"):
@@ -2783,6 +2908,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     )
     chapters_all = _load_chapters(ctx, job)
     games_all = game_chapters(src.segments) if opts.game_markers and not job.single_clip else []
+    muted_all = _load_muted(ctx, job)
     chat_fmt = opts.chat_format if opts.chat_format in CHAT_FORMATS else "json"
     chat_tool: str | None = None
     if opts.chat and not job.single_clip:
@@ -2825,29 +2951,31 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
         game_chs = chapters_for_part(games_all, real_start, real_end)
+        muted_chs = chapters_for_part(muted_all, real_start, real_end)
         # Two separate outputs. The XML is the plain import (no colors). The JSON is for the plugin. Game markers
         # alone still give the XML, as before, unless the plugin file is on (then they go there).
         xml_clips = clip_chs if opts.premiere_xml else []
         json_clips = clip_chs if opts.premiere_plugin else []
         want_xml = opts.premiere_xml or (opts.game_markers and not opts.premiere_plugin)
-        if (want_xml and (xml_clips or game_chs)) or (opts.premiere_plugin and (json_clips or game_chs)):
+        if (want_xml and (xml_clips or game_chs)) or (opts.premiere_plugin and (json_clips or game_chs or muted_chs)):
             probe = probe_video(dest)
             if probe is None:
                 ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers.")
             fps, w, h = probe or (30.0, 1920, 1080)
 
-            def marker_bits(clips: list[Chapter]) -> str:
+            def marker_bits(clips: list[Chapter], muted: list[Chapter] | None = None) -> str:
                 return " + ".join(([f"{len(clips)} clip markers"] if clips else [])
-                                  + ([f"{len(game_chs)} game markers"] if game_chs else []))
+                                  + ([f"{len(game_chs)} game markers"] if game_chs else [])
+                                  + ([f"{len(muted)} muted markers"] if muted else []))
 
             if want_xml and (xml_clips or game_chs):
                 markers = sorted(xml_clips + game_chs, key=lambda c: (c.start, c.kind))
                 xml = write_premiere_xml(dest, markers, real_end - real_start, fps, w, h)
                 ctx.log(f"✔ {xml.name}  ({marker_bits(xml_clips)} for Premiere Pro, {fps:g} fps)")
-            if opts.premiere_plugin and (json_clips or game_chs):
-                markers = sorted(json_clips + game_chs, key=lambda c: (c.start, c.kind))
+            if opts.premiere_plugin and (json_clips or game_chs or muted_chs):
+                markers = sorted(json_clips + game_chs + muted_chs, key=lambda c: (c.start, c.kind))
                 mj = write_markers_json(dest, markers, real_end - real_start, fps, src, real_start, real_end)
-                ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips)} for the Premiere plugin, {fps:g} fps)")
+                ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips, muted_chs)} for the Premiere plugin, {fps:g} fps)")
         if chat_tool:
             try:
                 ctx.relabel(f"Chat for part {part.index}/{total_parts}")

@@ -48,9 +48,24 @@ This uses Twitch's Device Code Flow with a public app, so there is no client sec
 
 In **Options → Chapter details**, tick *Also mark the game / category changes*. Each part (or the full VOD) then gets a `.markers.xml` next to it with one marker per game, named `GAME: <game>` and spanning the whole stretch (for example `GAME: Just Chatting` from 0:00:00 to 1:00:00, then `GAME: Resident Evil 2`). Import it in Premiere with **File → Import**. The game list comes from Twitch through yt-dlp, the same data the Timeline shows as colored bars. It works with or without the clip markers (they share the same file when both are ticked). Premiere's XML import has no marker color, so the `GAME:` prefix is what tells them apart from the clip markers.
 
-### Premiere Pro plugin: colored markers (optional)
+### Premiere Pro panels: colored markers and the whole edit (optional)
 
-The `.markers.xml` above is limited by what Premiere's XML import understands: no marker colors, and it brings in a separate sequence. For more, tick **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin**. Each part (or the full VOD) then gets a `.markers.json` next to it, and the panel in [`premiere-plugin/`](premiere-plugin) imports it as colored markers straight onto your active sequence: game changes in one color, clips colored by their views, with the creator and link in the comment. It is independent of the XML option, so you can use either or both. The game markers option applies to both files. See [`premiere-plugin/README.md`](premiere-plugin/README.md) to install it and [`docs/markers-format.md`](docs/markers-format.md) for the file format.
+The `.markers.xml` above is limited by what Premiere's XML import understands: no marker colors, and it brings in a separate sequence. For more, tick **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin**. Each part (or the full VOD) then gets a `.markers.json` next to it, and a Premiere Pro panel imports it as colored markers: game changes in one color, clips colored by their views, with the creator and link in the comment. It is independent of the XML option, so you can use either or both. The game markers option applies to both files. There are **two panels**, both read the same file, and both are on the release page (see [`docs/markers-format.md`](docs/markers-format.md) for the file format):
+
+- **UXP panel** ([`premiere-plugin/`](premiere-plugin), `LuckyTwitch-Premiere-Plugin.ccx`): the easy one. Double-click the `.ccx` to install it with Creative Cloud. Imports the markers (on the clip or on the sequence) and cuts and deletes on any timeline, also one you already trimmed. See [`premiere-plugin/README.md`](premiere-plugin/README.md).
+- **CEP panel** ([`premiere-plugin-cep/`](premiere-plugin-cep), `LuckyTwitch-Premiere-Plugin-CEP.zip`): the whole edit in one button, with the real razor. It adds the markers, cuts around every clip (with padding), deletes the gaps, links video and audio again, and checks the whole result against the plan. It wants a fresh sequence with the video alone on V1/A1, and its installer script switches on Adobe's "allow unsigned panels" flag. See [`premiere-plugin-cep/README.md`](premiere-plugin-cep/README.md).
+
+You can install both; they do not get in each other's way.
+
+### Muted audio (Twitch VODs)
+
+Twitch silences copyrighted audio in a VOD. When you press **Get info** the app reads which stretches were silenced (from the VOD's playlist; it is one extra small request, and if it fails you just see nothing) and shows them:
+
+- **Plan tab → Timeline:** a thin red line along the bottom of the game bars, a line under the buttons saying how many stretches and how much time (`25 stretches · 1:54:00 silenced by Twitch`), and a hover note on the red parts. The **Show muted** switch hides the red line; cuts also snap to the edges of muted stretches while it is on. Zoom in to see the shorter ones clearly.
+- **Plan tab → part list:** each part says how much of it is muted (`Part 2: 1:30:00 → 2:30:00 (1:00:00) · 0:24:00 muted`), and the line at the bottom adds up the total.
+- **Premiere Pro:** tick **Options → Premiere Pro → Muted audio** (with the plugin `.markers.json` option on) and each `.markers.json` also lists the muted stretches of that part as `muted` markers. The plugin chooses their color. See [`docs/markers-format.md`](docs/markers-format.md).
+
+Twitch silences whole segments, so a red stretch can be a little longer than the song itself; it is exactly what is silent in the downloaded file.
 
 ### Chat download (optional, Twitch VODs only)
 
@@ -94,7 +109,8 @@ luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpe
 luckytwitch_downloader.py   the Tk app: window, tabs, queue
 ui/                         UI pieces split out of the app (plan_tab.py, timeline.py, common.py: colours and fonts)
 tests/                      pytest suite
-premiere-plugin/            the Premiere Pro panel that reads the .markers.json (JavaScript, own tests)
+premiere-plugin/            the Premiere Pro panel (UXP) that reads the .markers.json (JavaScript, own tests)
+premiere-plugin-cep/        the second Premiere Pro panel (CEP): same file, edits the whole timeline (JavaScript, own tests)
 docs/                       file format notes (markers-format.md)
 ```
 
@@ -105,7 +121,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The plugin has its own tests (`cd premiere-plugin && npm test`, Node 20+, no dependencies). The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
+The two Premiere panels have their own tests (`cd premiere-plugin && npm test`, `cd premiere-plugin-cep && npm test`, Node 20+, no dependencies; the CEP tests also check that its `markers-core.js` is exactly the UXP one). The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
 
 ## Credits
 

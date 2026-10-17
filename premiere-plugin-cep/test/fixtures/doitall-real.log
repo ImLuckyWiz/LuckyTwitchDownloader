@@ -1,0 +1,66 @@
+=== DO IT ALL: markers -> cuts -> deletes -> relink -> final check (one confirm; stops at the first failed check) ===
+Settings: keep 10 s before and 10 s after each clip, merge clips closer than 5 s, clips only; delete limit 99%, keep at least 1 piece(s)
+Timeline now: a fresh, uncut timeline.
+  1. add 110 markers to the clip
+  2. cut at 199 points (398 razor calls on V1 + A1)
+  3. ripple-delete 100 gap pieces
+  4. link 100 video/audio pairs
+Confirmed by you. Each step now re-reads the timeline right before it changes anything.
+[1/9] Markers: Failsafe (read everything again, right now)
+  [ok]   The sequence is 60.000 fps, non-drop timecode.
+  [ok]   Delete plan: 100 pieces, 28,989 s, 84.3%; keep 100 pieces, 5,391 s.
+    (22 ms)
+[2/9] Markers: Add the markers to the clip
+    0 marker(s) on the clip before; 110 to add at source offset 0.00 s.
+    50/110 (50 added, 0 already there)
+    100/110 (100 added, 0 already there)
+    110/110 (110 added, 0 already there)
+    110 added, 0 already there, in 6.1 s (longest call 659 ms).
+    check: PASS 110/110 markers read back from Premiere: 0 missing, 0 wrong comments, 0 wrong colors, 0 wrong ends, worst start error 0.0000 s, worst end error 0.0000 s; markers on the clip 0 -> 110 (expected 110, ok)
+    (6309 ms)
+[3/9] Cuts: Failsafe + plan (read everything again, right now)
+  [ok]   Every cut on the timeline is one the plan asked for.
+    settings: keep 10 s before and 10 s after each clip, merge clips closer than 5 s, clips only; delete limit 99%, keep at least 1 piece(s)
+    plan: 199 cuts (398 razor calls), 100 gap pieces to delete later, 100 to keep.
+    Already confirmed for the whole run: go.
+    (47 ms)
+[4/9] Cuts: Cut V1 + A1 (back to front, in chunks)
+    50/199 cuts (V1 51 pieces, A1 51; last chunk 259 ms, next chunk 10)
+    100/199 cuts (V1 101 pieces, A1 101; last chunk 427 ms, next chunk 10)
+    150/199 cuts (V1 151 pieces, A1 151; last chunk 682 ms, next chunk 10)
+    199/199 cuts (V1 200 pieces, A1 200; last chunk 350 ms, next chunk 5)
+    199 cuts in 22 chunks, 11.2 s (longest call 934 ms).
+    check: PASS V1 200 pieces and A1 200 pieces; all 199 cuts on planned frames (worst edge error 0.0000 frames); no holes; source continuous; V1/A1 match piece by piece; 100 to delete, 100 to keep.
+    (11417 ms)
+[5/9] Deletes: Failsafe + delete plan (read everything again, right now)
+  [ok]   The delete plan is safe for the pieces on the timeline: 100 pieces, 28,989 s, 84.3%; keep 100 pieces, 5,391 s.
+    settings: keep 10 s before and 10 s after each clip, merge clips closer than 5 s, clips only; delete limit 99%, keep at least 1 piece(s)
+    timeline: 200 pieces; 100 gap pieces to delete (84.3%), 100 to keep. The timeline would end at 5390.78 s (now 34379.86 s).
+    Already confirmed for the whole run: go.
+    (172 ms)
+[6/9] Deletes: Delete the gap pieces (V1 then A1, last gap first, in chunks)
+    26/100 deleted (V1 174 pieces, A1 174; last chunk 268 ms, slowest pair 149 ms, next chunk 2)
+    52/100 deleted (V1 148 pieces, A1 148; last chunk 265 ms, slowest pair 141 ms, next chunk 2)
+    78/100 deleted (V1 122 pieces, A1 122; last chunk 214 ms, slowest pair 109 ms, next chunk 2)
+    100/100 deleted (V1 100 pieces, A1 100; last chunk 173 ms, slowest pair 89 ms, next chunk 2)
+    100 gap pieces deleted in 47 chunks, 14.0 s (longest call 944 ms).
+    check: PASS V1 100 pieces and A1 100 pieces; every piece exactly where an exact ripple delete puts it (worst error 0.0000 frames); no holes; V1/A1 in sync; V1 ends at 5390.78 s; 0 gap pieces left, 100 kept.
+    (14135 ms)
+[7/9] Relink: Failsafe + relink plan (read the post-delete timeline)
+  [ok]   No gap piece is left on the timeline.
+    timeline: 100 remaining pairs; expected 0 clips on other tracks. Linking does not move clips.
+    Already confirmed for the whole run: go.
+    (166 ms)
+[8/9] Relink: Link the remaining V1/A1 pairs (in chunks)
+    4/100 pairs processed (4 linked now, 0 already linked/skipped; chunk 344 ms).
+    8/100 pairs processed (4 linked now, 0 already linked/skipped; chunk 310 ms).
+    52/100 pairs processed (4 linked now, 0 already linked/skipped; chunk 310 ms).
+    100/100 pairs processed (4 linked now, 0 already linked/skipped; chunk 325 ms).
+    100 pairs processed in 25 chunks, 14.2 s (longest call 456 ms).
+    check: PASS 100 pairs verified linked; timeline/source timings unchanged; V1/A1 remain synchronized; no clips on other tracks.
+    (14609 ms)
+[9/9] Final check: read the whole result back from Premiere
+    check: PASS 100 pieces on V1 and A1, 5390.78 s long (plan 5390.76 s), no gap pieces, no holes, nothing on other tracks; 100 pairs verified linked; 110 markers on the clip (plan 110)
+    (250 ms)
+All 9 phases done in 47.1 s.
+DO IT ALL DONE in 49.3 s. The final check passed (see above). Look at a few pieces on the timeline.

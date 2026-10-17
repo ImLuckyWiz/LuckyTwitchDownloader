@@ -26,6 +26,7 @@ from luckytwitch_engine import (
     load_storyboard_frames,
     make_chapters,
     make_plan,
+    muted_overlap,
     ranges_of,
     ranges_to_text,
 )
@@ -173,14 +174,23 @@ class PlanTabMixin:
         except EngineError as e:
             self.set_preview(f"⚠ {e}", "err", "Fix the cut points to add this VOD")
             return
-        lines = [f"Part {p.index}:  {fmt_hms(p.start)} → {fmt_hms(p.end)}   ({fmt_hms(p.duration)})" for p in plan.parts]
+        muted = self.source.muted if self.source else None  # stretches Twitch silenced, when the VOD has any
+
+        def muted_note(a: float, b: float) -> str:
+            m = muted_overlap(muted, a, b)
+            return f"   ·  {fmt_hms(m)} muted" if m >= 1 else ""
+
+        lines = [f"Part {p.index}:  {fmt_hms(p.start)} → {fmt_hms(p.end)}   ({fmt_hms(p.duration)}){muted_note(p.start, p.end)}"
+                 for p in plan.parts]
         if plan.duration:
             how = ("download the full VOD once, then split it" if plan.strategy == "full"
                    else "download only these parts")
             lines.append(f"→ {how}   (parts cover {plan.coverage * 100:.0f}% of the VOD)")
         n = len(plan.parts)
+        total_muted = sum(muted_overlap(muted, p.start, p.end) for p in plan.parts)
         self.set_preview("\n".join(lines), "ok",
-                         f"{n} part{'s' if n != 1 else ''} · {fmt_hms(sum(p.duration for p in plan.parts))} in total")
+                         f"{n} part{'s' if n != 1 else ''} · {fmt_hms(sum(p.duration for p in plan.parts))} in total"
+                         + (f" · {fmt_hms(total_muted)} muted" if total_muted >= 1 else ""))
 
     def refresh_clips(self, *_):
         self.tree.delete(*self.tree.get_children())
@@ -250,6 +260,7 @@ class PlanTabMixin:
                 self.timeline.set_source(0)
             else:
                 self.timeline.set_source(src.duration, src.segments, src.storyboard)
+                self.timeline.set_muted(src.muted)
                 self._load_frames(src)
             self.timeline.set_clip_marks(self._clip_times())
         text = self.cuts.get("1.0", "end").strip()
