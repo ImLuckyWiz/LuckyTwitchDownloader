@@ -9,7 +9,7 @@ live example. The example uses the VOD you loaded, or a sample VOD until then.
 
 This is a mixin for ``App`` (luckytwitch_downloader.py). It expects the host to provide ``tab_options``
 (a plain ttk.Frame), ``STRATEGY_NAMES``, ``CHAT_RENDER_TYPE_NAMES``, ``CHAT_RENDER_LOOK_NAMES``, ``CHAT_RENDER_FPS_NAMES``, ``var()``, ``vars``, ``source``, ``pick_folder``, ``open_output_folder``,
-``update_preview``, ``refresh_clips``, ``update_tools_now`` and ``open_tools_folder``. It creates
+``update_preview``, ``refresh_clips``, ``update_tools_now``, ``open_tools_folder`` and ``render_saved_chat``. It creates
 ``tools_info`` and ``update_btn`` (the host's message loop updates them) and ``options_nav``.
 
 Every setting keeps the variable name it always had, so saved settings and ``build_options()`` are unchanged.
@@ -311,7 +311,6 @@ class OptionsTabMixin:
         self._switch(row, "chat")
 
         row = card.add_row("Chat as a video (overlay)", "Draws the chat of each part as a video for your editor.",
-                           divider=False,
                            info="Saved next to each part as «name.chat-overlay.mov» (or .mp4). It works even if the "
                                 "stream had no chat on screen: put it on the track above the video, at the start of "
                                 "the part, and place it where you want it. It begins together with the part and can "
@@ -321,6 +320,16 @@ class OptionsTabMixin:
                                 "Size on disk for a very busy chat (3 messages a second, 400 x 1080): about 3.4 GB "
                                 "per hour with Animation, 28 GB with ProRes 4444, 0.4 GB with H.264.")
         self._switch(row, "chat_render")
+
+        row = card.add_row("Draw the overlay from a saved chat", "Pick a «.chat.json» you already have. Nothing is downloaded.",
+                           divider=False,
+                           info="Uses the overlay settings below (type, look, size, text size, frame rate). The video is "
+                                "not touched. If «name.mp4» (or .mkv…) is next to the chat, the overlay takes its size "
+                                "and frame rate; if «name.markers.json» is there too, it is lined up to the fraction of "
+                                "a second. The result is saved next to the chat as «name.chat-overlay.mov» (or .mp4).")
+        self.saved_chat_btn = ttk.Button(row.control, text="Choose chat file…", style="Card.TButton",
+                                         command=self.render_saved_chat)
+        self.saved_chat_btn.pack()
 
         adv = self._advanced(card, "file format, embedded emotes and how the overlay looks")
         row = adv.add_row("Format", "File type of the saved chat.")

@@ -1,3 +1,16 @@
+## v1.16.0
+
+Draw the chat overlay from a chat file you already have. Nothing was removed and nothing works differently when you do not use it.
+
+### Overlay from a saved chat
+- **New button.** Options → Chat → **Draw the overlay from a saved chat** → *Choose chat file…*: pick a `name.chat.json` (saved earlier by this app or by TwitchDownloader) and the app draws `name.chat-overlay.mov` next to it, with the current overlay settings. Nothing is downloaded and neither the chat nor the video is touched. Before it starts you see what it will do: the streamer, the VOD, the stretch of the VOD the file covers, how many messages, the size, frame rate and type, and the name of the result. A file that is not a chat says why and nothing starts.
+  - If `name.mp4` (or `.mkv`, `.mov`, `.ts`…) is next to the chat, the overlay takes its size and frame rate (unless you set them in Advanced).
+  - If `name.markers.json` is next to it, the overlay is lined up to the fraction of a second, like a normal download. Without it, it is lined up to the whole second (up to 1 s ahead of the video if the part did not start on one). A `.markers.json` that belongs to another part is ignored.
+  - It never overwrites an earlier overlay (a new one gets a number), and it runs in the background; **Cancel current** (Queue & log) stops it.
+- **It needs internet** while it draws, to fetch emotes and badges from Twitch, BTTV, FFZ and 7TV (unless the chat was saved with the emotes embedded). A long chat can take from minutes to hours depending on the type.
+- **Checked:** the real TwitchDownloaderCLI on a real chat file (offline, so without emotes) gave a 400 × 720, 30 fps overlay with an alpha channel, and the 0.4 s trim from a `.markers.json` was applied. **Not checked:** a full render with emotes and badges.
+- **Tests:** 37 new tests (reading the chat file, finding the video and the `.markers.json`, the render itself, and the window), and every older test still passes.
+
 ## v1.15.0
 
 The chat of each part as a video you can put over the footage in your editor. Nothing was removed and nothing works differently when you do not use it: the new option is off by default.
@@ -12,9 +25,6 @@ The chat of each part as a video you can put over the footage in your editor. No
 - **Advanced settings:** how it looks (outlined text with nothing behind it, or a dark semi-transparent panel), size (width × height; height 0 = the video's), text size, frame rate (like the video, 30 or 60) and smooth scrolling (redraws on every frame instead of 5 times a second; slower). Size and frame rate follow the real video by default.
 - **Lined up with the part.** The overlay starts together with the part. The tool only trims in whole seconds, so the fractional part is corrected with ffmpeg (`-ss`); with the chat updating every 0.2 s, expect a tolerance of about 0.2 s. It can end up to a second after the part (ffmpeg's `-t` crashes the tool, so it is not used).
 - **If it fails,** the video is still downloaded and the log says why. An unfinished overlay file is never left behind.
-- **It needs internet** while it draws, to fetch emotes and badges from Twitch, BTTV, FFZ and 7TV. A long part can take from minutes to hours depending on the type.
-- **Checked:** the real TwitchDownloaderCLI on a 720p, 60 fps test video gave a 400 × 720, 60 fps overlay with a working alpha channel. **Not checked:** opening the file in Premiere Pro, real emotes and badges (the test used a synthetic chat, offline), and speed and size on a real VOD of several hours.
-- **Tests:** 54 new tests (the overlay itself, and the new Options settings), and every older test still passes.
 
 ## v1.14.0
 

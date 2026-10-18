@@ -91,6 +91,7 @@ Choose the type in **Advanced → Overlay type** (sizes for a very busy chat, 3 
 Also in Advanced: the look (outlined text, or a dark semi-transparent panel), size, text size, frame rate and smooth scrolling. Size and frame rate follow the video by default. Notes:
 
 - The overlay starts together with the part (about 0.2 s tolerance) and can end up to a second after it.
+- **Already have the chat?** In **Options → Chat**, press *Choose chat file…* next to *Draw the overlay from a saved chat* and pick a `name.chat.json`. The overlay is drawn next to it with your current overlay settings, with no download. If `name.mp4` is next to the chat it gives the size and frame rate, and if `name.markers.json` is there the overlay is lined up to the fraction of a second. This is the way to try another size or text size on a part you already downloaded.
 - It needs internet while it draws, to fetch emotes and badges (Twitch, BTTV, FFZ, 7TV), and a long part can take from minutes to hours.
 - If it fails, the video is still downloaded and the log says why.
 - Not yet verified: opening it in Premiere Pro, and speed and size on a multi-hour VOD (the figures above come from a synthetic chat).

@@ -23,6 +23,7 @@ import os
 import queue
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import tkinter as tk
@@ -56,8 +57,10 @@ from luckytwitch_engine import (
     TwitchClient,
     describe_tools,
     device_login_poll,
+    describe_chat_overlay,
     device_login_start,
     clip_cut_text,
+    ensure_tdcli,
     ensure_tools,
     fetch_clips_for_vod,
     fetch_thumbnail,
@@ -65,6 +68,7 @@ from luckytwitch_engine import (
     fmt_hms,
     get_source_info,
     make_plan,
+    render_existing_chat,
     run_job,
     search_channels,
     stream_dir,
@@ -358,6 +362,7 @@ class App(PlanTabMixin, OptionsTabMixin):
         self._job_prefix = ""
         self.tools_busy = False
         self.tools_ctx: Ctx | None = None
+        self._saved_chat_busy = False  # an overlay of a saved chat file is being drawn (see render_saved_chat)
         self._info_busy = False  # «Get info» is working (see set_info_busy)
         self._info_job = None
         self._info_before = ""
@@ -1376,6 +1381,9 @@ class App(PlanTabMixin, OptionsTabMixin):
         if self.tools_busy:
             self.set_status("Still preparing yt-dlp / ffmpeg, start the queue again in a moment.")
             return
+        if self._saved_chat_busy:
+            self.set_status("A chat overlay is being drawn, start the queue when it finishes.")
+            return
         todo = [it for it in self.items if it["status"] == "queued"]
         if not todo:
             self.set_status("Nothing queued.")
@@ -1405,6 +1413,53 @@ class App(PlanTabMixin, OptionsTabMixin):
 
         self.worker = threading.Thread(target=work, daemon=True)
         self.worker.start()
+
+    def render_saved_chat(self):
+        """Options → Chat → «Draw the overlay from a saved chat»: pick a «.chat.json», confirm, draw it (no download)."""
+        if (self.worker and self.worker.is_alive()) or self.tools_busy or self._saved_chat_busy:
+            messagebox.showinfo("Busy", "Wait for the running job (or the tools setup) to finish first.")
+            return
+        opts = self.build_options()
+        folder = Path(opts.out_dir)
+        path = filedialog.askopenfilename(
+            title="Choose a saved chat (.chat.json)", initialdir=str(folder) if folder.is_dir() else None,
+            filetypes=[("Chat files", "*.json"), ("All files", "*.*")])
+        if not path:
+            return
+        chat = Path(path)
+        try:
+            summary = describe_chat_overlay(chat, opts)
+        except EngineError as e:
+            messagebox.showerror("Chat overlay", str(e))
+            return
+        if not messagebox.askokcancel("Draw the chat overlay?", summary + "\n\nIt can take a while for a long chat."):
+            return
+        self.start_saved_chat_render(chat, opts)
+
+    def start_saved_chat_render(self, chat: Path, opts: JobOptions):
+        self._saved_chat_busy = True
+        self.start_btn.config(state="disabled")
+        self.cancel_btn.config(state="normal")
+        self.saved_chat_btn.config(state="disabled")
+        self.notebook.select(self.tab_queue)  # the log and «Cancel current» live there
+        self.set_status("Chat overlay…")
+
+        def work():
+            ctx = Ctx(log=lambda m: self.q.put(("log", m)), progress=lambda f, t: self.q.put(("progress", f, t)))
+            self.ctx = ctx
+            out, error = None, None
+            try:
+                ctx.stage(0.0, 1.0, "Chat overlay")
+                tool = ensure_tdcli(ctx)
+                with tempfile.TemporaryDirectory(prefix="luckytwitch_chat_") as cache:
+                    out = render_existing_chat(ctx, tool, chat, opts, Path(cache))
+            except Cancelled:
+                error = "Cancelled."
+            except Exception as e:  # noqa: BLE001
+                error = str(e)
+            self.q.put(("saved_chat_done", str(out) if out else None, error))
+
+        threading.Thread(target=work, daemon=True).start()
 
     def open_output_folder(self, path: Path | None = None, select: bool = False):
         """Open the output folder (created if missing), or `path` when given."""
@@ -1526,6 +1581,20 @@ class App(PlanTabMixin, OptionsTabMixin):
                         messagebox.showwarning("Tools", msg[1])
                     else:
                         self.set_status("Ready. Paste a VOD URL or ID and press «Get info».")
+                elif kind == "saved_chat_done":
+                    self._saved_chat_busy = False
+                    self.ctx = None
+                    self.start_btn.config(state="normal")
+                    self.cancel_btn.config(state="disabled")
+                    self.saved_chat_btn.config(state="normal")
+                    self.set_progress(0, "")
+                    if msg[2]:
+                        self.log(f"Chat overlay: {msg[2]}" if msg[2] != "Cancelled." else "Cancelled.")
+                        self.set_status("Chat overlay cancelled." if msg[2] == "Cancelled." else "Chat overlay failed. See the log.")
+                        if msg[2] != "Cancelled.":
+                            messagebox.showerror("Chat overlay", msg[2])
+                    else:
+                        self.set_status(f"Chat overlay ready: {Path(msg[1]).name}")
                 elif kind == "queue_done":
                     self.start_btn.config(state="normal")
                     self.cancel_btn.config(state="disabled")

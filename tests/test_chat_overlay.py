@@ -429,3 +429,235 @@ def test_the_new_options_are_off_by_default():
     o = JobOptions(cut_text="", out_dir="")
     assert o.chat_render is False and o.chat_render_mode == "transparent" and o.chat_render_look == "outline"
     assert (o.chat_render_width, o.chat_render_height, o.chat_render_fps) == (400, 0, 0)
+
+
+# --------------------------------------------------------------------------- the overlay of a chat file that is already there
+from luckytwitch_engine import (  # noqa: E402
+    chat_base_name,
+    chat_lead_from_markers,
+    describe_chat_overlay,
+    existing_chat_overlay_path,
+    find_part_video,
+    read_chat_info,
+    render_existing_chat,
+)
+
+
+def chat_file(folder: Path, name="Streamer - part1.chat.json", start=9600, end=12000, comments=None, **extra) -> Path:
+    """A chat file shaped like the real one TwitchDownloader writes (only the parts the app reads)."""
+    data = {
+        "FileInfo": {"Version": {"Major": 1, "Minor": 4, "Patch": 0}},
+        "streamer": {"name": "Streamer", "login": "streamer", "id": 1},
+        "video": {"title": "A stream", "id": "2901476435", "start": start, "end": end, "length": 32020},
+        "comments": [{"content_offset_seconds": start, "message": {"body": "hi"}}, {"content_offset_seconds": end - 1}]
+        if comments is None else comments,
+        "embeddedData": None,
+    }
+    data.update(extra)
+    path = folder / name
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def markers_file(chat: Path, part_start: float, fmt="luckytwitch-markers") -> Path:
+    path = chat.with_name(chat_base_name(chat) + ".markers.json")
+    path.write_text(json.dumps({"format": fmt, "version": 1, "part": {"start": part_start, "end": part_start + 60}}),
+                    encoding="utf-8")
+    return path
+
+
+def test_read_chat_info_reads_everything_from_the_file(tmp_path):
+    info = read_chat_info(chat_file(tmp_path))
+    assert (info.vod_id, info.streamer, info.title) == ("2901476435", "Streamer", "A stream")
+    assert (info.start, info.end, info.messages, info.embedded) == (9600.0, 12000.0, 2, False)
+
+
+def test_read_chat_info_knows_when_emotes_are_embedded(tmp_path):
+    assert read_chat_info(chat_file(tmp_path, embeddedData={"twitchEmotes": [{"id": "1"}], "twitchBadges": []})).embedded
+    assert not read_chat_info(chat_file(tmp_path, embeddedData={"twitchEmotes": [], "twitchBadges": []})).embedded
+
+
+def test_read_chat_info_falls_back_to_the_first_and_last_message_when_the_range_is_missing(tmp_path):
+    path = chat_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["video"]["start"], data["video"]["end"]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    info = read_chat_info(path)
+    assert (info.start, info.end) == (9600.0, 11999.0)
+
+
+def test_read_chat_info_accepts_a_file_with_a_byte_order_mark(tmp_path):
+    path = chat_file(tmp_path)
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    assert read_chat_info(path).messages == 2
+
+
+@pytest.mark.parametrize("text, why", [
+    ("not json at all", "Could not read"),
+    ("[1, 2, 3]", "not a chat file"),
+    ('{"comments": []}', "not a chat file"),
+    ('{"video": {}, "comments": "x"}', "not a chat file"),
+    ('{"video": {"start": 0, "end": 1}, "comments": []}', "no messages"),
+])
+def test_read_chat_info_says_why_a_file_is_not_usable(tmp_path, text, why):
+    path = tmp_path / "x.chat.json"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(EngineError, match=why):
+        read_chat_info(path)
+
+
+def test_read_chat_info_on_a_missing_file(tmp_path):
+    with pytest.raises(EngineError, match="Could not read"):
+        read_chat_info(tmp_path / "nope.chat.json")
+
+
+@pytest.mark.parametrize("name, base", [
+    ("Streamer - part1.chat.json", "Streamer - part1"),
+    ("Streamer - part1.CHAT.JSON", "Streamer - part1"),
+    ("renamed.json", "renamed"),
+    ("a.b.chat.json", "a.b"),
+])
+def test_chat_base_name(name, base):
+    assert chat_base_name(Path("/x") / name) == base
+
+
+def test_the_overlay_goes_next_to_the_chat_with_the_name_of_the_part():
+    chat = Path("/out/Streamer - part1.chat.json")
+    assert existing_chat_overlay_path(chat, "transparent") == Path("/out/Streamer - part1.chat-overlay.mov")
+    assert existing_chat_overlay_path(chat, "prores").suffix == ".mov"
+    assert existing_chat_overlay_path(chat, "compact") == Path("/out/Streamer - part1.chat-overlay.mp4")
+
+
+def test_the_video_of_the_chat_is_found_by_name(tmp_path):
+    chat = chat_file(tmp_path)
+    assert find_part_video(chat) is None
+    (tmp_path / "Streamer - part1.chat-overlay.mov").write_bytes(b"x")  # an overlay is not the video
+    (tmp_path / "Streamer - part2.mp4").write_bytes(b"x")  # nor is another part
+    assert find_part_video(chat) is None
+    video = tmp_path / "Streamer - part1.mkv"
+    video.write_bytes(b"x")
+    assert find_part_video(chat) == video
+
+
+def test_the_fraction_of_the_start_comes_from_the_markers_file(tmp_path):
+    chat = chat_file(tmp_path)
+    info = read_chat_info(chat)
+    assert chat_lead_from_markers(chat, info) == 0.0  # no markers file
+    markers_file(chat, 9600.4)
+    assert chat_lead_from_markers(chat, info) == pytest.approx(0.4)
+    markers_file(chat, 9600.0)
+    assert chat_lead_from_markers(chat, info) == 0.0
+
+
+def test_a_markers_file_of_another_part_is_ignored(tmp_path):
+    chat = chat_file(tmp_path)
+    info = read_chat_info(chat)
+    markers_file(chat, 5000.4)  # a different stretch of the VOD: its fraction means nothing here
+    assert chat_lead_from_markers(chat, info) == 0.0
+    markers_file(chat, 9600.4, fmt="something-else")
+    assert chat_lead_from_markers(chat, info) == 0.0
+    chat.with_name("Streamer - part1.markers.json").write_text("{broken", encoding="utf-8")
+    assert chat_lead_from_markers(chat, info) == 0.0
+
+
+@posix_only
+def test_render_existing_chat_draws_from_the_file_and_downloads_nothing(tmp_path):
+    cli = fake_cli(tmp_path)
+    chat = chat_file(tmp_path)
+    ctx, logs = make_ctx()
+    out = render_existing_chat(ctx, cli, chat, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+    assert [c[0] for c in calls(tmp_path)] == ["chatrender"]  # no chatdownload
+    assert value(calls(tmp_path)[0], "-i") == str(chat)
+    assert out == tmp_path / "Streamer - part1.chat-overlay.mov" and out.exists()
+    assert chat.exists()
+    assert any(m.startswith("✔ Streamer - part1.chat-overlay.mov") and "400x1080, 30 fps" in m for m in logs)
+
+
+@posix_only
+def test_render_existing_chat_lines_up_with_the_markers_file(tmp_path):
+    cli = fake_cli(tmp_path)
+    chat = chat_file(tmp_path)
+    markers_file(chat, 9600.4)
+    ctx, _ = make_ctx()
+    render_existing_chat(ctx, cli, chat, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+    assert chat_render_output_args("transparent", 0.4) in value_of_equals(calls(tmp_path)[0], "--output-args")
+
+
+@posix_only
+def test_render_existing_chat_follows_the_video_next_to_it(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(eng, "probe_video", lambda p: seen.append(p) or (60.0, 2560, 1440))
+    cli = fake_cli(tmp_path)
+    chat = chat_file(tmp_path)
+    video = tmp_path / "Streamer - part1.mp4"
+    video.write_bytes(b"x")
+    ctx, _ = make_ctx()
+    render_existing_chat(ctx, cli, chat, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+    render = calls(tmp_path)[0]
+    assert seen == [video]
+    assert (value(render, "--chat-width"), value(render, "--chat-height"), value(render, "--framerate")) == ("400", "1440", "60")
+
+
+@posix_only
+def test_render_existing_chat_uses_the_chosen_type_look_and_text_size(tmp_path):
+    cli = fake_cli(tmp_path)
+    chat = chat_file(tmp_path)
+    ctx, _ = make_ctx()
+    out = render_existing_chat(ctx, cli, chat, JobOptions(
+        cut_text="", out_dir=str(tmp_path), chat_render_mode="compact", chat_render_font_size=30,
+        chat_render_width=600, chat_render_height=700), tmp_path / "cache")
+    render = calls(tmp_path)[0]
+    assert out.name == "Streamer - part1.chat-overlay.mp4"
+    assert (value(render, "--font-size"), value(render, "--chat-width"), value(render, "--chat-height")) == ("30", "600", "700")
+    assert value(render, "--background-color") == "#000000"
+
+
+@posix_only
+def test_render_existing_chat_never_overwrites_an_earlier_overlay(tmp_path):
+    cli = fake_cli(tmp_path)
+    chat = chat_file(tmp_path)
+    earlier = tmp_path / "Streamer - part1.chat-overlay.mov"
+    earlier.write_bytes(b"keep me")
+    ctx, _ = make_ctx()
+    out = render_existing_chat(ctx, cli, chat, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+    assert out != earlier and earlier.read_bytes() == b"keep me"
+
+
+def test_render_existing_chat_with_a_file_that_is_not_a_chat_fails_before_running_anything(tmp_path):
+    bad = tmp_path / "x.chat.json"
+    bad.write_text("{}", encoding="utf-8")
+    ctx, _ = make_ctx()
+    with pytest.raises(EngineError, match="not a chat file"):
+        render_existing_chat(ctx, "never-run", bad, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+
+
+@posix_only
+def test_a_failed_render_of_a_saved_chat_leaves_the_chat_alone_and_no_half_file(tmp_path):
+    cli = fake_cli(tmp_path, chatrender="print('[ERROR] - boom', flush=True); open(out, 'wb').write(b'half'); sys.exit(1)")
+    chat = chat_file(tmp_path)
+    ctx, _ = make_ctx()
+    with pytest.raises(EngineError):
+        render_existing_chat(ctx, cli, chat, JobOptions(cut_text="", out_dir=str(tmp_path)), tmp_path / "cache")
+    assert sorted(p.name for p in tmp_path.glob("Streamer*")) == ["Streamer - part1.chat.json"]
+
+
+def test_the_summary_says_what_will_happen(tmp_path):
+    chat = chat_file(tmp_path)
+    text = describe_chat_overlay(chat, JobOptions(cut_text="", out_dir=str(tmp_path)))
+    assert "Streamer · VOD 2901476435" in text
+    assert "Covers 2:40:00 to 3:20:00 of the VOD · 2 messages" in text
+    assert "No video next to it" in text
+    assert "400x1080, 30 fps, transparent, Animation" in text
+    assert "File: Streamer - part1.chat-overlay.mov" in text
+    assert "up to 1 s ahead" in text  # no markers file
+    assert "fetched from the internet" in text
+
+
+def test_the_summary_mentions_the_video_the_markers_and_embedded_emotes(tmp_path):
+    chat = chat_file(tmp_path, embeddedData={"twitchEmotes": [{"id": "1"}]})
+    (tmp_path / "Streamer - part1.mp4").write_bytes(b"x")
+    markers_file(chat, 9600.4)
+    text = describe_chat_overlay(chat, JobOptions(cut_text="", out_dir=str(tmp_path)))
+    assert "Video next to it: Streamer - part1.mp4" in text
+    assert "fraction of a second" in text and "up to 1 s ahead" not in text
+    assert "inside the file" in text

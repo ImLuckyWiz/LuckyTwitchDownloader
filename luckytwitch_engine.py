@@ -2919,6 +2919,152 @@ def render_chat(ctx: "Ctx", tdcli: str, chat_json: Path, dest: Path, *, mode: st
     return dest
 
 
+def chat_overlay_settings(opts: "JobOptions", probe: tuple[float, int, int] | None) -> tuple[str, str, int, int, int]:
+    """(mode, look, width, height, fps) of an overlay: what the options say, and the video's size and rate where they say «like the video»."""
+    mode = opts.chat_render_mode if opts.chat_render_mode in CHAT_RENDER_MODES else "transparent"
+    look = opts.chat_render_look if opts.chat_render_look in CHAT_RENDER_LOOKS else "outline"
+    width, height = chat_render_size(opts.chat_render_width, opts.chat_render_height, probe[2] if probe else None)
+    fps = chat_render_fps(opts.chat_render_fps, probe[0] if probe else None)
+    return mode, look, width, height, fps
+
+
+# --------------------------------------------------------------------------- #
+# Overlay from a chat file that is already on disk («name.chat.json»)
+# --------------------------------------------------------------------------- #
+PART_VIDEO_EXTS = (".mp4", ".mkv", ".mov", ".ts", ".m4v", ".webm")
+
+
+@dataclass
+class ChatFileInfo:
+    """What a TwitchDownloader .json chat says about itself (all of it is read from the file)."""
+    vod_id: str
+    streamer: str
+    title: str
+    start: float  # the stretch of the VOD the file covers, in seconds from the start of the VOD
+    end: float
+    messages: int
+    embedded: bool  # emotes and badges are inside the file (it can be drawn offline)
+
+
+def read_chat_info(path: Path) -> ChatFileInfo:
+    """Read a «.chat.json» saved by TwitchDownloader. Raises EngineError, saying why, if it is not one."""
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as e:
+        raise EngineError(f"Could not read the chat file: {e}") from e
+    comments = data.get("comments") if isinstance(data, dict) else None
+    video = data.get("video") if isinstance(data, dict) else None
+    if not isinstance(comments, list) or not isinstance(video, dict):
+        raise EngineError("This is not a chat file saved by TwitchDownloader (a «.chat.json»).")
+    if not comments:
+        raise EngineError("This chat file has no messages, so there is nothing to draw.")
+
+    def seconds(value, fallback: float) -> float:
+        return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else fallback
+
+    def offset(c) -> float:
+        return seconds(c.get("content_offset_seconds") if isinstance(c, dict) else None, 0.0)
+
+    streamer = data.get("streamer") if isinstance(data.get("streamer"), dict) else {}
+    embedded = data.get("embeddedData")
+    return ChatFileInfo(
+        vod_id=str(video.get("id") or ""),
+        streamer=str(streamer.get("name") or ""),
+        title=str(video.get("title") or ""),
+        start=seconds(video.get("start"), offset(comments[0])),
+        end=seconds(video.get("end"), offset(comments[-1])),
+        messages=len(comments),
+        embedded=isinstance(embedded, dict) and any(isinstance(v, list) and v for v in embedded.values()),
+    )
+
+
+def chat_base_name(chat_json: Path) -> str:
+    """«Streamer - part1.chat.json» → «Streamer - part1»: the name the part's other files share."""
+    name = chat_json.name
+    for ending in (".chat.json", ".json"):
+        if name.lower().endswith(ending):
+            return name[: -len(ending)]
+    return chat_json.stem
+
+
+def find_part_video(chat_json: Path) -> Path | None:
+    """The video the chat belongs to («name.mp4» next to «name.chat.json»), if it is there."""
+    base = chat_base_name(chat_json)
+    for ext in PART_VIDEO_EXTS:
+        candidate = chat_json.with_name(base + ext)
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def chat_lead_from_markers(chat_json: Path, info: ChatFileInfo) -> float:
+    """
+    Seconds the overlay must be trimmed at its start to line up with the part: the fraction of the part's start,
+    read from «name.markers.json» next to the chat when it is there. The chat file itself only has whole seconds.
+    Only used when that file is really about this chat (same whole second); 0 otherwise.
+    """
+    path = chat_json.with_name(chat_base_name(chat_json) + ".markers.json")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        if data.get("format") != "luckytwitch-markers":
+            return 0.0
+        part_start = float(data["part"]["start"])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return 0.0
+    if not math.isfinite(part_start) or math.floor(part_start) != math.floor(info.start):
+        return 0.0
+    return part_start - math.floor(part_start)
+
+
+def existing_chat_overlay_path(chat_json: Path, mode: str) -> Path:
+    """Where the overlay of «name.chat.json» goes: «name.chat-overlay.mov» (or .mp4), next to it."""
+    return chat_json.with_name(chat_base_name(chat_json) + ".chat-overlay" + CHAT_RENDER_EXT.get(mode, ".mov"))
+
+
+def render_existing_chat(ctx: "Ctx", tdcli: str, chat_json: Path, opts: "JobOptions", cache_dir: Path) -> Path:
+    """
+    Draw the overlay of a chat file that is already on disk, with the overlay settings of `opts`. Nothing is
+    downloaded and neither the chat nor the video is touched. Size and frame rate follow «name.mp4» (or .mkv…)
+    next to the chat when it exists; the fraction of the part's start comes from «name.markers.json» when it exists.
+    """
+    info = read_chat_info(chat_json)
+    video = find_part_video(chat_json)
+    mode, look, width, height, fps = chat_overlay_settings(opts, probe_video(video) if video else None)
+    lead = chat_lead_from_markers(chat_json, info)
+    out = render_chat(
+        ctx, tdcli, chat_json, existing_chat_overlay_path(chat_json, mode), mode=mode, look=look, width=width,
+        height=height, font_size=opts.chat_render_font_size, fps=fps, smooth=opts.chat_render_smooth,
+        cache_dir=cache_dir, lead=lead)
+    ctx.log(f"✔ {out.name}  ({width}x{height}, {fps} fps, {CHAT_RENDER_LABELS[mode]}; "
+            + ("starts together with the part" if lead or video else "starts at the first second of the chat")
+            + ")")
+    return out
+
+
+def describe_chat_overlay(chat_json: Path, opts: "JobOptions") -> str:
+    """What drawing the overlay of this chat file will do, in plain words (to confirm before the long render)."""
+    info = read_chat_info(chat_json)
+    video = find_part_video(chat_json)
+    mode, _look, width, height, fps = chat_overlay_settings(opts, probe_video(video) if video else None)
+    base = chat_base_name(chat_json)
+    lines = [
+        " · ".join(x for x in (info.streamer, f"VOD {info.vod_id}" if info.vod_id else "") if x) or chat_json.name,
+        f"Covers {fmt_hms(info.start)} to {fmt_hms(info.end)} of the VOD · {info.messages:,} messages",
+        "",
+        f"Video next to it: {video.name}" if video else "No video next to it, so the size and frame rate come from Options.",
+        f"Overlay: {width}x{height}, {fps} fps, {CHAT_RENDER_LABELS[mode]}",
+        f"File: {existing_chat_overlay_path(chat_json, mode).name}",
+    ]
+    if chat_lead_from_markers(chat_json, info) > 0:
+        lines.append(f"Lined up to the fraction of a second with {base}.markers.json.")
+    elif not chat_json.with_name(base + ".markers.json").is_file():
+        lines.append(f"No {base}.markers.json: lined up to the whole second (up to 1 s ahead of the video).")
+    lines.append("Emotes and badges are inside the file." if info.embedded
+                 else "Emotes and badges are fetched from the internet while it draws.")
+    return "\n".join(lines)
+
+
 def chat_files_for_part(ctx: "Ctx", tool: str, src: "SourceInfo", opts: "JobOptions", part: "Part", total_parts: int,
                         dest: Path, real_start: float, real_end: float, workdir: Path) -> None:
     """
@@ -2966,12 +3112,7 @@ def chat_files_for_part(ctx: "Ctx", tool: str, src: "SourceInfo", opts: "JobOpti
                 chat_json = download_chat(ctx, tool, vod_id, real_start, real_end,
                                           cache / f"part{part.index}.chat.json", False, cache)
                 temp_json = True
-            probe = probe_video(dest)
-            fps = chat_render_fps(opts.chat_render_fps, probe[0] if probe else None)
-            width, height = chat_render_size(opts.chat_render_width, opts.chat_render_height,
-                                             probe[2] if probe else None)
-            mode = opts.chat_render_mode if opts.chat_render_mode in CHAT_RENDER_MODES else "transparent"
-            look = opts.chat_render_look if opts.chat_render_look in CHAT_RENDER_LOOKS else "outline"
+            mode, look, width, height, fps = chat_overlay_settings(opts, probe_video(dest))
             lead = max(0.0, real_start - math.floor(real_start))  # the chat file starts at a whole second
             stage(0.1, 1.0, f"Chat overlay for part {part.index}/{total_parts}")
             out = render_chat(

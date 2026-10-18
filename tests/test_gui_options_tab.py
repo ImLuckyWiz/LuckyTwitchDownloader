@@ -5,6 +5,7 @@ Needs Tk and a display like the other GUI tests (xvfb-run -a python -m pytest); 
 """
 
 import time
+from pathlib import Path
 
 import pytest
 
@@ -405,3 +406,165 @@ def test_opening_advanced_makes_the_page_scroll_to_the_new_content(gui):
     region_after = int(float(scroll.canvas.cget("scrollregion").split()[3]))
     assert region_after > region_before  # a taller page than the window: it can now be scrolled
     assert region_after >= scroll.body.winfo_reqheight()
+
+
+# --------------------------------------------------------------------------- the overlay of a saved chat
+def _saved_chat(tmp_path, name="Streamer - part1.chat.json"):
+    import json
+
+    path = tmp_path / name
+    path.write_text(json.dumps({
+        "streamer": {"name": "Streamer"}, "video": {"id": "42", "start": 100, "end": 160, "title": "t"},
+        "comments": [{"content_offset_seconds": 100}], "embeddedData": None}), encoding="utf-8")
+    return path
+
+
+def _pump(gui, done, seconds=5.0):
+    end = time.time() + seconds
+    while time.time() < end and not done():
+        gui.root.update()
+        time.sleep(0.01)
+    gui.root.update()
+
+
+def _ready(gui):
+    """The window starts by preparing the tools in the background (stubbed here): wait until that is over."""
+    _pump(gui, lambda: not gui.app.tools_busy)
+    assert not gui.app.tools_busy
+    return gui.app
+
+
+def _stub_dialogs(monkeypatch, picked, confirm=True):
+    seen = {"asked": [], "confirm": []}
+    monkeypatch.setattr(dl.filedialog, "askopenfilename", lambda **kw: seen["asked"].append(kw) or (str(picked) if picked else ""))
+    monkeypatch.setattr(dl.messagebox, "askokcancel", lambda title, msg, **kw: seen["confirm"].append((title, msg)) or confirm)
+    return seen
+
+
+def test_the_saved_chat_button_is_in_the_chat_section_up_front(gui):
+    app = gui.app
+    chat = app._opt_sections["chat"]
+    assert app.saved_chat_btn in list(walk(chat))
+    adv = advanced(app, "chat")
+    assert app.saved_chat_btn not in list(walk(adv))  # visible without opening Advanced
+
+
+def test_choosing_a_chat_asks_for_confirmation_with_what_it_will_do(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    chat = _saved_chat(tmp_path)
+    seen = _stub_dialogs(monkeypatch, chat, confirm=False)
+    started = []
+    monkeypatch.setattr(app, "start_saved_chat_render", lambda *a: started.append(a))
+    app.render_saved_chat()
+    assert len(seen["confirm"]) == 1
+    title, msg = seen["confirm"][0]
+    assert "Streamer · VOD 42" in msg and "Covers 0:01:40 to 0:02:40" in msg and "chat-overlay.mov" in msg
+    assert started == []  # «Cancel»: nothing happens
+
+
+def test_cancelling_the_file_dialog_does_nothing(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    seen = _stub_dialogs(monkeypatch, None)
+    app.render_saved_chat()
+    assert seen["confirm"] == [] and not app._saved_chat_busy
+
+
+def test_a_file_that_is_not_a_chat_shows_why_and_starts_nothing(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    bad = tmp_path / "x.json"
+    bad.write_text("{}", encoding="utf-8")
+    seen = _stub_dialogs(monkeypatch, bad)
+    app.render_saved_chat()
+    assert seen["confirm"] == [] and not app._saved_chat_busy
+    assert gui.boxes and gui.boxes[-1][0] == "showerror" and "not a chat file" in gui.boxes[-1][2]
+
+
+def test_the_file_dialog_opens_in_the_output_folder(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    app.vars["out_dir"].set(str(tmp_path))
+    seen = _stub_dialogs(monkeypatch, None)
+    app.render_saved_chat()
+    assert seen["asked"][0]["initialdir"] == str(tmp_path)
+
+
+def test_drawing_a_saved_chat_runs_in_the_background_and_gives_the_controls_back(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    chat = _saved_chat(tmp_path)
+    _stub_dialogs(monkeypatch, chat)
+    app.vars["chat_render_font_size"].set("33")
+    got = {}
+
+    def fake_render(ctx, tool, chat_json, opts, cache):
+        got.update(tool=tool, chat=chat_json, opts=opts, cache_exists=Path(cache).is_dir(), busy=app._saved_chat_busy)
+        ctx.log("drawing…")
+        return tmp_path / "Streamer - part1.chat-overlay.mov"
+
+    monkeypatch.setattr(dl, "ensure_tdcli", lambda ctx: "the-cli")
+    monkeypatch.setattr(dl, "render_existing_chat", fake_render)
+    app.render_saved_chat()
+    assert app._saved_chat_busy  # the window stays responsive: the work is in a thread
+    assert str(app.start_btn.cget("state")) == "disabled" and str(app.cancel_btn.cget("state")) == "normal"
+    assert str(app.saved_chat_btn.cget("state")) == "disabled"
+    _pump(gui, lambda: not app._saved_chat_busy)
+    assert got["tool"] == "the-cli" and got["chat"] == chat and got["opts"].chat_render_font_size == 33
+    assert got["cache_exists"] and got["busy"]
+    assert not app._saved_chat_busy and app.ctx is None
+    assert str(app.start_btn.cget("state")) == "normal" and str(app.cancel_btn.cget("state")) == "disabled"
+    assert str(app.saved_chat_btn.cget("state")) == "normal"
+    assert "Streamer - part1.chat-overlay.mov" in app.status.get()
+
+
+def test_a_failed_render_shows_the_reason_and_frees_the_controls(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    _stub_dialogs(monkeypatch, _saved_chat(tmp_path))
+    monkeypatch.setattr(dl, "ensure_tdcli", lambda ctx: "the-cli")
+
+    def boom(*a):
+        raise eng.EngineError("Chat render failed: no internet")
+
+    monkeypatch.setattr(dl, "render_existing_chat", boom)
+    app.render_saved_chat()
+    _pump(gui, lambda: not app._saved_chat_busy)
+    assert gui.boxes[-1] == ("showerror", "Chat overlay", "Chat render failed: no internet")
+    assert str(app.saved_chat_btn.cget("state")) == "normal" and str(app.start_btn.cget("state")) == "normal"
+
+
+def test_cancelling_a_saved_chat_render_is_quiet(gui, tmp_path, monkeypatch):
+    app = _ready(gui)
+    _stub_dialogs(monkeypatch, _saved_chat(tmp_path))
+    monkeypatch.setattr(dl, "ensure_tdcli", lambda ctx: "the-cli")
+
+    def stopped(*a):
+        raise dl.Cancelled("Cancelled.")
+
+    monkeypatch.setattr(dl, "render_existing_chat", stopped)
+    n = len(gui.boxes)
+    app.render_saved_chat()
+    _pump(gui, lambda: not app._saved_chat_busy)
+    assert len(gui.boxes) == n  # no error box for a cancel
+    assert str(app.saved_chat_btn.cget("state")) == "normal"
+
+
+def test_only_one_thing_runs_at_a_time(gui, tmp_path, monkeypatch):
+    app = gui.app
+    seen = _stub_dialogs(monkeypatch, _saved_chat(tmp_path))
+    app._saved_chat_busy = True
+    app.render_saved_chat()
+    assert seen["asked"] == [] and gui.boxes[-1][0] == "showinfo"
+    app._saved_chat_busy = False
+    app.tools_busy = True
+    app.render_saved_chat()
+    assert seen["asked"] == []
+    app.tools_busy = False
+
+
+def test_the_queue_does_not_start_while_an_overlay_is_being_drawn(gui):
+    app = _ready(gui)
+    app._saved_chat_busy = True
+    app.items.append({"job": object(), "iid": "x", "status": "queued"})
+    app.start_queue()
+    assert app.worker is None  # no thread was started
+    assert "chat overlay is being drawn" in app.status.get()
+    assert app.items[0]["status"] == "queued"
+    app._saved_chat_busy = False
+    app.items.clear()
