@@ -33,6 +33,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import requests
 
+import weblink
+
 try:  # thumbnails in the Search tab; without Pillow everything else still works
     from PIL import Image, ImageTk
 except ImportError:  # pragma: no cover
@@ -86,6 +88,8 @@ except OSError:
 CONFIG_PATH = DATA_DIR / "config.json"
 SETTINGS_PATH = DATA_DIR / "luckytwitch_settings.json"
 RECENT_PATH = DATA_DIR / "luckytwitch_recent.json"
+LINKS_DIR = DATA_DIR / "links"  # links other launches leave for the open window (see weblink.py)
+BEAT_PATH = DATA_DIR / "running.beat"  # the open window touches this so a second launch knows it is there
 MAX_RECENT = 12
 
 STRATEGIES = {
@@ -332,6 +336,9 @@ class App(PlanTabMixin, OptionsTabMixin):
         self._info_before = ""
         self._info_tick = 0
         self._info_own_bar = False
+        self._link_pending = None  # a link has asked for the VOD that «Get info» is about to read
+        self._info_from_link = None  # ... and this is the one being read right now
+        self._link_tick = 0
         # Search tab state
         self.recent = load_recent()
         self.sv_gen = 0  # bumped on every new channel / type: results of older requests are ignored
@@ -350,6 +357,7 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.build_ui()
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.after(100, self.poll_queue)
+        self.start_link_listener()
 
         if Image is not None:
             for _ in range(4):
@@ -886,6 +894,7 @@ class App(PlanTabMixin, OptionsTabMixin):
             return
         self.set_info_busy(True)
         self.set_status("Reading VOD info…")
+        self._info_from_link, self._link_pending = self._link_pending, None
         client = self.client
 
         def work():
@@ -949,8 +958,81 @@ class App(PlanTabMixin, OptionsTabMixin):
         self.refresh_clips()
         self.refresh_name_examples()
         self.set_status("VOD loaded. Set your cut points and add it to the queue.")
+        if self._info_from_link is not None:
+            what = f" ({self._info_from_link})" if self._info_from_link else ""
+            self.set_status(f"VOD opened from a link{what}. Check the cut points, then add it to the queue.")
+            self._info_from_link = None
         if warn:
             self.log(warn)
+
+    # ---------------------------- links that open the app ---------------------------- #
+    def start_link_listener(self):
+        """Links arrive two ways: another launch leaves a file in LINKS_DIR (Windows, and any second start), or the
+        system tells the running app directly (macOS). Both end in open_link()."""
+        if sys.platform == "darwin":
+            try:
+                self.root.createcommand("::tk::mac::LaunchURL", self._mac_launch_url)
+            except tk.TclError:  # pragma: no cover - an old Tk without the hook: the file route still works
+                pass
+        self.poll_links()
+
+    def _mac_launch_url(self, *urls):
+        for url in urls:
+            self.root.after(0, lambda u=url: self.open_link(u))
+
+    def poll_links(self):
+        try:
+            self._link_tick += 1
+            if self._link_tick % 4 == 1:  # about every two seconds
+                weblink.beat(BEAT_PATH)
+            for text in weblink.take_links(LINKS_DIR):
+                self.open_link(text)
+        except Exception as e:  # noqa: BLE001 - never let a bad link stop the loop that watches for the next one
+            self.log(f"Links: {e}")
+        self.root.after(500, self.poll_links)
+
+    def bring_to_front(self):
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            self.root.attributes("-topmost", True)  # the usual way to get above the browser that was just clicked
+            self.root.after(400, lambda: self.root.attributes("-topmost", False))
+            self.root.focus_force()
+        except tk.TclError:  # pragma: no cover
+            pass
+
+    def open_link(self, text: str, waits: int = 0):
+        """Fill in the Plan tab from a luckytwitch:// link and read the VOD. Never queues or starts anything."""
+        try:
+            req = weblink.parse_link(text)
+        except weblink.LinkError as e:
+            self.bring_to_front()
+            self.log(f"Link not opened: {e}")
+            messagebox.showwarning("Link", str(e))
+            return
+        self.bring_to_front()
+        if self.tools_busy or self._info_busy:  # yt-dlp is still being prepared, or another VOD is being read
+            if waits >= 180:
+                self.log("Link not opened: the app stayed busy for too long.")
+                messagebox.showwarning("Link", "The app was busy for too long to open that link. Try it again.")
+                return
+            self.set_status("The link will open in a moment…")
+            self.root.after(1000, lambda: self.open_link(text, waits + 1))
+            return
+        self.notebook.select(self.tab_plan)
+        # forget the VOD that was loaded: if reading the new one fails, its cut points must not be applied to the old one
+        self.source, self.clips, self.clips_loaded = None, [], False
+        self.info_var.set("No VOD loaded.")
+        self.vod_var.set(req.url)
+        self.cuts.delete("1.0", "end")
+        if req.cuts:
+            self.cuts.insert("1.0", req.cuts)
+        self.update_preview()
+        self.refresh_clips()
+        self.refresh_name_examples()
+        self.log(f"Link: {req.url}" + (f" ({req.label})" if req.label else "") + (f", cut points: {req.cuts}" if req.cuts else ""))
+        self._link_pending = req.label
+        self.on_get_info()
 
     # ---------------------------- search tab logic ---------------------------- #
     def update_search_state(self):
@@ -1369,6 +1451,7 @@ class App(PlanTabMixin, OptionsTabMixin):
                 if kind == "info_ok":
                     self.on_info_ok(*msg[1:])
                 elif kind == "error":
+                    self._info_from_link = None
                     self.set_info_busy(False)
                     self.info_btn.config(state="normal")
                     self.set_status("Error.")
@@ -1427,10 +1510,17 @@ class App(PlanTabMixin, OptionsTabMixin):
             if self.ctx:
                 self.ctx.cancel()
         self.save_settings()
+        try:
+            BEAT_PATH.unlink()  # a launch right after this one must not hand its link to a window that is gone
+        except OSError:
+            pass
         self.root.destroy()
 
 
 def main():
+    link = weblink.find_link(sys.argv[1:])  # started by a luckytwitch:// link?
+    if link and weblink.hand_off(link, LINKS_DIR, BEAT_PATH):
+        return  # the window that is already open took it
     try:  # sharp text on high-DPI Windows screens
         import ctypes
 
@@ -1440,7 +1530,9 @@ def main():
     root = tk.Tk()
     set_app_icon(root)
     apply_dark_theme(root)
-    App(root)
+    app = App(root)
+    if link:
+        root.after(300, lambda: app.open_link(link))
     root.mainloop()
 
 

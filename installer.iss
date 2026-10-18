@@ -25,9 +25,18 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
+Name: "weblinks"; Description: "Open luckytwitch:// links from web pages with LuckyTwitch"; GroupDescription: "Links:"
 
 [Files]
 Source: "dist\LuckyTwitch\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+
+; Web pages can offer luckytwitch:// links. Per user (HKCU), so no admin rights; the app writes the same
+; entries from Options > Tools > Links from web pages (see weblink.py: the command must stay identical).
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\luckytwitch"; ValueType: string; ValueName: ""; ValueData: "URL:LuckyTwitch Link"; Flags: uninsdeletekey; Tasks: weblinks
+Root: HKCU; Subkey: "Software\Classes\luckytwitch"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: weblinks
+Root: HKCU; Subkey: "Software\Classes\luckytwitch\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\LuckyTwitch.exe,0"; Tasks: weblinks
+Root: HKCU; Subkey: "Software\Classes\luckytwitch\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\LuckyTwitch.exe"" ""%1"""; Tasks: weblinks
 
 [Icons]
 Name: "{autoprograms}\LuckyTwitch"; Filename: "{app}\LuckyTwitch.exe"

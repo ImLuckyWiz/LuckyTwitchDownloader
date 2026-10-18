@@ -1,3 +1,18 @@
+## v1.14.0
+
+Links that open the app: any web page, document or program can now offer a link that opens LuckyTwitch Downloader with a VOD and its cut points already filled in. Nothing was removed and nothing works differently when you do not use it.
+
+### Open a VOD from a link
+- **New `luckytwitch://` links.** Clicking one opens the app (or brings the open window to the front; a second window never appears), goes to the **Plan** tab, fills in the VOD and the cut points, and presses **Get info** for you. For example: `luckytwitch://open?url=<VOD link>&cuts=0:20:00 to 3:30:00&label=My job` (values URL-encoded).
+- **A link only fills in the form.** It never adds anything to the queue and never starts a download: you check the cut points and press the button. It cannot change settings, choose folders or file names, or run anything else.
+- **Safe by design.** Only `http` and `https` addresses are accepted, never ones that point to your own computer or a private network, never with a user name or password, and every value is length-limited and stripped of control characters. A link the app cannot use shows a message saying why and changes nothing.
+- **No mix-ups.** The VOD that was loaded is cleared first, so if the new one cannot be read, its cut points are never applied to the old one. If the app is still preparing yt-dlp and ffmpeg, or reading another VOD, the link waits and opens when it is free.
+- **Windows:** the installer has a new option, ticked by default, that sets the links up for your user (no administrator rights). With the portable folder, or from source, press **Options → Tools → Links from web pages → Set up links**. The same card tells you when the links currently open another copy of the app and lets you take them over.
+- **macOS:** the app bundle now declares the scheme, so links work once the app is in Applications. If a link does nothing, open the app once from Applications and try again.
+- **For people who build pages:** the format is in `docs/link-format.md` (parameters, limits, what is refused, examples in HTML and JavaScript). Links have a version (`v=1`); parameters the app does not know are ignored, and a link made for a newer version asks the person to update.
+- **How a second launch finds the open window:** it leaves the link as a small file in a `links` folder inside the data folder, which the open window checks twice a second. Nothing listens on the network.
+- **Tests:** 48 new tests for the link format, the hand-off and the registration (with a stand-in for the Windows registry), and 17 more that drive the real window.
+
 ## v1.13.0
 
 Muted audio (the parts Twitch silenced), feedback while «Get info» works, and a second Premiere Pro panel that does the whole edit in one button. Nothing was removed; the new option is off by default and the existing Premiere plugin is unchanged.

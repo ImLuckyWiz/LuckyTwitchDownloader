@@ -17,9 +17,11 @@ Every setting keeps the variable name it always had, so saved settings and ``bui
 
 from __future__ import annotations
 
+import sys
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
+import weblink
 from luckytwitch_engine import CHAT_FORMATS, JobOptions, Part, SourceInfo, _SafeDict, part_stem, stream_dir
 from ui.common import BG2
 from ui.widgets import Card, Collapsible, ScrollFrame, SideNav, Toggle, TokenChips
@@ -350,3 +352,43 @@ class OptionsTabMixin:
         self.update_btn.pack()
         row = card.add_row("Tools folder", "Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept.", divider=False)
         ttk.Button(row.control, text="Open tools folder", style="Card.TButton", command=self.open_tools_folder).pack()
+
+        card = self._card(f, 3, "Links from web pages",
+                          "A page can offer a luckytwitch:// link that opens a VOD here with the cut points already "
+                          "filled in. A link only fills in the Plan tab: it never starts a download.")
+        row = card.add_row("Open luckytwitch:// links", "", divider=False)
+        self.link_info = tk.StringVar(value="")
+        ttk.Label(row.below, textvariable=self.link_info, style="CardMuted.TLabel", justify="left",
+                  wraplength=640).grid(row=0, column=0, sticky="w", pady=(4, 0))
+        self.link_btn = ttk.Button(row.control, text="Set up links", style="Card.TButton", command=self.register_links)
+        self.link_btn.pack()
+        self.refresh_link_state()
+
+    def refresh_link_state(self) -> None:
+        """Say whether this computer sends luckytwitch:// links to this app (Windows can be set up from here)."""
+        st = weblink.registration()
+        if not st.supported:
+            self.link_btn.pack_forget()
+            if sys.platform == "darwin":
+                self.link_info.set("macOS sends these links to the app by itself once it is in Applications. If a link "
+                                   "does nothing, open LuckyTwitch from Applications once and try again.")
+            else:
+                self.link_info.set("Links are not supported on this system.")
+        elif st.state == "ok":
+            self.link_info.set("Set up: these links open this app.")
+            self.link_btn.config(text="Set up again")
+        elif st.state == "other":
+            self.link_info.set("These links currently open another copy of LuckyTwitch. Press the button to use this one.")
+            self.link_btn.config(text="Use this copy")
+        else:
+            self.link_info.set("Not set up: these links do nothing on this computer yet.")
+            self.link_btn.config(text="Set up links")
+
+    def register_links(self) -> None:
+        try:
+            weblink.register()
+        except OSError as e:
+            messagebox.showerror("Links", f"Windows did not accept the setting:\n{e}")
+            return
+        self.refresh_link_state()
+        self.set_status("Links are set up: luckytwitch:// links now open this app.")

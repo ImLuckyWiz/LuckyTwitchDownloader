@@ -1,6 +1,8 @@
 # Secrets and personal settings (Twitch API credentials live here)
 config.json
 luckytwitch_settings.json
+links/
+running.beat
 
 # Downloads and tools fetched at runtime
 downloads/

@@ -19,6 +19,17 @@ python3 -m PyInstaller --noconfirm --clean --windowed \
   --hidden-import PIL._tkinter_finder \
   luckytwitch_downloader.py
 
+# Let macOS send luckytwitch:// links to the app (web pages can offer them). This has to happen before signing.
+PLIST="dist/LuckyTwitch.app/Contents/Info.plist"
+PB=/usr/libexec/PlistBuddy
+"$PB" -c "Delete :CFBundleURLTypes" "$PLIST" 2>/dev/null || true
+"$PB" -c "Add :CFBundleURLTypes array" \
+      -c "Add :CFBundleURLTypes:0 dict" \
+      -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.luckytwitch.app.link" \
+      -c "Add :CFBundleURLTypes:0:CFBundleTypeRole string Viewer" \
+      -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" \
+      -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string luckytwitch" "$PLIST"
+
 # Ad-hoc signature: required for arm64 binaries to launch at all.
 codesign --force --deep --sign - dist/LuckyTwitch.app
 
@@ -51,6 +62,9 @@ if [ -z "${CI:-}" ]; then
   [ -w "$DEST" ] || { DEST="$HOME/Applications"; mkdir -p "$DEST"; }
   rm -rf "$DEST/LuckyTwitch.app"
   ditto dist/LuckyTwitch.app "$DEST/LuckyTwitch.app"
+  # Tell macOS about the copy right away, so luckytwitch:// links work before the first launch.
+  LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+  [ -x "$LSREG" ] && "$LSREG" -f "$DEST/LuckyTwitch.app" || true
   echo "Installed in $DEST/LuckyTwitch.app"
 fi
 

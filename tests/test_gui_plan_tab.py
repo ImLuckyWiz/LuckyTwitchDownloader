@@ -67,6 +67,8 @@ def gui(tmp_path, monkeypatch):
     monkeypatch.setattr(dl, "SETTINGS_PATH", tmp_path / "settings.json")
     monkeypatch.setattr(dl, "RECENT_PATH", tmp_path / "recent.json")
     monkeypatch.setattr(dl, "CONFIG_PATH", tmp_path / "config.json")
+    monkeypatch.setattr(dl, "LINKS_DIR", tmp_path / "links")
+    monkeypatch.setattr(dl, "BEAT_PATH", tmp_path / "running.beat")
     monkeypatch.setattr(dl, "ensure_tools", lambda *a, **k: None)
     monkeypatch.setattr(dl, "describe_tools", lambda: "stubbed tools")
     monkeypatch.setattr(dl, "make_client", lambda: None)

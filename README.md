@@ -76,6 +76,16 @@ In **Options → Chat**, tick *Also download the chat of each part*. The first t
 - If the chat cannot be downloaded (deleted VOD, no internet...), the video is still downloaded and the log says why.
 - *Embed emotes and badges* makes the file bigger but lets it render offline.
 
+### Open a VOD from a link (web pages and other programs)
+
+A web page, a document or another program can offer a `luckytwitch://` link. Clicking it opens the app (or brings the open window to the front) with the VOD and the cut points already filled in on the **Plan** tab, and reads the VOD for you. A link only fills in the form: it never adds to the queue and never starts a download, so you still check the cut points and press the button yourself.
+
+- **Windows:** the installer has an option for it, ticked by default. If you use the portable folder, or run from source, press **Options → Tools → Links from web pages → Set up links**.
+- **macOS:** it works once the app is in Applications. If a link does nothing, open LuckyTwitch from Applications once and try again.
+- Your browser may ask whether to open LuckyTwitch the first time.
+
+Making a page that offers such a link? The format is in [`docs/link-format.md`](docs/link-format.md).
+
 ## Where things are stored
 
 | What | Windows | macOS |
@@ -83,6 +93,8 @@ In **Options → Chat**, tick *Also download the chat of each part*. The first t
 | Settings, Twitch login (`config.json`) | `%LOCALAPPDATA%\LuckyTwitch` | `~/Library/Application Support/LuckyTwitch` |
 | yt-dlp and ffmpeg | `...\LuckyTwitch\tools` | `.../LuckyTwitch/tools` |
 | Downloads (default) | `Downloads\LuckyTwitch` | `~/Downloads/LuckyTwitch` |
+
+The data folder also holds a small `links` folder and a `running.beat` file: they are how a second launch (a clicked link) hands its link to the window that is already open.
 
 Uninstalling the app leaves this data folder in place; delete it for a clean removal. To reinstall ffmpeg, delete `ffmpeg` and `ffprobe` from the `tools` folder and restart the app.
 
@@ -107,11 +119,12 @@ PyInstaller cannot cross-compile, so build each system on that system.
 ```
 luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpeg, chapters)
 luckytwitch_downloader.py   the Tk app: window, tabs, queue
+weblink.py                  luckytwitch:// links: reading them, handing them to the open window, registering the scheme
 ui/                         UI pieces split out of the app (plan_tab.py, timeline.py, common.py: colours and fonts)
 tests/                      pytest suite
 premiere-plugin/            the Premiere Pro panel (UXP) that reads the .markers.json (JavaScript, own tests)
 premiere-plugin-cep/        the second Premiere Pro panel (CEP): same file, edits the whole timeline (JavaScript, own tests)
-docs/                       file format notes (markers-format.md)
+docs/                       file format notes (markers-format.md, link-format.md)
 ```
 
 Run the tests:
