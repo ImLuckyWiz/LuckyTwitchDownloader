@@ -1354,6 +1354,14 @@ class JobOptions:
     chat: bool = False  # also download the chat of each part with TwitchDownloaderCLI (Twitch VODs only)
     chat_format: str = "json"  # json | txt | html
     chat_embed: bool = False  # embed emotes / badges in the chat file (bigger, but it renders offline)
+    chat_render: bool = False  # also render the chat of each part as an overlay video for the editor (Twitch VODs only)
+    chat_render_mode: str = "transparent"  # transparent (Animation .mov) | prores (ProRes 4444 .mov) | compact (H.264 .mp4)
+    chat_render_look: str = "outline"  # outline (text with an outline, nothing behind) | panel (dark see-through panel)
+    chat_render_width: int = 400  # pixels
+    chat_render_height: int = 0  # pixels; 0 = the height of the video part
+    chat_render_font_size: int = 18
+    chat_render_fps: int = 0  # 0 = like the video (60 if it has 60 fps, else 30)
+    chat_render_smooth: bool = False  # redraw on every frame (smooth scrolling, slower) instead of 5 times a second
 
 
 @dataclass
@@ -1804,6 +1812,10 @@ class Ctx:
         self._lo, self._hi, self._label = lo, hi, label
         self._log_step, self._log_t = -1, float("-inf")
         self._progress(lo, label)
+
+    def span(self) -> tuple[float, float]:
+        """The share of the progress bar the current stage owns, to split it into smaller stages."""
+        return self._lo, self._hi
 
     def relabel(self, label: str) -> None:
         """New label for the current stage, keeping its share of the progress bar."""
@@ -2739,16 +2751,15 @@ def chat_command(tdcli: str, vod_id: str, start: float, end: float, out: Path, e
     return cmd
 
 
-def download_chat(ctx: "Ctx", tdcli: str, vod_id: str, start: float, end: float, dest: Path,
-                  embed: bool, cache_dir: Path) -> Path:
-    """Run TwitchDownloaderCLI for one stretch of a VOD. Never leaves a half-written file behind."""
-    ctx.check_cancel()
-    dest = unique_path(dest)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    cache_dir.mkdir(parents=True, exist_ok=True)
+def _run_tdcli(ctx: "Ctx", cmd: list[str], dest: Path, what: str,
+               parse: Callable[[str], tuple[str, float | None] | None], log_steps: bool = False) -> list[str]:
+    """
+    Run one TwitchDownloaderCLI command that writes `dest` and send its progress to the bar. Never leaves a
+    half-written file behind. Returns the [WARNING] lines the program printed (a render says there what it missed).
+    """
     try:
         proc = subprocess.Popen(
-            chat_command(tdcli, vod_id, start, end, dest, embed, cache_dir),
+            cmd,
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace", env=_tool_env(),
             creationflags=_NO_WINDOW, start_new_session=sys.platform != "win32",
@@ -2757,33 +2768,225 @@ def download_chat(ctx: "Ctx", tdcli: str, vod_id: str, start: float, end: float,
         raise EngineError(f"Could not run TwitchDownloaderCLI:\n{e}") from e
     ctx.proc = proc
     tail: list[str] = []
+    warnings: list[str] = []
     ok = False
     try:
         assert proc.stdout is not None
-        for line in proc.stdout:
+        for line in proc.stdout:  # text mode: the program's «\r» progress updates arrive as separate lines
             line = line.strip()
             if not line:
                 continue
-            status = parse_tdcli_status(line)
+            status = parse(line)
             if status:
                 ctx.report(status[1], status[0])
-            elif len(tail) < 60:
+                if log_steps and status[1] is not None:
+                    ctx.log_progress(status[1], status[0].partition(" · ")[2])
+                continue
+            if len(tail) < 60:
                 tail.append(line)
+            if line.startswith("[WARNING]") and len(warnings) < 20:
+                warnings.append(line)
         proc.wait()
         ctx.check_cancel()
         if proc.returncode != 0:
-            raise EngineError("Chat download failed: " + tdcli_error(tail))
+            raise EngineError(f"{what} failed: " + tdcli_error(tail))
         if not dest.is_file() or dest.stat().st_size == 0:
-            raise EngineError("Chat download finished but the file is empty.")
+            raise EngineError(f"{what} finished but the file is empty.")
         ok = True
-        return dest
+        return warnings
     finally:
         ctx.proc = None
         if not ok:
-            try:  # a cancelled / failed run leaves an empty file behind
+            try:  # a cancelled / failed run leaves an empty or half-written file behind
                 dest.unlink(missing_ok=True)
             except OSError:
                 pass
+
+
+def download_chat(ctx: "Ctx", tdcli: str, vod_id: str, start: float, end: float, dest: Path,
+                  embed: bool, cache_dir: Path) -> Path:
+    """Run TwitchDownloaderCLI for one stretch of a VOD. Never leaves a half-written file behind."""
+    ctx.check_cancel()
+    dest = unique_path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    _run_tdcli(ctx, chat_command(tdcli, vod_id, start, end, dest, embed, cache_dir), dest, "Chat download",
+               parse_tdcli_status)
+    return dest
+
+
+# --------------------------------------------------------------------------- #
+# Chat overlay: the chat as a video for the editor (TwitchDownloaderCLI chatrender)
+# --------------------------------------------------------------------------- #
+CHAT_RENDER_MODES = ("transparent", "prores", "compact")
+CHAT_RENDER_LOOKS = ("outline", "panel")
+CHAT_RENDER_EXT = {"transparent": ".mov", "prores": ".mov", "compact": ".mp4"}
+CHAT_RENDER_LABELS = {
+    "transparent": "transparent, Animation",
+    "prores": "transparent, ProRes 4444",
+    "compact": "black background, H.264",
+}
+_TDCLI_RENDER_STATUS = re.compile(
+    r"^\[STATUS\]\s*-\s*(?P<phase>[A-Za-z][A-Za-z ]*?)\s*(?:(?P<pct>\d+)%)?\s*"
+    r"(?:\([^|()]*Elapsed\s*\|\s*(?P<left>[^()]*?)\s*Remaining\))?\s*(?:\[\d+/\d+\])?\s*$"
+)
+_TDCLI_DURATION = re.compile(r"(\d+)h(\d+)m(\d+)s")
+
+
+def parse_render_status(line: str) -> tuple[str, float | None] | None:
+    """
+    '[STATUS] - Rendering Video 12% (0h0m1s Elapsed | 0h1m8s Remaining)' -> ('Rendering Video · 0:01:08 left', 0.12).
+    Phases without a percentage («Fetching Images [1/2]») give None as the fraction. None if it is not a status line.
+    """
+    m = _TDCLI_RENDER_STATUS.match(line.strip())
+    if not m:
+        return None
+    phase, pct = m.group("phase"), m.group("pct")
+    frac = min(int(pct), 100) / 100 if pct else None
+    label = phase
+    left = _TDCLI_DURATION.fullmatch((m.group("left") or "").strip())
+    if left and pct and int(pct) >= 1:  # at 0% the program's estimate is nonsense
+        label += f" · {int(left[1])}:{int(left[2]):02d}:{int(left[3]):02d} left"
+    return label, frac
+
+
+def chat_render_size(width: int, height: int, video_height: int | None) -> tuple[int, int]:
+    """(width, height) of the overlay in pixels: even numbers (H.264 needs them), height 0 = the video's height."""
+    w = min(max(int(width or 0) or 400, 100), 3840)
+    h = min(max(int(height or 0) or int(video_height or 0) or 1080, 100), 4320)
+    return w - w % 2, h - h % 2
+
+
+def chat_render_fps(option: int, video_fps: float | None) -> int:
+    """Frame rate of the overlay: the one asked for, or (0) 60 for a 60 fps video and 30 for anything else."""
+    if option and option > 0:
+        return min(int(option), 120)
+    return 60 if video_fps and video_fps >= 45 else 30
+
+
+def chat_render_output_args(mode: str, lead: float = 0.0) -> str:
+    """
+    The ffmpeg output arguments of the render. `lead` seconds are cut off the start: the chat file begins at a whole
+    second and the part may begin a bit later, so this keeps the overlay lined up with the video. (Never use ffmpeg's
+    -t here: it closes the pipe early and TwitchDownloaderCLI crashes. The end is set by the chat file instead.)
+    """
+    skip = f"-ss {lead:.3f} " if lead >= 0.005 else ""
+    if mode == "prores":
+        enc = "-c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le -vendor apl0"
+    elif mode == "compact":
+        enc = "-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p -movflags +faststart"
+    else:  # QuickTime Animation: lossless, keeps the alpha, and a chat that only changes a few times a second is tiny
+        enc = "-c:v qtrle -pix_fmt argb"
+    return f'{skip}{enc} "{{save_path}}"'
+
+
+def chat_render_command(tdcli: str, chat_json: Path, out: Path, *, mode: str, look: str, width: int, height: int,
+                        font_size: int, fps: int, smooth: bool, ffmpeg: str | None, cache_dir: Path,
+                        lead: float = 0.0) -> list[str]:
+    """Render the chat file `chat_json` (the stretch it covers, from its own start) to the video `out`."""
+    solid = mode == "compact"  # no alpha channel: black, and the editor's Screen blend mode makes it see-through
+    panel = look == "panel" and not solid
+    cmd = [
+        tdcli, "chatrender", "-i", str(chat_json), "-o", str(out),
+        "--chat-width", str(width), "--chat-height", str(height),
+        "--font-size", str(min(max(int(font_size or 0) or 18, 6), 96)),
+        "--framerate", str(fps), "--update-rate", "0" if smooth else "0.2",
+        "--background-color", "#000000" if solid else ("#B3000000" if panel else "#00000000"),
+        "--collision", "Overwrite",  # never wait for an answer: nobody can type into the pipe
+        "--banner=false", "--log-level", "Status,Warning,Error",
+        "--temp-path", str(cache_dir),
+    ]
+    if not solid and not panel:
+        cmd.append("--outline")  # nothing behind the text: the outline keeps it readable over any picture
+    if ffmpeg:
+        cmd += ["--ffmpeg-path", ffmpeg]
+    cmd.append("--output-args=" + chat_render_output_args(mode, lead))  # «=»: the value starts with «-»
+    return cmd
+
+
+def render_chat(ctx: "Ctx", tdcli: str, chat_json: Path, dest: Path, *, mode: str, look: str, width: int,
+                height: int, font_size: int, fps: int, smooth: bool, cache_dir: Path, lead: float = 0.0) -> Path:
+    """Render one chat file as an overlay video. Never leaves a half-written file behind."""
+    ctx.check_cancel()
+    dest = unique_path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cmd = chat_render_command(tdcli, chat_json, dest, mode=mode, look=look, width=width, height=height,
+                              font_size=font_size, fps=fps, smooth=smooth, ffmpeg=find_tool("ffmpeg"),
+                              cache_dir=cache_dir, lead=lead)
+    for w in _run_tdcli(ctx, cmd, dest, "Chat render", parse_render_status, log_steps=True)[:3]:
+        ctx.log("Warning: chat overlay: " + w[len("[WARNING]"):].lstrip(" -").strip())
+    return dest
+
+
+def chat_files_for_part(ctx: "Ctx", tool: str, src: "SourceInfo", opts: "JobOptions", part: "Part", total_parts: int,
+                        dest: Path, real_start: float, real_end: float, workdir: Path) -> None:
+    """
+    The chat files of one finished part, next to it: the saved chat («.chat.json / .txt / .html») and / or the overlay
+    video («.chat-overlay.mov / .mp4»). A failure here is only logged: the video itself is fine.
+    """
+    chat_fmt = opts.chat_format if opts.chat_format in CHAT_FORMATS else "json"
+    vod_id = src.twitch_vod_id or ""
+    cache = workdir / "chat_cache"
+    lo, hi = ctx.span()
+
+    def stage(a: float, b: float, label: str) -> None:  # a slice of this part's share of the progress bar
+        ctx.stage(lo + (hi - lo) * a, lo + (hi - lo) * b, label)
+
+    chat_json: Path | None = None  # the file the overlay is drawn from
+    temp_json = False
+    chat_failed = False
+    try:
+        if opts.chat:
+            try:
+                label = f"Chat for part {part.index}/{total_parts}"
+                if opts.chat_render:
+                    stage(0.0, 0.1, label)
+                else:
+                    ctx.relabel(label)
+                chat_file = download_chat(
+                    ctx, tool, vod_id, real_start, real_end,
+                    dest.with_suffix(f".chat.{chat_fmt}"), opts.chat_embed, cache)
+                ctx.log(f"✔ {chat_file.name}  (chat from {fmt_hms(real_start)} to {fmt_hms(real_end)} of the VOD)")
+                if chat_fmt == "json":
+                    chat_json = chat_file
+            except Cancelled:
+                raise
+            except EngineError as e:
+                chat_failed = True
+                ctx.log(f"Chat for part {part.index} failed (the video is fine): {e}")
+        if not opts.chat_render:
+            return
+        if chat_failed:
+            ctx.log(f"Chat overlay for part {part.index} skipped: the chat could not be downloaded.")
+            return
+        try:
+            if chat_json is None:  # the saved chat is not a .json (or not wanted): the overlay needs its own copy
+                stage(0.0, 0.1, f"Chat for the overlay of part {part.index}/{total_parts}")
+                chat_json = download_chat(ctx, tool, vod_id, real_start, real_end,
+                                          cache / f"part{part.index}.chat.json", False, cache)
+                temp_json = True
+            probe = probe_video(dest)
+            fps = chat_render_fps(opts.chat_render_fps, probe[0] if probe else None)
+            width, height = chat_render_size(opts.chat_render_width, opts.chat_render_height,
+                                             probe[2] if probe else None)
+            mode = opts.chat_render_mode if opts.chat_render_mode in CHAT_RENDER_MODES else "transparent"
+            look = opts.chat_render_look if opts.chat_render_look in CHAT_RENDER_LOOKS else "outline"
+            lead = max(0.0, real_start - math.floor(real_start))  # the chat file starts at a whole second
+            stage(0.1, 1.0, f"Chat overlay for part {part.index}/{total_parts}")
+            out = render_chat(
+                ctx, tool, chat_json, dest.with_suffix(".chat-overlay" + CHAT_RENDER_EXT[mode]), mode=mode, look=look,
+                width=width, height=height, font_size=opts.chat_render_font_size, fps=fps,
+                smooth=opts.chat_render_smooth, cache_dir=cache, lead=lead)
+            ctx.log(f"✔ {out.name}  ({width}x{height}, {fps} fps, {CHAT_RENDER_LABELS[mode]}; "
+                    f"starts together with the part)")
+        except Cancelled:
+            raise
+        except EngineError as e:
+            ctx.log(f"Chat overlay for part {part.index} failed (the video is fine): {e}")
+    finally:
+        if temp_json and chat_json is not None:
+            chat_json.unlink(missing_ok=True)
 
 
 def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, container: str, workdir: Path) -> dict[int, tuple[Path, float, float]]:
@@ -2909,18 +3112,18 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     chapters_all = _load_chapters(ctx, job)
     games_all = game_chapters(src.segments) if opts.game_markers and not job.single_clip else []
     muted_all = _load_muted(ctx, job)
-    chat_fmt = opts.chat_format if opts.chat_format in CHAT_FORMATS else "json"
     chat_tool: str | None = None
-    if opts.chat and not job.single_clip:
+    if (opts.chat or opts.chat_render) and not job.single_clip:
+        what = "Chat download" if opts.chat else "Chat overlay"
         if not src.twitch_vod_id:
-            ctx.log("Chat download skipped: it only works for Twitch VODs.")
+            ctx.log(f"{what} skipped: it only works for Twitch VODs.")
         else:
             try:
                 chat_tool = ensure_tdcli(ctx)
             except Cancelled:
                 raise
             except EngineError as e:
-                ctx.log(f"Chat download skipped (the video is still downloaded): {e}")
+                ctx.log(f"{what} skipped (the video is still downloaded): {e}")
 
     out_dir = Path(opts.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2977,16 +3180,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                 mj = write_markers_json(dest, markers, real_end - real_start, fps, src, real_start, real_end)
                 ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips, muted_chs)} for the Premiere plugin, {fps:g} fps)")
         if chat_tool:
-            try:
-                ctx.relabel(f"Chat for part {part.index}/{total_parts}")
-                chat_file = download_chat(
-                    ctx, chat_tool, src.twitch_vod_id or "", real_start, real_end,
-                    dest.with_suffix(f".chat.{chat_fmt}"), opts.chat_embed, workdir / "chat_cache")
-                ctx.log(f"✔ {chat_file.name}  (chat from {fmt_hms(real_start)} to {fmt_hms(real_end)} of the VOD)")
-            except Cancelled:
-                raise
-            except EngineError as e:
-                ctx.log(f"Chat for part {part.index} failed (the video is fine): {e}")
+            chat_files_for_part(ctx, chat_tool, src, opts, part, total_parts, dest, real_start, real_end, workdir)
         results.append(dest)
 
     if plan.strategy == "full":

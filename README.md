@@ -76,6 +76,25 @@ In **Options → Chat**, tick *Also download the chat of each part*. The first t
 - If the chat cannot be downloaded (deleted VOD, no internet...), the video is still downloaded and the log says why.
 - *Embed emotes and badges* makes the file bigger but lets it render offline.
 
+### Chat as a video (overlay, optional, Twitch VODs only)
+
+In **Options → Chat**, tick *Chat as a video (overlay)*. After each part, the app draws its chat as a video next to it: `name.chat-overlay.mov` (or `.mp4`). It works even if the stream had no chat on screen. In your editor, put it on the track above the video, at the start of the part, and place it where you want it. It uses the same TwitchDownloaderCLI (`chatrender`). If the saved chat is a `.json` it is reused; otherwise a temporary one is downloaded and deleted at the end.
+
+Choose the type in **Advanced → Overlay type** (sizes for a very busy chat, 3 messages a second at 400 × 1080):
+
+| Type | Size per hour | Notes |
+|---|---|---|
+| Transparent · Animation `.mov` (default) | ~3.4 GB | Lossless, fast. Read by Premiere Pro and After Effects. |
+| Transparent · ProRes 4444 `.mov` | ~28 GB | Most compatible, but huge and slower than real time. |
+| Black background · H.264 `.mp4` | ~0.4 GB | Not see-through: set the clip's blend mode to *Screen* and the black disappears. |
+
+Also in Advanced: the look (outlined text, or a dark semi-transparent panel), size, text size, frame rate and smooth scrolling. Size and frame rate follow the video by default. Notes:
+
+- The overlay starts together with the part (about 0.2 s tolerance) and can end up to a second after it.
+- It needs internet while it draws, to fetch emotes and badges (Twitch, BTTV, FFZ, 7TV), and a long part can take from minutes to hours.
+- If it fails, the video is still downloaded and the log says why.
+- Not yet verified: opening it in Premiere Pro, and speed and size on a multi-hour VOD (the figures above come from a synthetic chat).
+
 ### Open a VOD from a link (web pages and other programs)
 
 A web page, a document or another program can offer a `luckytwitch://` link. Clicking it opens the app (or brings the open window to the front) with the VOD and the cut points already filled in on the **Plan** tab, and reads the VOD for you. A link only fills in the form: it never adds to the queue and never starts a download, so you still check the cut points and press the button yourself.

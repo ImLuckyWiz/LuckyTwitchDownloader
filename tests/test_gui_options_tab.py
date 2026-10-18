@@ -22,6 +22,8 @@ OPTIONS_VARS = {
     "exact", "keep_full", "title_tpl", "pad_after", "gap_title", "sidecar", "premiere_xml", "premiere_plugin",
     "game_markers", "muted_markers", "clip_name_template", "clip_pad_before", "clip_pad_after", "chat", "chat_format",
     "chat_embed", "auto_update",
+    "chat_render", "chat_render_mode", "chat_render_look", "chat_render_width", "chat_render_height",
+    "chat_render_font_size", "chat_render_fps", "chat_render_smooth",
 }
 
 
@@ -129,7 +131,7 @@ def test_booleans_are_switches_not_checkboxes(gui):
     assert not [w for w in walk(app.tab_options) if isinstance(w, tk.Widget) and w.winfo_class() == "TCheckbutton"]
     switches = {str(w.variable) for w in walk(app.tab_options) if isinstance(w, Toggle)}
     for name in ("exact", "keep_full", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml", "sidecar",
-                 "chat", "chat_embed", "auto_update"):
+                 "chat", "chat_embed", "chat_render", "chat_render_smooth", "auto_update"):
         assert str(app.vars[name]) in switches, name
 
 
@@ -145,13 +147,14 @@ UP_FRONT = {
     "output": {"out_dir", "container"},
     "cuts": {"strategy", "exact", "keep_full"},
     "premiere": {"premiere_plugin", "game_markers", "muted_markers"},
-    "chat": {"chat"},
+    "chat": {"chat", "chat_render"},
 }
 IN_ADVANCED = {
     "output": {"threads", "name_template", "subfolders", "folder_template"},
     "cuts": {"threshold"},
     "premiere": {"premiere_xml", "sidecar"},
-    "chat": {"chat_format", "chat_embed"},
+    "chat": {"chat_format", "chat_embed", "chat_render_mode", "chat_render_look", "chat_render_width",
+             "chat_render_height", "chat_render_font_size", "chat_render_fps", "chat_render_smooth"},
 }
 
 
@@ -212,6 +215,34 @@ def test_a_value_inside_a_collapsed_advanced_area_is_still_used(gui):
     app.cuts.insert("1.0", "0:00 - 0:10")
     opts = app.build_options()
     assert (opts.threads, opts.full_threshold, opts.chat_format) == (12, 0.75, "txt")
+
+
+def test_the_chat_overlay_settings_reach_the_options(gui):
+    app = gui.app
+    opts = app.build_options()
+    assert opts.chat_render is False  # off by default
+    assert (opts.chat_render_mode, opts.chat_render_look, opts.chat_render_fps) == ("transparent", "outline", 0)
+    assert (opts.chat_render_width, opts.chat_render_height, opts.chat_render_font_size) == (400, 0, 18)
+    app.vars["chat_render"].set(True)
+    app.vars["chat_render_mode"].set(app.CHAT_RENDER_TYPE_NAMES[-1])
+    app.vars["chat_render_look"].set(app.CHAT_RENDER_LOOK_NAMES[-1])
+    app.vars["chat_render_width"].set("500")
+    app.vars["chat_render_height"].set("1080")
+    app.vars["chat_render_font_size"].set("24")
+    app.vars["chat_render_fps"].set("60")
+    app.vars["chat_render_smooth"].set(True)
+    opts = app.build_options()
+    assert opts.chat_render is True and opts.chat_render_smooth is True
+    assert opts.chat_render_mode in eng.CHAT_RENDER_MODES and opts.chat_render_mode != "transparent"
+    assert opts.chat_render_look == "panel"
+    assert (opts.chat_render_width, opts.chat_render_height, opts.chat_render_font_size) == (500, 1080, 24)
+    assert opts.chat_render_fps == 60
+
+
+def test_the_default_overlay_type_is_animation(gui):
+    app = gui.app
+    assert app.var("chat_render_mode").get().startswith("Transparent · Animation")
+    assert app.build_options().chat_render_mode == "transparent"
 
 
 # --------------------------------------------------------------------------- switches

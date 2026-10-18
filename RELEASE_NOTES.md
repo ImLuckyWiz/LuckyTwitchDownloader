@@ -1,3 +1,21 @@
+## v1.15.0
+
+The chat of each part as a video you can put over the footage in your editor. Nothing was removed and nothing works differently when you do not use it: the new option is off by default.
+
+### Chat as a video (overlay)
+- **New switch: Options → Chat → Chat as a video (overlay).** After each part is done, the app draws the chat of that stretch as a video next to it, called `name.chat-overlay.mov` (or `.mp4`). It works even if the stream had no chat on screen. In the editor, put it on the track above the video, at the start of the part, and place it where you want it. It is off by default.
+- **How it is made.** With TwitchDownloaderCLI's `chatrender` (the same tool as the chat download). If the chat you save is a `.json`, that file is reused. If you save `.html` / `.txt`, or no chat at all, a temporary `.json` is downloaded and deleted when the overlay is finished.
+- **Three types** (Options → Chat → Advanced → Overlay type). Sizes are for a very busy chat (3 messages a second, 400 × 1080), measured on a synthetic chat:
+  - **Transparent · Animation, `.mov` (the default):** lossless, about **3.4 GB per hour**, about 7 times faster than real time in the test. Read by Premiere Pro and After Effects.
+  - **Transparent · ProRes 4444, `.mov`:** the codec almost every editor knows, but about **28 GB per hour** and slower than real time. Use it if your editor does not read Animation.
+  - **Black background · H.264, `.mp4`:** about **0.4 GB per hour**, not see-through. Set the clip's blend mode to **Screen** in the editor and the black disappears.
+- **Advanced settings:** how it looks (outlined text with nothing behind it, or a dark semi-transparent panel), size (width × height; height 0 = the video's), text size, frame rate (like the video, 30 or 60) and smooth scrolling (redraws on every frame instead of 5 times a second; slower). Size and frame rate follow the real video by default.
+- **Lined up with the part.** The overlay starts together with the part. The tool only trims in whole seconds, so the fractional part is corrected with ffmpeg (`-ss`); with the chat updating every 0.2 s, expect a tolerance of about 0.2 s. It can end up to a second after the part (ffmpeg's `-t` crashes the tool, so it is not used).
+- **If it fails,** the video is still downloaded and the log says why. An unfinished overlay file is never left behind.
+- **It needs internet** while it draws, to fetch emotes and badges from Twitch, BTTV, FFZ and 7TV. A long part can take from minutes to hours depending on the type.
+- **Checked:** the real TwitchDownloaderCLI on a 720p, 60 fps test video gave a 400 × 720, 60 fps overlay with a working alpha channel. **Not checked:** opening the file in Premiere Pro, real emotes and badges (the test used a synthetic chat, offline), and speed and size on a real VOD of several hours.
+- **Tests:** 54 new tests (the overlay itself, and the new Options settings), and every older test still passes.
+
 ## v1.14.0
 
 Links that open the app: any web page, document or program can now offer a link that opens LuckyTwitch Downloader with a VOD and its cut points already filled in. Nothing was removed and nothing works differently when you do not use it.

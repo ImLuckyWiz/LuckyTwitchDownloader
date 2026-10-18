@@ -8,7 +8,7 @@ Template fields (file name, stream folder, clip name, chapter title) get clickab
 live example. The example uses the VOD you loaded, or a sample VOD until then.
 
 This is a mixin for ``App`` (luckytwitch_downloader.py). It expects the host to provide ``tab_options``
-(a plain ttk.Frame), ``STRATEGY_NAMES``, ``var()``, ``vars``, ``source``, ``pick_folder``, ``open_output_folder``,
+(a plain ttk.Frame), ``STRATEGY_NAMES``, ``CHAT_RENDER_TYPE_NAMES``, ``CHAT_RENDER_LOOK_NAMES``, ``CHAT_RENDER_FPS_NAMES``, ``var()``, ``vars``, ``source``, ``pick_folder``, ``open_output_folder``,
 ``update_preview``, ``refresh_clips``, ``update_tools_now`` and ``open_tools_folder``. It creates
 ``tools_info`` and ``update_btn`` (the host's message loop updates them) and ``options_nav``.
 
@@ -299,22 +299,60 @@ class OptionsTabMixin:
         self._switch(row, "sidecar")
 
     def _section_chat(self, f):
-        self._heading(f, "Chat", "Download the chat that went with the stream (Twitch VODs only).")
+        self._heading(f, "Chat", "Download the chat that went with the stream, or turn it into a video you can put "
+                                 "over the footage in your editor (Twitch VODs only).")
         card = self._card(f, 2)
 
-        row = card.add_row("Download the chat", "Saves the chat of each part next to it.", divider=False,
+        row = card.add_row("Download the chat", "Saves the chat of each part next to it.",
                            info="Uses TwitchDownloaderCLI, downloaded the first time. Saved next to each part "
                                 "as «name.chat.json». Inside the .json the message times count from the start of "
                                 "the VOD, not from the start of the part; the file's start/end say which stretch "
                                 "it covers.\nTwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader).")
         self._switch(row, "chat")
 
-        adv = self._advanced(card, "file format and embedded emotes")
+        row = card.add_row("Chat as a video (overlay)", "Draws the chat of each part as a video for your editor.",
+                           divider=False,
+                           info="Saved next to each part as «name.chat-overlay.mov» (or .mp4). It works even if the "
+                                "stream had no chat on screen: put it on the track above the video, at the start of "
+                                "the part, and place it where you want it. It begins together with the part and can "
+                                "run up to a second longer at the end.\nIt takes a while: a long part can take "
+                                "from minutes to hours to draw, depending on the type. Emotes and badges are "
+                                "fetched from Twitch, BTTV, FFZ and 7TV when it is drawn, so it needs internet.\n"
+                                "Size on disk for a very busy chat (3 messages a second, 400 x 1080): about 3.4 GB "
+                                "per hour with Animation, 28 GB with ProRes 4444, 0.4 GB with H.264.")
+        self._switch(row, "chat_render")
+
+        adv = self._advanced(card, "file format, embedded emotes and how the overlay looks")
         row = adv.add_row("Format", "File type of the saved chat.")
         ttk.Combobox(row.control, textvariable=self.var("chat_format"), values=list(CHAT_FORMATS), width=8,
                      state="readonly", style="Card.TCombobox").pack()
-        row = adv.add_row("Embed emotes and badges", "Bigger file, but it works offline.", divider=False)
+        row = adv.add_row("Embed emotes and badges", "Bigger file, but it works offline.")
         self._switch(row, "chat_embed")
+
+        row = adv.add_row("Overlay type", "How the chat video is saved.",
+                          info="Transparent · Animation: QuickTime Animation with an alpha channel. Lossless, "
+                               "much smaller and faster to draw than ProRes, and read by Premiere Pro and After "
+                               "Effects.\nTransparent · ProRes 4444: the same idea with the codec almost every "
+                               "editor knows, but very big files. Use it if your editor does not read "
+                               "Animation.\nBlack background · H.264: small and quick, but not see-through. In the "
+                               "editor, set the clip's blend mode to Screen and the black disappears.")
+        ttk.Combobox(row.control, textvariable=self.var("chat_render_mode"), values=self.CHAT_RENDER_TYPE_NAMES,
+                     width=36, state="readonly", style="Card.TCombobox").pack()
+        row = adv.add_row("Look", "What is behind the text (not used by the black background type).")
+        ttk.Combobox(row.control, textvariable=self.var("chat_render_look"), values=self.CHAT_RENDER_LOOK_NAMES,
+                     width=28, state="readonly", style="Card.TCombobox").pack()
+        row = adv.add_row("Size", "Width × height in pixels. Height 0 = the same as the video.")
+        self._spin(row.control, "chat_render_height", 0, 4320, 6).pack(side="right")
+        ttk.Label(row.control, text="×", style="CardMuted.TLabel").pack(side="right", padx=4)
+        self._spin(row.control, "chat_render_width", 100, 3840, 6).pack(side="right")
+        row = adv.add_row("Text size", "Size of the letters, in points.")
+        self._spin(row.control, "chat_render_font_size", 6, 96, 5).pack()
+        row = adv.add_row("Frame rate", "Frames per second of the chat video.")
+        ttk.Combobox(row.control, textvariable=self.var("chat_render_fps"), values=self.CHAT_RENDER_FPS_NAMES,
+                     width=14, state="readonly", style="Card.TCombobox").pack()
+        row = adv.add_row("Smooth scrolling", "Redraws on every frame instead of 5 times a second. Slower.",
+                          divider=False)
+        self._switch(row, "chat_render_smooth")
 
     def _section_clips(self, f):
         self._heading(f, "Clips", "Used by the «Download only selected clip» button in the Plan tab.")

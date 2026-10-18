@@ -43,6 +43,8 @@ except ImportError:  # pragma: no cover
 from luckytwitch_engine import (
     APP_DIR,
     CHAT_FORMATS,
+    CHAT_RENDER_LOOKS,
+    CHAT_RENDER_MODES,
     TOOLS_DIR,
     TWITCH_CLIENT_ID,
     Cancelled,
@@ -98,6 +100,20 @@ STRATEGIES = {
     "Download only the parts": "sections",
 }
 
+# Chat overlay drop-downs: what the person reads -> the value the engine uses
+CHAT_RENDER_TYPES = {
+    "Transparent · Animation (.mov, small)": "transparent",
+    "Transparent · ProRes 4444 (.mov, very big)": "prores",
+    "Black background · H.264 (.mp4, smallest)": "compact",
+}
+CHAT_RENDER_LOOK_TYPES = {
+    "Outlined text, nothing behind": "outline",
+    "Dark see-through panel": "panel",
+}
+CHAT_RENDER_FPS_NAMES = ["Like the video", "30", "60"]
+assert set(CHAT_RENDER_TYPES.values()) == set(CHAT_RENDER_MODES)
+assert set(CHAT_RENDER_LOOK_TYPES.values()) == set(CHAT_RENDER_LOOKS)
+
 VIDEO_KINDS = {
     "Past broadcasts": "archive",
     "Highlights": "highlight",
@@ -131,6 +147,14 @@ DEFAULTS = {
     "chat": False,
     "chat_format": "json",
     "chat_embed": False,
+    "chat_render": False,
+    "chat_render_mode": "Transparent · Animation (.mov, small)",
+    "chat_render_look": "Outlined text, nothing behind",
+    "chat_render_width": "400",
+    "chat_render_height": "0",
+    "chat_render_font_size": "18",
+    "chat_render_fps": "Like the video",
+    "chat_render_smooth": False,
     "subfolders": True,
     "folder_template": "{date} - {title} - {id}",
     "clip_name_template": "{clip_title}",
@@ -314,6 +338,9 @@ def queue_summary(statuses: list[str]) -> str:
 # --------------------------------------------------------------------------- #
 class App(PlanTabMixin, OptionsTabMixin):
     STRATEGY_NAMES = list(STRATEGIES)  # the choices of the Strategy drop-down (Options tab)
+    CHAT_RENDER_TYPE_NAMES = list(CHAT_RENDER_TYPES)  # ... and of the chat overlay drop-downs
+    CHAT_RENDER_LOOK_NAMES = list(CHAT_RENDER_LOOK_TYPES)
+    CHAT_RENDER_FPS_NAMES = CHAT_RENDER_FPS_NAMES
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -421,6 +448,14 @@ class App(PlanTabMixin, OptionsTabMixin):
             chat=bool(v["chat"].get()),
             chat_format=v["chat_format"].get() if v["chat_format"].get() in CHAT_FORMATS else "json",
             chat_embed=bool(v["chat_embed"].get()),
+            chat_render=bool(v["chat_render"].get()),
+            chat_render_mode=CHAT_RENDER_TYPES.get(v["chat_render_mode"].get(), "transparent"),
+            chat_render_look=CHAT_RENDER_LOOK_TYPES.get(v["chat_render_look"].get(), "outline"),
+            chat_render_width=self.num("chat_render_width", int, 400),
+            chat_render_height=self.num("chat_render_height", int, 0),
+            chat_render_font_size=self.num("chat_render_font_size", int, 18),
+            chat_render_fps=0 if v["chat_render_fps"].get() not in ("30", "60") else int(v["chat_render_fps"].get()),
+            chat_render_smooth=bool(v["chat_render_smooth"].get()),
             subfolders=bool(v["subfolders"].get()),
             folder_template=v["folder_template"].get().strip() or DEFAULTS["folder_template"],
             clip_name_template=v["clip_name_template"].get().strip() or DEFAULTS["clip_name_template"],
@@ -1310,7 +1345,8 @@ class App(PlanTabMixin, OptionsTabMixin):
                 # a clip is always downloaded on its own: no full VOD, no chapters, no extra files
                 opts = replace(base, cut_text=cut, strategy="sections", chapters=False,
                                keep_full=False, sidecar=False, premiere_xml=False,
-                               premiere_plugin=False, game_markers=False, muted_markers=False, chat=False)
+                               premiere_plugin=False, game_markers=False, muted_markers=False, chat=False,
+                               chat_render=False)
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
                 messagebox.showwarning("Clip", f"«{bmp(title)}»: {e}")
