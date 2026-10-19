@@ -2,14 +2,14 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-19 (Phase 0 approved by the user). Last completed phase: 0.
+Last updated: 2026-10-19 (Phase 1 approved by the user). Last completed phase: 1.
 
 ## 1. Status
 
 | Phase | Name | State | Tag | PR |
 | --- | --- | --- | --- | --- |
 | 0 | Baseline and decisions | approved | migration-phase-0 | |
-| 1 | Skeleton and plumbing | not started | | |
+| 1 | Skeleton and plumbing | approved | migration-phase-1 | |
 | 2 | Widget kit | not started | | |
 | 3 | Queue and log tab | not started | | |
 | 4 | Search tab and Twitch sign-in | not started | | |
@@ -39,6 +39,8 @@ Confirmed by the user on 2026-10-19 (all as recommended in PLAN.md section 5):
 
 Still open:
 - **D7** What Phase 9 (redesign) should look like: the user provides references. Not needed before Phase 9.
+
+Decided in Phase 1 (by the agent, not contested): `core/` modules read their file paths from `core.paths` when called, so tests monkeypatch `core.paths.SETTINGS_PATH` and friends. `_read_config`/`_write_config` became `read_config`/`write_config` in `core/config.py`. One `Bridge` signal per message kind, typed; "no value" is `""`. Qt tests run on the offscreen platform (`tests/conftest.py`). Palette tokens live in `core/palette.py`; `qt_ui/theme.py` generates the QSS from them. Phase 1 settings handling only reads: the SettingsBinder (Phase 5) and the save on close (Phase 3) do the writing.
 
 Where things are (decided in Phase 0): `PARITY.md`, `SETTINGS_KEYS.md`, `MIGRATION_LOG.md` and the `baseline/` folder are in `docs/migration/`, next to this file.
 
@@ -100,7 +102,10 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 ## 5. Warnings
 
 - **Installer collision.** The Windows installer for every build uses the same app id and install folder as the stable app, and the data folder (settings, Twitch login, tools) is shared. A pre-release installed over a real install replaces it. Before the first Qt installer is published (Phase 8, or earlier if a Qt pre-release is installable) give the Qt build its own app id, install folder and data folder name, or keep testers off their main install.
-- **Duplicated helpers.** `core/` copies the UI-free helpers from `luckytwitch_downloader.py` (they cannot be imported from there because that module imports tkinter, and the existing tests monkeypatch those names on it). Main is frozen, so the copies will not drift; remove the duplication at cutover.
+- **The user runs Python 3.14 on Windows; CI and the agent's sandbox use 3.12.** PySide6 6.12.0 and the whole suite work on 3.14 (Windows run of Phase 1: 837 passed, 31 skipped, 2 failed, the two failures being old tkinter tests, fixed in the follow-up below). 31 tests skip on Windows because their fake CLI is a shebang script (`test_chat_overlay.py`, `test_chat_and_game_markers.py`); that is old and expected.
+- **Two tkinter tests were environment-sensitive (fixed in the Phase 1 follow-up, tests only, no app code).** `test_gui_search_tab.py::test_the_streamer_lists_keep_working_as_before` compared `str(tree.cget("show"))` with `""`; Tk 3.14 returns an empty tuple, so the string was `"()"`. It now asserts "nothing shown". `test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls` used a withdrawn window, which Windows does not lay out (heights stay 1); it now maps the window fully transparent first. Both pass on Linux/xvfb; the Windows result is a user check (Phase 2 start).
+- **Taskbar identity.** `qt_ui/theme.py` uses the same Windows AppUserModelID (`LuckyTwitch.Downloader`) as the tkinter app, for parity. Give the Qt build its own with the installer app id (see Installer collision).
+- **Duplicated helpers.** `core/` copies the UI-free helpers from `luckytwitch_downloader.py` (they cannot be imported from there because that module imports tkinter, and the existing tests monkeypatch those names on it). Main is frozen, so the copies will not drift; remove the duplication at cutover. `tests/test_core_matches_tkinter.py` compares the copies with the originals (remove it at cutover too).
 - **Two timeline tests** that used to fail: re-checked in Phase 0, they pass (they already compare with `pytest.approx(600.4)`). No fix and no xfail were needed. Nothing to do.
 - **`progress-eta.patch`** in the repository root is stale: the engine already contains `FfmpegProgress` and its tests, and the patch no longer applies. Safe to delete (`git rm progress-eta.patch`); the user decides.
 - **Line endings.** `luckytwitch_engine.py`, `tests/test_hls_sections.py` and some other files in the zip use CRLF; the docs and most other files use LF. Keep each file's existing style when editing. Delivered new files use LF.
@@ -117,13 +122,9 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 
 ## 7. Next step
 
-Phase 0 is approved. The user approved it **without running the Windows checks** of the Phase 0 session (full pytest on Windows, `tools\hello_qt.py` with a real display, the Windows screenshots). So nothing says yet that PySide6 runs on the user's Windows machine. In Phase 1, ask the user to run `python -m pip install -r requirements-qt.txt` and `python tools\hello_qt.py --check` first, and paste the output. The optional Windows screenshots can still be taken at any time with:
-```
-python tools\baseline_screenshots.py docs\migration\baseline\windows
-```
-(keep the window visible and on top while it runs; it uses a temporary folder, not your settings or Twitch login).
+Phase 1 is approved (user, 2026-10-19). What the user saw on Windows: the window opens with the dark theme, a dark title bar and the app icon in the title bar, the VOD entry with its purple focus border at start, design as expected (screenshot). Not reported back: shrinking to 900x560, the Tab order, the taskbar icon, the Windows run of the two fixed tests. The Windows `pytest` run of Phase 1 gave 837 passed, 31 skipped, 2 failed (the two tests above, since fixed). The optional Windows baseline screenshots of the tkinter app are still not taken.
 
-Phase 1 (PLAN.md section 6): create `qt_ui/` and `luckytwitch_qt.py`, the theme module (palette tokens, generated QSS, per-platform fonts, icon from `assets/`), the main window (1020x910, minimum 900x560, top bar, info line, four empty tabs, progress bar and status line), `core/` with copies of the settings, recent, config, status and log helpers, and the Bridge with one signal per message kind in PLAN.md section 3.4. First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite to confirm 798 pass, then read `PARITY.md` sections "Window, focus and tab order" and "Theme, icon and widgets".
+Phase 2 (PLAN.md section 6, Widget kit): Toggle, Card, SettingRow, Collapsible, SideNav, TokenChips, EmptyState, info icon with tooltip, scroll page with fixed footer, a gallery script, pytest-qt tests for each widget's behaviours; sources `ui/widgets.py` and `tests/test_gui_theme_and_icon.py`. First action of the session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 870 pass (the Qt tests default to the offscreen platform through `tests/conftest.py`), then read `PARITY.md` section "Theme, icon and widgets", `ui/widgets.py` and `qt_ui/theme.py` (it already styles buttons, labels, fields, tabs, tables, scrollbars and the progress bar; check boxes, combo boxes and spin boxes are for Phase 2 onwards). Ask the user to run the two fixed tests on Windows first (they take one command, see PHASE_NOTES.md, Phase 1 follow-up).
 
 ## 8. Update checklist (end of every phase)
 

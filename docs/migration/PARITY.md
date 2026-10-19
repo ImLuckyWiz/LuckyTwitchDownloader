@@ -456,13 +456,15 @@ Three more tkinter tests live in `tests/test_muted_audio.py` (after its `importo
 
 #### `test_gui_theme_and_icon.py` (13 tests)
 
-- [ ] icon files exist and have the sizes windows needs  
+Phase 1 ported the first four (Qt tests: `test_qt_theme.py::test_icon_files_are_where_the_qt_app_looks_for_them`, `test_set_app_icon_installs_an_icon`, `test_set_app_icon_is_silent_when_the_files_are_missing`; `core/resources.py` is covered by `test_core_helpers.py::test_resource_path_points_into_the_project`). The "build scripts use the icon" test is about the packaging scripts (Phase 8); the rest are the widget kit (Phase 2). Also done in Phase 1, without a tkinter counterpart: palette tokens equal `ui/common.py`, the QSS parses without Qt warnings.
+
+- [x] icon files exist and have the sizes windows needs  
   `test_gui_theme_and_icon.py::test_icon_files_exist_and_have_the_sizes_windows_needs`
-- [ ] resource path points into the project  
+- [x] resource path points into the project  
   `test_gui_theme_and_icon.py::test_resource_path_points_into_the_project`
-- [ ] set app icon installs an icon and never raises  
+- [x] set app icon installs an icon and never raises  
   `test_gui_theme_and_icon.py::test_set_app_icon_installs_an_icon_and_never_raises`
-- [ ] set app icon is silent when the files are missing  
+- [x] set app icon is silent when the files are missing  
   `test_gui_theme_and_icon.py::test_set_app_icon_is_silent_when_the_files_are_missing`
 - [ ] build scripts use the icon  
   `test_gui_theme_and_icon.py::test_build_scripts_use_the_icon`
@@ -486,6 +488,8 @@ Three more tkinter tests live in `tests/test_muted_audio.py` (after its `importo
 ## Window, focus and tab order  (Phase 1 (window), all phases (tab order))
 
 **Structure (from `App.__init__`, `build_ui`, `on_close`):** window `1020x910`, minimum `900x560`; four tabs `Search`, `Plan`, `Options`, `Queue & log`; with no Twitch client the app starts on the Plan tab; on start the status says `Ready. Paste a VOD URL or ID and press «Get info».`; tools setup starts in the background; closing while a job runs asks `A job is running. Cancel it and quit?`.
+
+Phase 1 covers the frame of this screen in `test_qt_main_window.py`: title, size 1020x910, minimum 900x560, the four tab names in order (`Queue & log` shows a real ampersand), start on the Plan tab without a Twitch client, the ready text, the progress bar and status line that stay visible on every tab, top-bar keyboard order (entry, Get info, Twitch API…, tabs). Not yet: tools setup at start, the close question while a job runs (Phase 3), the 6 tab-order tests below (each tab's phase).
 
 #### `test_gui_final_pass.py` (6 tests)
 

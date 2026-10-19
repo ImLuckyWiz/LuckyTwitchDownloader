@@ -1,0 +1,30 @@
+"""Streamers picked in the Search tab (copied from luckytwitch_downloader.py)."""
+
+from __future__ import annotations
+
+import json
+
+from core import paths
+
+
+def load_recent() -> list[dict]:
+    """Streamers picked in the Search tab, most recent first: [{id, login, name}]."""
+    try:
+        data = json.loads(paths.RECENT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    out = []
+    for c in data:
+        if isinstance(c, dict) and c.get("id"):
+            login = str(c.get("login") or "")
+            out.append({"id": str(c["id"]), "login": login, "name": str(c.get("name") or login)})
+    return out[:paths.MAX_RECENT]
+
+
+def save_recent(items: list[dict]) -> None:
+    try:
+        paths.RECENT_PATH.write_text(json.dumps(items, indent=2, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass

@@ -197,7 +197,9 @@ def test_the_use_hint_sits_next_to_the_button_and_the_header_has_no_instruction(
 def test_the_streamer_lists_keep_working_as_before(gui):
     app = gui.app
     assert tuple(app.ch_tree["columns"]) == ("name",) and tuple(app.recent_tree["columns"]) == ("name",)
-    assert str(app.ch_tree.cget("show")) == "" == str(app.recent_tree.cget("show"))  # no column heading: the card has the title
+    # no column heading: the card has the title. (Tk gives back '' for show=() on Python 3.12 but an empty tuple on 3.14,
+    # which str() turned into '()': so test for "nothing shown" instead of comparing strings)
+    assert not app.ch_tree.cget("show") and not app.recent_tree.cget("show")
     assert isinstance(app.sv_tree, ttk.Treeview) and tuple(app.sv_tree["columns"]) == ("title", "date", "dur", "views")
 
 

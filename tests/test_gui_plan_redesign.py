@@ -29,6 +29,12 @@ def test_the_plan_tab_is_a_scroll_page_with_a_footer(gui):
 
 
 def test_the_footer_stays_visible_when_the_page_scrolls(gui):
+    # A withdrawn window is not laid out on Windows (every widget stays 1 px high), so map it, fully transparent.
+    try:
+        gui.root.attributes("-alpha", 0.0)
+    except tk.TclError:  # no transparency on this window system: a flash on screen is the price
+        pass
+    gui.root.deiconify()
     gui.root.geometry("1000x500")  # short window: the content does not fit
     gui.app.notebook.select(gui.app.tab_plan)
     gui.root.update()
@@ -37,7 +43,7 @@ def test_the_footer_stays_visible_when_the_page_scrolls(gui):
     page.canvas.yview_moveto(1.0)
     gui.root.update()
     btn = next(w for w in walk(page.footer) if w.winfo_class() == "TButton")
-    # (the test window is withdrawn, so compare positions instead of asking if it is viewable)
+    # (compare positions: it works the same whether or not the window system reports the window as viewable)
     assert page.footer.winfo_y() >= page.scroll.winfo_y() + page.scroll.winfo_height()  # under the scrolling part
     assert page.footer.winfo_y() + btn.winfo_y() + btn.winfo_height() <= page.winfo_height()  # inside the page
 
