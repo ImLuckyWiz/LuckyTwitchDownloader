@@ -2,7 +2,7 @@ name: Build LuckyTwitch
 
 on:
   push:
-    branches: [main, master]   # build on every push
+    branches: [main, master, qt-migration]   # build on every push (qt-migration = the PySide6 work)
     tags: ["v*"]               # a tag like v1.2 also publishes a Release
   workflow_dispatch:           # manual "Run workflow" button
 
@@ -28,9 +28,11 @@ jobs:
         if: github.ref_type == 'tag'
         shell: bash
         run: |
-          first=$(head -n1 RELEASE_NOTES.md | sed 's/^## *//; s/[[:space:]]*$//' | tr -d '\r')
+          notes=RELEASE_NOTES.md
+          case "$GITHUB_REF_NAME" in *-*) notes=docs/migration/RELEASE_NOTES_QT.md ;; esac   # pre-release tag (v0.0.1-alpha.1)
+          first=$(head -n1 "$notes" | sed 's/^## *//; s/[[:space:]]*$//' | tr -d '\r')
           if [ "$first" != "$GITHUB_REF_NAME" ]; then
-            echo "::error file=RELEASE_NOTES.md,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update RELEASE_NOTES.md before tagging."
+            echo "::error file=$notes,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update $notes before tagging."
             exit 1
           fi
       - uses: actions/setup-python@v5
@@ -133,13 +135,15 @@ jobs:
       - name: Prepare release notes for this tag
         shell: bash
         run: |
+          notes=RELEASE_NOTES.md
+          case "$GITHUB_REF_NAME" in *-*) notes=docs/migration/RELEASE_NOTES_QT.md ;; esac
           awk -v tag="$GITHUB_REF_NAME" '
             { sub(/\r$/, "") }
             $0 == "## " tag { found=1; print; next }
             found && /^## / { exit }
             found { print }
             END { if (!found) exit 1 }
-          ' RELEASE_NOTES.md > RELEASE_NOTES_FOR_TAG.md
+          ' "$notes" > RELEASE_NOTES_FOR_TAG.md
       - uses: actions/download-artifact@v4
         with:
           pattern: LuckyTwitch-*
@@ -153,3 +157,5 @@ jobs:
             release/*.zip
             release/*.ccx
           body_path: RELEASE_NOTES_FOR_TAG.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'true' }}
