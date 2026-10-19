@@ -2,13 +2,13 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same PR as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-19 (end of Phase 0). Last completed phase: none approved yet (Phase 0 is done, waiting for approval).
+Last updated: 2026-10-19 (Phase 0 approved by the user). Last completed phase: 0.
 
 ## 1. Status
 
 | Phase | Name | State | Tag | PR |
 | --- | --- | --- | --- | --- |
-| 0 | Baseline and decisions | done (waiting for approval) | | |
+| 0 | Baseline and decisions | approved | migration-phase-0 | |
 | 1 | Skeleton and plumbing | not started | | |
 | 2 | Widget kit | not started | | |
 | 3 | Queue and log tab | not started | | |
@@ -122,13 +122,13 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 
 ## 7. Next step
 
-Waiting for the user to (a) run the checks listed at the end of the Phase 0 session, (b) take the Windows screenshots with:
+Phase 0 is approved. The user approved it **without running the Windows checks** of the Phase 0 session (full pytest on Windows, `tools\hello_qt.py` with a real display, the Windows screenshots). So nothing says yet that PySide6 runs on the user's Windows machine. In Phase 1, ask the user to run `python -m pip install -r requirements-qt.txt` and `python tools\hello_qt.py --check` first, and paste the output. The optional Windows screenshots can still be taken at any time with:
 ```
 python tools\baseline_screenshots.py docs\migration\baseline\windows
 ```
-(keep the window visible and on top while it runs; it uses a temporary folder, not your settings or Twitch login) and (c) approve Phase 0.
+(keep the window visible and on top while it runs; it uses a temporary folder, not your settings or Twitch login).
 
-After approval, Phase 1 (PLAN.md section 6): create `qt_ui/` and `luckytwitch_qt.py`, the theme module (palette tokens, generated QSS, per-platform fonts, icon from `assets/`), the main window (1020x910, minimum 900x560, top bar, info line, four empty tabs, progress bar and status line), `core/` with copies of the settings, recent, config, status and log helpers, and the Bridge with one signal per message kind in PLAN.md section 3.4. First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite to confirm 798 pass, then read `PARITY.md` sections "Window, focus and tab order" and "Theme, icon and widgets".
+Phase 1 (PLAN.md section 6): create `qt_ui/` and `luckytwitch_qt.py`, the theme module (palette tokens, generated QSS, per-platform fonts, icon from `assets/`), the main window (1020x910, minimum 900x560, top bar, info line, four empty tabs, progress bar and status line), `core/` with copies of the settings, recent, config, status and log helpers, and the Bridge with one signal per message kind in PLAN.md section 3.4. First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite to confirm 798 pass, then read `PARITY.md` sections "Window, focus and tab order" and "Theme, icon and widgets".
 
 ## 8. Update checklist (end of every phase)
 

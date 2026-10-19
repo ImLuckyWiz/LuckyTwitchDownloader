@@ -14,7 +14,7 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
-## Phase 0: Baseline and decisions  (2026-10-19, tag migration-phase-0 pending, PR pending)
+## Phase 0: Baseline and decisions  (2026-10-19, tag migration-phase-0, approved)
 **Done:** `docs/migration/PLAN.md` added to the repository. Baseline test run recorded (`baseline/TEST_BASELINE.md`): 798 passed. `PARITY.md` (one section per screen, 235 tkinter GUI tests as a checklist plus the structure and texts of each screen), `SETTINGS_KEYS.md` (all 38 keys with type, default and where edited), `MIGRATION_LOG.md` (empty with header). `requirements-qt.txt` (PySide6 6.12.0, pytest-qt) and `tools/hello_qt.py`. `tools/baseline_screenshots.py` and 28 Linux/xvfb screenshots in `baseline/linux-xvfb/`. `progress-eta.patch` checked (stale). File sizes re-measured. D1 to D6 confirmed by the user.
 **Definition of Done:**
 - Baseline test report: done. `baseline/TEST_BASELINE.md`; `xvfb-run -a python3 -m pytest tests` gave 798 passed.
@@ -26,4 +26,5 @@ Entry template (copy it for each phase):
 **Divergences from the tkinter app:** none (no app code changed).
 **Known issues / left for later:** the two timeline tests from the old warning already pass (nothing to fix). `progress-eta.patch` is stale (delete is the user's decision). The sandbox needed `apt-get install python3-tk` to run the GUI tests. PySide6 meta-package is large; consider PySide6-Essentials in Phase 8. During the session the agent read the `.git` folder of the uploaded zip (`git log`, `git apply --check`, `git status`) against the rules; nothing was modified, and it was reported to the user.
 **Tests:** 798 passed, 0 skipped, 0 xfail with Tk and xvfb; 513 passed and 1 skipped without tkinter.
-**Next:** user checks and approval, then Phase 1 (HANDOFF.md section 7).
+**Approval:** approved by the user without running the Windows checks (full pytest, hello-window with a display, Windows screenshots). Those stay open and are asked again at the start of Phase 1.
+**Next:** Phase 1 (HANDOFF.md section 7).
