@@ -47,6 +47,7 @@ Still to confirm with the user (before Phase 1; ask, do not assume):
 - Qt widgets, QPixmap and dialogs only on the GUI thread; workers use signals.
 - Settings JSON keys stay identical.
 - Every deliberate difference goes in MIGRATION_LOG.md. Never improve behavior silently.
+- The agent has no access to the repository and never runs git against it: it works on an uploaded zip and delivers a zip plus commands for the user to run (section 4).
 
 ## 4. Branch, tags and releases
 
@@ -60,18 +61,41 @@ Still to confirm with the user (before Phase 1; ask, do not assume):
 
 Rules the workflow enforces for a tag: the first line of the notes file (`RELEASE_NOTES_QT.md` for tags containing a dash, `RELEASE_NOTES.md` otherwise) must be `## <the tag>`. The newest entry goes at the top.
 
-Start of a phase:
+### How work is delivered (the agent has no repository access)
+
+- **Start of a session.** The user uploads a zip of the repository and pastes the session message. The zip is the source of truth for the code. If it disagrees with this file, tell the user before doing anything. The agent works on its own copy and never pushes, merges or tags. If the uploaded zip contains a `.git` folder, the agent does not read or modify it and never copies it into anything it delivers.
+- **End of a session.** The agent delivers all four of these:
+  1. `phase-N-<name>.zip`: ONLY the new and changed files, with paths relative to the repository root (including the updated HANDOFF.md and PHASE_NOTES.md). Not the whole repository. **The zip must never contain a `.git` folder** (extracting it over the repository would overwrite the user's Git history), nor `__pycache__`, `.pytest_cache`, build output or other generated files. Before delivering, the agent lists the zip's contents and checks that none of these are in it.
+  2. Files to delete or rename, if any, as `git rm` / `git mv` commands.
+  3. A block of ready-to-paste PowerShell commands (below) with the exact `git add` paths and the commit message.
+  4. The checks the agent could not run in its own environment (real GUI, Windows or macOS behavior, the tkinter tests), written as commands for the user, with what output to paste back. A phase stays "done (waiting for approval)" until the user has run them.
+- PLAN.md section 9 (the per-phase prompt) is superseded by the session message. Where PLAN.md says the agent tags or opens a pull request, the user does it with the commands below.
+
+Commands the user runs at the end of a phase (the agent fills in the names, paths and message):
 ```
 git switch qt-migration
 git pull
 git switch -c qt/phase-N-name
+tar -tf <folder>\phase-N-name.zip | Select-String -Pattern '(^|/)\.git(/|$)'   # must print NOTHING; if it prints anything, stop and do not extract
+Expand-Archive -Path <folder>\phase-N-name.zip -DestinationPath . -Force
+git rm <files the agent lists>          # only if there are any
+git add <exact paths the agent lists>   # not "git add -A": it would pick up stray files
+git status
+git commit -m "<message from the agent>"
+git push -u origin qt/phase-N-name
 ```
-End of a phase: push the branch, open a pull request into `qt-migration` (not main), merge it, then:
+Then open a pull request on GitHub with base `qt-migration` and merge it. After that:
 ```
 git switch qt-migration
 git pull
 git tag migration-phase-N
 git push origin migration-phase-N
+```
+Pre-release tags (`v0.x.y-alpha.N`) follow the table above: the agent also provides the finished entry for RELEASE_NOTES_QT.md (newest at the top, first line `## <tag>`) and the tag commands.
+
+Making the zip to upload at the start of a session (run it from the repository, on `qt-migration`, after `git pull`; it contains only tracked files, so no `__pycache__` or `.pytest_cache`):
+```
+git archive --format=zip -o ..\lt-repo.zip HEAD
 ```
 
 ## 5. Warnings
