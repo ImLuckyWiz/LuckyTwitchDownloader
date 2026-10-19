@@ -1,6 +1,6 @@
 # HANDOFF: tkinter to PySide6 migration
 
-**Living file.** The agent updates it at the end of every phase, in the same PR as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
+**Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
 Last updated: 2026-10-19 (Phase 0 approved by the user). Last completed phase: 0.
 
@@ -25,7 +25,7 @@ States: not started, in progress, done (waiting for approval), approved.
 
 Made by the user:
 - **Main is frozen.** The 1.x app (last release v1.16.0) gets no updates until the PySide6 version is complete. So there is no port debt and no merging from main is needed. If a hotfix on main ever happens, record it here and merge main into `qt-migration`.
-- **All migration work is on the branch `qt-migration`**, one short branch and one pull request per phase.
+- **All migration work is committed directly on the branch `qt-migration`** (decided 2026-10-19). No branch and no pull request per phase; the agent never gives `git switch -c` or pull request steps unless the user asks for them for a risky phase. One commit per phase, then the tag `migration-phase-N`.
 - **Versioning:** pre-releases `v0.x.y-alpha.N` / `-beta.N`, then `v2.0.0` at cutover (see RELEASE_NOTES_QT.md for which phase gets which tag).
 - **First release `v0.0.1-alpha.1` is only a pipeline test** (it contains the unchanged tkinter app).
 
@@ -58,7 +58,6 @@ Where things are (decided in Phase 0): `PARITY.md`, `SETTINGS_KEYS.md`, `MIGRATI
 | What | Name | Triggers a release? |
 | --- | --- | --- |
 | Integration branch | `qt-migration` | No (CI builds it, nothing is published) |
-| Phase branch | `qt/phase-N-<name>` | No; merged into `qt-migration` by pull request |
 | End of a phase | tag `migration-phase-N` | No (the workflow only reacts to tags starting with `v`) |
 | Pre-release | tag `v0.x.y-alpha.N` or `-beta.N` | Yes: published as a pre-release, never as Latest; notes come from `docs/migration/RELEASE_NOTES_QT.md` |
 | Cutover | tag `v2.0.0` | Yes: a normal release; notes come from `RELEASE_NOTES.md` |
@@ -75,26 +74,22 @@ Rules the workflow enforces for a tag: the first line of the notes file (`RELEAS
   4. The checks the agent could not run in its own environment (real GUI, Windows or macOS behavior, the tkinter tests), written as commands for the user, with what output to paste back. A phase stays "done (waiting for approval)" until the user has run them.
 - PLAN.md section 9 (the per-phase prompt) is superseded by the session message. Where PLAN.md says the agent tags or opens a pull request, the user does it with the commands below.
 
-Commands the user runs at the end of a phase (the agent fills in the names, paths and message):
+Commands the user runs at the end of a phase (the agent fills in the names, paths and message). The zips are in `$env:USERPROFILE\Downloads`; run from the repository folder:
 ```
+$zip = "$env:USERPROFILE\Downloads\phase-N-name.zip"
 git switch qt-migration
 git pull
-git switch -c qt/phase-N-name
-tar -tf <folder>\phase-N-name.zip | Select-String -Pattern '(^|/)\.git(/|$)'   # must print NOTHING; if it prints anything, stop and do not extract
-Expand-Archive -Path <folder>\phase-N-name.zip -DestinationPath . -Force
+tar -tf $zip | Select-String -Pattern '(^|/)\.git(/|$)'   # must print NOTHING; if it prints anything, stop and do not extract
+Expand-Archive -Path $zip -DestinationPath . -Force
 git rm <files the agent lists>          # only if there are any
 git add <exact paths the agent lists>   # not "git add -A": it would pick up stray files
 git status
 git commit -m "<message from the agent>"
-git push -u origin qt/phase-N-name
-```
-Then open a pull request on GitHub with base `qt-migration` and merge it. After that:
-```
-git switch qt-migration
-git pull
+git push origin qt-migration
 git tag migration-phase-N
 git push origin migration-phase-N
 ```
+Check that `git status` shows the branch `qt-migration` and only the expected files before committing.
 Pre-release tags (`v0.x.y-alpha.N`) follow the table above: the agent also provides the finished entry for RELEASE_NOTES_QT.md (newest at the top, first line `## <tag>`) and the tag commands.
 
 Making the zip to upload at the start of a session (run it from the repository, on `qt-migration`, after `git pull`; it contains only tracked files, so no `__pycache__` or `.pytest_cache`):
@@ -132,7 +127,7 @@ Phase 1 (PLAN.md section 6): create `qt_ui/` and `luckytwitch_qt.py`, the theme 
 
 ## 8. Update checklist (end of every phase)
 
-1. Status table: state, tag, PR.
+1. Status table: state, tag (the PR column stays empty: there are no pull requests).
 2. "Last updated" line and "Last completed phase".
 3. Decisions: move confirmed items from "to confirm" to "made".
 4. Warnings: add anything new that the next session must know.
