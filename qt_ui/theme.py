@@ -9,9 +9,12 @@ is shown, or call ``unpolish``/``polish`` on it afterwards):
   QLabel       ``role="muted"``       grey helper text
                ``role="title"`` / ``role="heading"``   bigger text for page and section titles
 
-More variants (card, sidebar entry, chip, ...) arrive with the widget kit in Phase 2. Not styled yet: combo
-boxes, spin boxes and check boxes (they keep the Fusion look in the dark palette until Phases 2, 4 and 5 build
-them). Keyboard focus on buttons is not drawn, same as the tkinter app (``focusthickness=0``).
+Phase 2 added the looks of the widget kit (``qt_ui/widgets.py``): object names ``card``, ``divider``, ``sideNav``,
+``emptyState``, ``tooltipBubble``, ``scrollFrame``/``scrollBody``; buttons ``variant="nav"`` (selected: property
+``selected="true"``), ``"cardghost"`` (the «Advanced» header) and ``"chip"``; label roles ``"rowtitle"`` and
+``"emptytitle"``. Not styled yet: combo boxes, spin boxes and check boxes (they keep the Fusion look in the dark
+palette until the phases that first use them, 4 and 5). Keyboard focus on buttons is not drawn, same as the
+tkinter app (``focusthickness=0``).
 """
 
 from __future__ import annotations
@@ -52,6 +55,8 @@ QLabel:disabled { color: ${DISABLED}; }
 QLabel[role="muted"] { color: ${MUTED}; }
 QLabel[role="title"] { font-size: 15pt; font-weight: bold; }
 QLabel[role="heading"] { font-size: 11pt; font-weight: bold; }
+QLabel[role="rowtitle"] { font-weight: bold; }
+QLabel[role="emptytitle"] { color: ${FG}; font-weight: bold; }
 
 /* ---- text fields: a hairline that turns purple on focus ---- */
 QLineEdit, QPlainTextEdit, QTextEdit {
@@ -91,6 +96,32 @@ QScrollBar::handle:hover { background: ${HOVER}; }
 QScrollBar::handle:pressed { background: ${PRESSED}; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+
+/* ---- widget kit (Phase 2) ---- */
+QFrame#card { background-color: ${BG2}; border: 1px solid ${BORDER}; }
+QFrame#divider { background-color: ${BORDER}; border: none; }
+QFrame#sideNav { background-color: ${BG2}; border: none; }
+QWidget#emptyState { background-color: ${BG2}; }
+QLabel#tooltipBubble { background-color: ${BG3}; color: ${FG}; border: 1px solid ${BORDER}; }
+QScrollArea#scrollFrame { background-color: ${BG}; border: none; }
+QWidget#scrollBody { background-color: ${BG}; }
+QPushButton[variant="nav"] {
+    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 9px 14px; font-weight: normal;
+}
+QPushButton[variant="nav"]:hover { background-color: ${BG3}; color: ${FG}; }
+QPushButton[variant="nav"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
+QPushButton[variant="nav"][selected="true"] { background-color: ${ACCENT_DIM}; color: ${WHITE}; font-weight: bold; }
+QPushButton[variant="nav"][selected="true"]:hover { background-color: ${ACCENT_DIM}; color: ${WHITE}; }
+QPushButton[variant="nav"][selected="true"]:pressed { background-color: ${PRESSED}; color: ${WHITE}; }
+QPushButton[variant="cardghost"] {
+    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 5px 8px; font-weight: bold;
+}
+QPushButton[variant="cardghost"]:hover { background-color: ${BG3}; color: ${FG}; }
+QPushButton[variant="cardghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
+QPushButton[variant="chip"] { background-color: ${BG3}; color: ${FG}; padding: 2px 8px; font-size: 9pt; }
+QPushButton[variant="chip"]:hover { background-color: ${HOVER}; color: ${WHITE}; }
+QPushButton[variant="chip"]:pressed { background-color: ${ACCENT_PRESS}; color: ${WHITE}; }
+QPushButton[variant="chip"]:disabled { background-color: ${BG2}; color: ${DISABLED}; }
 
 /* ---- progress bar ---- */
 QProgressBar { background-color: ${BG2}; border: none; min-height: 18px; max-height: 18px; text-align: center; }

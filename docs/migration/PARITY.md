@@ -456,7 +456,7 @@ Three more tkinter tests live in `tests/test_muted_audio.py` (after its `importo
 
 #### `test_gui_theme_and_icon.py` (13 tests)
 
-Phase 1 ported the first four (Qt tests: `test_qt_theme.py::test_icon_files_are_where_the_qt_app_looks_for_them`, `test_set_app_icon_installs_an_icon`, `test_set_app_icon_is_silent_when_the_files_are_missing`; `core/resources.py` is covered by `test_core_helpers.py::test_resource_path_points_into_the_project`). The "build scripts use the icon" test is about the packaging scripts (Phase 8); the rest are the widget kit (Phase 2). Also done in Phase 1, without a tkinter counterpart: palette tokens equal `ui/common.py`, the QSS parses without Qt warnings.
+Phase 1 ported the first four (Qt tests: `test_qt_theme.py::test_icon_files_are_where_the_qt_app_looks_for_them`, `test_set_app_icon_installs_an_icon`, `test_set_app_icon_is_silent_when_the_files_are_missing`; `core/resources.py` is covered by `test_core_helpers.py::test_resource_path_points_into_the_project`). The "build scripts use the icon" test is about the packaging scripts (Phase 8); the rest are the widget kit (Phase 2, done: `tests/test_qt_widgets.py`, 92 tests). "Checkbutton still toggles with the custom indicator" is NOT ported in Phase 2: check boxes are not part of the Phase 2 widget list; the Qt check box gets its look in the first phase that uses one (Phase 4 or 5). Also done in Phase 1, without a tkinter counterpart: palette tokens equal `ui/common.py`, the QSS parses without Qt warnings.
 
 - [x] icon files exist and have the sizes windows needs  
   `test_gui_theme_and_icon.py::test_icon_files_exist_and_have_the_sizes_windows_needs`
@@ -468,22 +468,40 @@ Phase 1 ported the first four (Qt tests: `test_qt_theme.py::test_icon_files_are_
   `test_gui_theme_and_icon.py::test_set_app_icon_is_silent_when_the_files_are_missing`
 - [ ] build scripts use the icon  
   `test_gui_theme_and_icon.py::test_build_scripts_use_the_icon`
-- [ ] theme defines the styles the ui uses  
-  `test_gui_theme_and_icon.py::test_theme_defines_the_styles_the_ui_uses`
+- [x] theme defines the styles the ui uses  
+  `test_gui_theme_and_icon.py::test_theme_defines_the_styles_the_ui_uses`  
+  Qt: `test_qt_widgets.py::test_the_stylesheet_has_the_rules_of_the_widget_kit`, `::test_a_card_is_a_bordered_surface`, `::test_the_selected_entry_is_purple_tinted_and_the_others_flat`, `::test_chips_are_small_flat_buttons`
 - [ ] checkbutton still toggles with the custom indicator  
   `test_gui_theme_and_icon.py::test_checkbutton_still_toggles_with_the_custom_indicator`
-- [ ] toggle follows the variable and the user  
-  `test_gui_theme_and_icon.py::test_toggle_follows_the_variable_and_the_user`
-- [ ] toggle works with int variables too  
-  `test_gui_theme_and_icon.py::test_toggle_works_with_int_variables_too`
-- [ ] disabled toggle ignores clicks  
-  `test_gui_theme_and_icon.py::test_disabled_toggle_ignores_clicks`
-- [ ] destroying a toggle removes its trace  
-  `test_gui_theme_and_icon.py::test_destroying_a_toggle_removes_its_trace`
-- [ ] tooltip shows and hides  
-  `test_gui_theme_and_icon.py::test_tooltip_shows_and_hides`
-- [ ] card collects setting rows  
-  `test_gui_theme_and_icon.py::test_card_collects_setting_rows`
+- [x] toggle follows the variable and the user  
+  `test_gui_theme_and_icon.py::test_toggle_follows_the_variable_and_the_user`  
+  Qt: `test_qt_widgets.py::test_a_click_flips_the_toggle_and_runs_the_command_once`, `::test_setting_the_value_from_code_follows_without_running_the_command`
+- [x] toggle works with int variables too  
+  `test_gui_theme_and_icon.py::test_toggle_works_with_int_variables_too`  
+  Qt: `test_qt_widgets.py::test_a_toggle_starts_in_the_state_it_was_given` (a Qt toggle holds a bool; int/BooleanVar variables go with the SettingsBinder, Phase 5)`
+- [x] disabled toggle ignores clicks  
+  `test_gui_theme_and_icon.py::test_disabled_toggle_ignores_clicks`  
+  Qt: `test_qt_widgets.py::test_a_disabled_toggle_ignores_clicks_and_keys`
+- [x] destroying a toggle removes its trace  
+  `test_gui_theme_and_icon.py::test_destroying_a_toggle_removes_its_trace`  
+  Qt: `test_qt_widgets.py::test_destroying_a_toggle_in_the_middle_of_its_animation_is_harmless`
+- [x] tooltip shows and hides  
+  `test_gui_theme_and_icon.py::test_tooltip_shows_and_hides`  
+  Qt: `test_qt_widgets.py::test_a_tooltip_shows_and_hides`
+- [x] card collects setting rows  
+  `test_gui_theme_and_icon.py::test_card_collects_setting_rows`  
+  Qt: `test_qt_widgets.py::test_a_card_collects_setting_rows`
+
+Widget behaviours that the tkinter tests check in other files (the screens that use them tick their own boxes in their phases; the widget part is covered in Phase 2 by `tests/test_qt_widgets.py`):
+
+- [x] sidebar: Up/Down move the selection and stop at the ends (`test_gui_options_tab.py::test_arrow_keys_move_through_the_sidebar`) -> `test_arrow_keys_move_through_the_sidebar`, `test_the_arrow_keys_move_the_focus_with_the_selection`, `test_every_entry_is_a_tab_stop_and_space_picks_it`; selected entry tinted -> `test_the_selected_entry_is_purple_tinted_and_the_others_flat`
+- [x] Advanced starts collapsed, opens and closes on click, arrow and text of the header (`test_advanced_starts_collapsed_and_opens_on_click`) -> same name in `test_qt_widgets.py`; opening it makes the page scroll (`test_opening_advanced_makes_the_page_scroll_to_the_new_content`) -> same name
+- [x] chips insert at the cursor and replace a selection (`test_clicking_a_chip_inserts_the_token_at_the_cursor`, `test_a_chip_replaces_the_selected_text`) -> same names, plus a real mouse click and the disabled / read-only field
+- [x] empty state shows, hides, refills, carries a button, leaves room for the headings (`test_gui_search_tab.py::test_empty_state_*`) -> same names in `test_qt_widgets.py`
+- [x] scroll page with a fixed footer (`test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls`, `test_the_plan_tab_is_a_scroll_page_with_a_footer`) -> `test_the_footer_stays_visible_when_the_page_scrolls`, `test_a_scroll_page_has_a_body_and_a_footer`
+- [x] the footer is the last Tab stop and Shift+Tab is the reverse (widget part of `test_gui_final_pass.py::test_plan_tab_footer_buttons_are_the_last_stops_left_to_right`, `test_plan_tab_shift_tab_is_the_exact_reverse`) -> `test_the_footer_is_the_last_tab_stop_even_though_it_was_built_first`, `test_tab_and_shift_tab_walk_the_page_in_that_order`
+- [x] switching a sidebar section scrolls back to the top (widget part of `test_switching_sections_scrolls_back_to_the_top`) -> `test_the_sidebar_and_a_scroll_frame_work_together_like_the_options_tab`
+- [ ] not ported yet: the mouse wheel over a combo box or spin box must not scroll the page (tkinter `ScrollFrame._on_wheel`); there are no combo boxes yet, Phase 5 decides (see PHASE_NOTES Phase 2)
 
 ## Window, focus and tab order  (Phase 1 (window), all phases (tab order))
 

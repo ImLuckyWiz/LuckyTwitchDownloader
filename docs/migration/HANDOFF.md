@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-19 (Phase 1 approved by the user). Last completed phase: 1.
+Last updated: 2026-10-20 (Phase 2 done, waiting for approval). Last completed phase: 1 (approved); Phase 2 built, not yet approved.
 
 ## 1. Status
 
@@ -10,7 +10,7 @@ Last updated: 2026-10-19 (Phase 1 approved by the user). Last completed phase: 1
 | --- | --- | --- | --- | --- |
 | 0 | Baseline and decisions | approved | migration-phase-0 | |
 | 1 | Skeleton and plumbing | approved | migration-phase-1 | |
-| 2 | Widget kit | not started | | |
+| 2 | Widget kit | done (waiting for approval) | migration-phase-2 | |
 | 3 | Queue and log tab | not started | | |
 | 4 | Search tab and Twitch sign-in | not started | | |
 | 5 | Options tab | not started | | |
@@ -104,6 +104,7 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 - **Installer collision.** The Windows installer for every build uses the same app id and install folder as the stable app, and the data folder (settings, Twitch login, tools) is shared. A pre-release installed over a real install replaces it. Before the first Qt installer is published (Phase 8, or earlier if a Qt pre-release is installable) give the Qt build its own app id, install folder and data folder name, or keep testers off their main install.
 - **The user runs Python 3.14 on Windows; CI and the agent's sandbox use 3.12.** PySide6 6.12.0 and the whole suite work on 3.14 (Windows run of Phase 1: 837 passed, 31 skipped, 2 failed, the two failures being old tkinter tests, fixed in the follow-up below). 31 tests skip on Windows because their fake CLI is a shebang script (`test_chat_overlay.py`, `test_chat_and_game_markers.py`); that is old and expected.
 - **Two tkinter tests were environment-sensitive (fixed in the Phase 1 follow-up, tests only, no app code).** `test_gui_search_tab.py::test_the_streamer_lists_keep_working_as_before` compared `str(tree.cget("show"))` with `""`; Tk 3.14 returns an empty tuple, so the string was `"()"`. It now asserts "nothing shown". `test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls` used a withdrawn window, which Windows does not lay out (heights stay 1); it now maps the window fully transparent first. Both pass on Linux/xvfb; the Windows result is a user check (Phase 2 start).
+- **Widget kit (Phase 2).** `qt_ui/widgets.py`; see PHASE_NOTES.md Phase 2 for the list. Rules for later phases: write `&&` for a literal ampersand in button, tab and label texts (Qt reads `&` as a shortcut mark); use `WrapLabel` for wrapped labels with a maximum width; call `ScrollPage.fix_tab_order()` after adding focusable widgets once the page is shown; `Toggle.clicked` is the user-only signal (the old `command`), `toggled` also fires for code. Check boxes, combo boxes and spin boxes are still not styled (first use: Phase 4 or 5), and the wheel-over-combo policy is a Phase 5 decision.
 - **Taskbar identity.** `qt_ui/theme.py` uses the same Windows AppUserModelID (`LuckyTwitch.Downloader`) as the tkinter app, for parity. Give the Qt build its own with the installer app id (see Installer collision).
 - **Duplicated helpers.** `core/` copies the UI-free helpers from `luckytwitch_downloader.py` (they cannot be imported from there because that module imports tkinter, and the existing tests monkeypatch those names on it). Main is frozen, so the copies will not drift; remove the duplication at cutover. `tests/test_core_matches_tkinter.py` compares the copies with the originals (remove it at cutover too).
 - **Two timeline tests** that used to fail: re-checked in Phase 0, they pass (they already compare with `pytest.approx(600.4)`). No fix and no xfail were needed. Nothing to do.
@@ -122,9 +123,7 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 
 ## 7. Next step
 
-Phase 1 is approved (user, 2026-10-19). What the user saw on Windows: the window opens with the dark theme, a dark title bar and the app icon in the title bar, the VOD entry with its purple focus border at start, design as expected (screenshot). Not reported back: shrinking to 900x560, the Tab order, the taskbar icon, the Windows run of the two fixed tests. The Windows `pytest` run of Phase 1 gave 837 passed, 31 skipped, 2 failed (the two tests above, since fixed). The optional Windows baseline screenshots of the tkinter app are still not taken.
-
-Phase 2 (PLAN.md section 6, Widget kit): Toggle, Card, SettingRow, Collapsible, SideNav, TokenChips, EmptyState, info icon with tooltip, scroll page with fixed footer, a gallery script, pytest-qt tests for each widget's behaviours; sources `ui/widgets.py` and `tests/test_gui_theme_and_icon.py`. First action of the session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 870 pass (the Qt tests default to the offscreen platform through `tests/conftest.py`), then read `PARITY.md` section "Theme, icon and widgets", `ui/widgets.py` and `qt_ui/theme.py` (it already styles buttons, labels, fields, tabs, tables, scrollbars and the progress bar; check boxes, combo boxes and spin boxes are for Phase 2 onwards). Ask the user to run the two fixed tests on Windows first (they take one command, see PHASE_NOTES.md, Phase 1 follow-up).
+Phase 2 is built and waits for the user's approval (PHASE_NOTES.md, Phase 2). The user's checks: run the gallery on Windows (`python tools/widget_gallery.py`) and judge it; run `python -m pytest tests/test_qt_widgets.py -q` on Windows (expected 92 passed); the two fixed tkinter tests from the Phase 1 follow-up are still open. When approved: set Phase 2 to approved here, and start Phase 3 (PLAN.md section 6: Queue and log tab, the first vertical slice). First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 962 pass, then read `PARITY.md` "Queue and log tab", `build_queue_tab`, `refresh_queue_summary`, `set_item_status`, `start_queue`, `cancel_current`, `remove_selected`, `clear_finished`, `set_progress`, `poll_queue`, `on_close` and `tests/test_gui_queue_tab.py`. Phase 3 uses `EmptyState`, `Card` and the theme from this phase.
 
 ## 8. Update checklist (end of every phase)
 

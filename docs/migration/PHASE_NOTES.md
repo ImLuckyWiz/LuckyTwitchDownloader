@@ -14,6 +14,25 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
+## Phase 2: Widget kit  (2026-10-20, tag migration-phase-2, done (waiting for approval))
+**Done:** `qt_ui/widgets.py`: `Toggle` (checkable button, painted, 70 ms slide, Space/Enter/click, focus ring, hover, disabled), `Tooltip` (own pop-up window, 450 ms delay, wraps at 380 px, kept inside the screen) and `InfoIcon`, `Card`, `SettingRow` (name, hint, ⓘ, `add_control`, `add_below`, divider), `WrapLabel`, `Collapsible`, `SideNav` (Up/Down), `TokenChips` (insert at cursor, replace selection), `EmptyState` (overlay on a list or table, `top`, `compact`, button), `ScrollFrame` and `ScrollPage` (fixed footer, `fix_tab_order()`). `qt_ui/theme.py`: QSS rules for them (card, divider, sidebar, nav/cardghost/chip buttons, empty state, tooltip bubble, scroll frame) and the docstring. `tools/widget_gallery.py`: every widget in every state (`--screenshot out.png`, `--check`). `tests/test_qt_widgets.py`: 92 tests. Screenshots of the gallery: `docs/migration/phase2/` (rendered offscreen on Linux with DejaVu fonts, not Windows).
+**Definition of Done:**
+- Each widget has pytest-qt tests for its behaviours: done. `tests/test_qt_widgets.py` (92 tests, in sections per widget: Toggle, Tooltip and InfoIcon, Card and SettingRow, Collapsible, SideNav, TokenChips, EmptyState, ScrollFrame and ScrollPage, stylesheet). Looks are tested on real pixels (`grab()`), tab order with real Tab/Shift+Tab, the footer with a scrolled page. Ported tkinter tests are ticked in PARITY.md "Theme, icon and widgets".
+- Gallery reviewed by the user: NOT done, it is your check (below). I looked at the offscreen render myself and fixed what I saw (clipped hints, `&` read as a shortcut, empty-state width).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 2 (signals and method names instead of callbacks, tk variables and `refit()`), no. 3 (tooltip also hides when its widget hides).
+**Known issues / left for later:**
+- Not run: Windows and macOS (fonts, DPI scaling, real mouse hover, real tooltip placement), a real display. Offscreen the mouse pointer rests at 0,0 and sends a real Enter to whatever sits there; two tests account for that.
+- Check boxes are not styled (not in the Phase 2 list); the tkinter test "checkbutton still toggles with the custom indicator" is not ported. Combo boxes and spin boxes neither.
+- Mouse wheel over combo/spin boxes: tkinter's `ScrollFrame` left the wheel to them. Qt's combo box changes its value on a wheel turn even without focus, so Phase 5 should set `Qt.StrongFocus` and ignore the wheel unless focused. Nothing to port now (no such widgets yet).
+- `&` in a button or tab text is a shortcut mark in Qt: write `&&` ("Add && start"). The tabs already do this in Phase 1; later phases must remember it for every button label with an ampersand.
+- `ScrollPage.fix_tab_order()` runs on first show; call it again after adding focusable widgets later.
+- A wrapped `QLabel` inside nested layouts comes out a line too short (its last line is cut off). `WrapLabel` fixes it for hints and subtitles; use it for any wrapped label that has a maximum width.
+- `EmptyState` keeps the tkinter wrap widths (380, compact 190) even when the list is narrower than that.
+- Not touched: `luckytwitch_engine.py`, `weblink.py`, the plugins, the tkinter app and its tests. By mistake I ran `git status` once in the uploaded copy (read-only, printed only the branch name `qt-migration`).
+**Tests:** 962 passed under `xvfb-run -a` (870 baseline + 92 new), 0 failed, 0 skipped. Run three times for flakiness: stable.
+**Windows results from the user:** none yet for Phase 1's open checks nor the two fixed tkinter tests.
+**Next:** the user reviews the gallery and runs the checks in the delivery message; then Phase 3 (HANDOFF.md section 7).
+
 ## Phase 1: Skeleton and plumbing  (2026-10-19, tag migration-phase-1, approved)
 **Done:** `core/` (copies of paths, settings with `DEFAULTS`/load/save, recent, config and credentials, status and log helpers, palette tokens, `resource_path`; no Qt or tkinter imports). `qt_ui/bridge.py`: `Bridge(QObject)` with one typed signal per message kind of PLAN.md 3.4 (16 signals; `None` becomes `""` in `tools_done` and `saved_chat_done`; the Twitch sign-in dialog's own messages come in Phase 4). `qt_ui/theme.py`: palette tokens, QPalette, QSS generated from the tokens on Fusion, fonts per platform, app icon (`.ico` on Windows, `.png` elsewhere, Windows AppUserModelID kept), dark title bar (Qt colour scheme plus the DWM call as a fallback). `qt_ui/main_window.py` and four empty tab classes in `qt_ui/tabs/`. `luckytwitch_qt.py` (only READS settings and the Twitch login; writes nothing). Settings fixture `tests/fixtures/settings_written_by_tk.json`, written by the real tkinter App with a non-default value in all 38 keys. Docs: PARITY.md (4 theme/icon boxes ticked, window frame note), MIGRATION_LOG.md (1 entry), HANDOFF.md.
 **Definition of Done:**
