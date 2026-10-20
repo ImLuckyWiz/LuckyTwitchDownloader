@@ -393,6 +393,7 @@ class Card(QFrame):
         self.subtitle_label: QLabel | None = None
         if title:
             head = QWidget(self)
+            head.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)  # the body takes spare height
             head_box = QVBoxLayout(head)
             head_box.setContentsMargins(padding, padding - 2, padding, 0)
             head_box.setSpacing(2)
@@ -408,7 +409,7 @@ class Card(QFrame):
         self.body_layout = QVBoxLayout(self.body)
         self.body_layout.setContentsMargins(padding, 8, padding, padding - 4)
         self.body_layout.setSpacing(0)
-        outer.addWidget(self.body)
+        outer.addWidget(self.body, 1)
         self.rows: list[SettingRow] = []
 
     def add_row(self, title: str, hint: str = "", info: str = "", divider: bool = True) -> SettingRow:

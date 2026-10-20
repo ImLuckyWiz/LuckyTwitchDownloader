@@ -97,6 +97,10 @@ QScrollBar::handle:pressed { background: ${PRESSED}; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
 
+/* ---- the log (Queue & log tab) ---- */
+QPlainTextEdit#logView { background-color: ${BG}; border: none; padding: 6px 8px; }
+QPlainTextEdit#logView:hover, QPlainTextEdit#logView:focus { border: none; }
+
 /* ---- widget kit (Phase 2) ---- */
 QFrame#card { background-color: ${BG2}; border: 1px solid ${BORDER}; }
 QFrame#divider { background-color: ${BORDER}; border: none; }

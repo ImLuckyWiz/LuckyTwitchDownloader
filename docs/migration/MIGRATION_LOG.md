@@ -28,3 +28,22 @@ No entries for Phase 0 (it changed no behaviour).
 **Qt:** also when the widget is hidden or closed, because the pop-up is a window of its own and would stay behind otherwise. It is drawn by our own label (not `QToolTip`) so it wraps at 380 px like before.
 **Why:** a separate pop-up window needs it; no visible difference in normal use. Decided by the agent.
 
+## 4. The queue is a model and a view; row ids are `I001`, `I002`, ...  (Phase 3)
+**tkinter:** a `ttk.Treeview` holds the rows (Tk makes the row ids); `App.items` is a parallel list of dicts.
+**Qt:** `QueueModel` (a `QAbstractTableModel`, decision D5) owns the items (`QueueItem`: job, row id, number, label, parts, strategy, plain status word, shown status text, files) and the table only shows it. Row ids are `I001`, `I002`, ... and a number is never used twice, so a status that arrives for a row that was removed is ignored. The «#» column is set when the row is added and is not renumbered, as before.
+**Why:** that is how a Qt table is built; nothing changes for the user. Decided by the agent.
+
+## 5. Busy progress bar looks different  (Phase 3)
+**tkinter:** the indeterminate bar is a `ttk.Progressbar` started with `start(12)` (a block that sweeps across).
+**Qt:** `QProgressBar.setRange(0, 0)` (Fusion's busy indicator, a purple block that sweeps back and forth; checked offscreen: the frames change).
+**Why:** the native way in Qt. Same meaning (progress unknown), slightly different motion. Decided by the agent; check how it looks on Windows.
+
+## 6. Closing never saves an empty settings dictionary  (Phase 3)
+**tkinter:** `on_close` always writes all the settings variables.
+**Qt:** `MainWindow.closeEvent` writes `self.settings` only when it is not empty. The entry point always loads the settings, so in the real app it is never empty; this only protects the saved file when a window is made without settings (tests, the demo script).
+**Why:** a window with no settings would otherwise overwrite the user's file with `{}`. Until the Options tab exists (Phase 5) the window cannot change a setting, so closing writes back what was loaded (keys that are not in `DEFAULTS` are dropped, as the tkinter app does). Decided by the agent.
+
+## 7. `Card` gives spare height to its body  (Phase 3)
+**tkinter:** a card's body expanded when the page was taller than its content.
+**Qt:** `Card` now adds its body with stretch 1 and its title bar with the `Maximum` height policy, so the queue and log cards share the spare height of the tab. Cards with fixed content look the same (the 92 widget tests and the gallery check still pass).
+**Why:** needed for the two cards of the Queue & log tab to grow with the window. This touches a Phase 2 file (`qt_ui/widgets.py`); decided by the agent.

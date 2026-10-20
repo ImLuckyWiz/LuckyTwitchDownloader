@@ -85,44 +85,46 @@ Three more tkinter tests live in `tests/test_muted_audio.py` (after its `importo
 
 #### `test_gui_queue_tab.py` (41 tests)
 
-- [ ] status word is the first word  
+- [x] status word is the first word  
   `test_gui_queue_tab.py::test_status_word_is_the_first_word`
-- [ ] status label puts an icon in front of known statuses  
+- [x] status label puts an icon in front of known statuses  
   `test_gui_queue_tab.py::test_status_label_puts_an_icon_in_front_of_known_statuses`
-- [ ] every status has an icon and a colour  
+- [x] every status has an icon and a colour  
   `test_gui_queue_tab.py::test_every_status_has_an_icon_and_a_colour`
-- [ ] log lines are classified  
+- [x] log lines are classified  
   `test_gui_queue_tab.py::test_log_lines_are_classified`
-- [ ] queue summary counts in a fixed order  
+- [x] queue summary counts in a fixed order  
   `test_gui_queue_tab.py::test_queue_summary_counts_in_a_fixed_order`
-- [ ] the empty queue says what to do and the button goes to the plan tab  
+- [x] the empty queue says what to do and the button goes to the plan tab  
   `test_gui_queue_tab.py::test_the_empty_queue_says_what_to_do_and_the_button_goes_to_the_plan_tab`
-- [ ] a queued job is listed with its icon colour and count  
+- [x] a queued job is listed with its icon colour and count  
   `test_gui_queue_tab.py::test_a_queued_job_is_listed_with_its_icon_colour_and_count`
-- [ ] a job changes colour and icon with its status  
+- [x] a job changes colour and icon with its status  
   `test_gui_queue_tab.py::test_a_job_changes_colour_and_icon_with_its_status`
-- [ ] the row colours match the palette  
+- [x] the row colours match the palette  
   `test_gui_queue_tab.py::test_the_row_colours_match_the_palette`
-- [ ] the summary follows every change of the queue  
+- [x] the summary follows every change of the queue  
   `test_gui_queue_tab.py::test_the_summary_follows_every_change_of_the_queue`
-- [ ] a running job cannot be removed  
+- [x] a running job cannot be removed  
   `test_gui_queue_tab.py::test_a_running_job_cannot_be_removed`
-- [ ] headings line up with their columns  
+- [x] headings line up with their columns  
   `test_gui_queue_tab.py::test_headings_line_up_with_their_columns`
-- [ ] the queue still runs on the plain status words  
+- [x] the queue still runs on the plain status words  
   `test_gui_queue_tab.py::test_the_queue_still_runs_on_the_plain_status_words`
-- [ ] a failing job is marked failed and logged in red  
+- [x] a failing job is marked failed and logged in red  
   `test_gui_queue_tab.py::test_a_failing_job_is_marked_failed_and_logged_in_red`
-- [ ] log lines get a muted time stamp and a colour by kind  
+- [x] log lines get a muted time stamp and a colour by kind  
   `test_gui_queue_tab.py::test_log_lines_get_a_muted_time_stamp_and_a_colour_by_kind`
-- [ ] the log is read only and follows the newest line  
+- [x] the log is read only and follows the newest line  
   `test_gui_queue_tab.py::test_the_log_is_read_only_and_follows_the_newest_line`
-- [ ] clear log empties it  
+- [x] clear log empties it  
   `test_gui_queue_tab.py::test_clear_log_empties_it`
-- [ ] copy log puts the text on the clipboard  
+- [x] copy log puts the text on the clipboard  
   `test_gui_queue_tab.py::test_copy_log_puts_the_text_on_the_clipboard`
-- [ ] the two sections are cards  
+- [x] the two sections are cards  
   `test_gui_queue_tab.py::test_the_two_sections_are_cards`
+
+**Ported in Phase 3** (`tests/test_qt_queue_tab.py`; the tkinter test ids above map one to one onto Qt tests with the same names, the pure helpers are tested on `core/status.py`). Also covered there, from the plan and the source, though no tkinter test had them: cancelling a running job (the rest stays queued), a failing job does not stop the run, start with nothing queued, start while the tools or a chat overlay are busy, a second press while it runs, the queue tab opens when the queue starts, the `Job n/m` prefix, determinate and indeterminate progress, a whole run end to end, `Open folder` (selected item, last finished item, output folder, error box), closing (asks while a job runs, cancels, saves the settings, removes `BEAT_PATH`), workers touch the GUI only through signals.
 
 ## Plan tab (without the timeline), Get info, links  (Phase 6)
 

@@ -14,7 +14,27 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
-## Phase 2: Widget kit  (2026-10-20, tag migration-phase-2, done (waiting for approval))
+## Phase 3: Queue and log tab  (2026-10-20, tag migration-phase-3, done (waiting for approval))
+**Done:** `qt_ui/tabs/queue.py` (`QueueTab`: summary line, job table with the five columns and the five buttons, empty state with «Go to the Plan tab», `LogView` with muted time stamps and colours by kind, Copy log, Clear log, open folder, scrolls when the window is short), `qt_ui/queue_model.py` (`QueueModel`/`QueueItem`), `qt_ui/queue_runner.py` (`QueueRunner`: one daemon thread, `run_job` per item, `Ctx` cancel, reports only through the Bridge), `qt_ui/dialogs.py` (message boxes in one place, the test seam), `core/files.py` (`open_in_file_manager`). `qt_ui/main_window.py`: progress bar and status line (`set_progress`, determinate and indeterminate, the `Job n/m` prefix), `queue_done`, the busy reasons for «Start queue», `closeEvent` (asks while a job runs, cancels, saves the settings, removes `BEAT_PATH`). `tools/queue_demo.py` (the tab with fake jobs, or one real job, before the Plan tab exists). Small edits to `qt_ui/widgets.py` (`Card`) and `qt_ui/theme.py` (log rule), `luckytwitch_qt.py` (docstring), `tests/conftest.py` (see below), `tests/test_qt_main_window.py` (two tests updated).
+**Definition of Done:**
+- Every queue behaviour in PARITY.md has a Qt test: done. 19 of 19 boxes ticked, `tests/test_qt_queue_tab.py` (69 tests incl. the extras listed in PARITY.md).
+- An end-to-end test with a fake job updates rows and progress: done (`test_a_whole_run_updates_rows_progress_and_status`, `test_the_queue_still_runs_on_the_plain_status_words`).
+- Tests use a fake `run_job`, no network: done (`qt_ui.queue_runner.run_job` is replaced).
+- One manual run of a real short job by the user: NOT done, it is your check (below). I could not run one: the sandbox has no access to Twitch or YouTube.
+I also broke the code on purpose in six places (prefix, save guard, cancel stops the run, running job removable, busy bar, row colour) and each time a test failed.
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 4 (model and view, row ids), 5 (busy bar look), 6 (no save of an empty settings dict), 7 (`Card` stretch).
+**Known issues / left for later:**
+- Not run: Windows and macOS, a real display, a real download, real mouse use of the table. Looked at offscreen renders of the empty and the filled tab myself (DejaVu fonts, not Windows).
+- The saved-chat overlay (Phase 5) and the tools setup (Phase 5) will set `MainWindow.tools_busy` / `saved_chat_busy`, `tools_ctx` and call `tab_queue.set_running(True/False)`; the attributes and the hooks exist and are tested, nothing sets them yet.
+- Until the Plan tab (Phase 6) the only ways to put a job in the queue are `QueueTab.enqueue(job, label, parts, strategy)` and `tools/queue_demo.py`.
+- Closing the window saves the settings that were loaded, unchanged; real saving comes with the Options tab (Phase 5).
+- `tests/conftest.py` got an autouse fixture that points `core.paths` at a temp folder for the `test_qt_*.py` files, because closing the window now writes the settings file and removes the heartbeat file. It is limited to those files on purpose: `test_core_helpers.py` and `test_core_matches_tkinter.py` check the real paths and failed when it applied to everything (caught in this session).
+- Not touched: `luckytwitch_engine.py`, `weblink.py`, the plugins, `luckytwitch_downloader.py` and its tests.
+**Tests:** 1031 passed under `xvfb-run -a` (962 baseline + 69 new), 0 failed, 0 skipped; run twice, stable. The two Qt test files alone run in about 5 s.
+**Windows results from the user:** none reported to me for Phase 1's open checks, Phase 2's gallery and `test_qt_widgets.py`, or the two fixed tkinter tests.
+**Next:** the user runs the checks in the delivery message; then Phase 4 (HANDOFF.md section 7).
+
+## Phase 2: Widget kit  (2026-10-20, tag migration-phase-2, approved)
 **Done:** `qt_ui/widgets.py`: `Toggle` (checkable button, painted, 70 ms slide, Space/Enter/click, focus ring, hover, disabled), `Tooltip` (own pop-up window, 450 ms delay, wraps at 380 px, kept inside the screen) and `InfoIcon`, `Card`, `SettingRow` (name, hint, ⓘ, `add_control`, `add_below`, divider), `WrapLabel`, `Collapsible`, `SideNav` (Up/Down), `TokenChips` (insert at cursor, replace selection), `EmptyState` (overlay on a list or table, `top`, `compact`, button), `ScrollFrame` and `ScrollPage` (fixed footer, `fix_tab_order()`). `qt_ui/theme.py`: QSS rules for them (card, divider, sidebar, nav/cardghost/chip buttons, empty state, tooltip bubble, scroll frame) and the docstring. `tools/widget_gallery.py`: every widget in every state (`--screenshot out.png`, `--check`). `tests/test_qt_widgets.py`: 92 tests. Screenshots of the gallery: `docs/migration/phase2/` (rendered offscreen on Linux with DejaVu fonts, not Windows).
 **Definition of Done:**
 - Each widget has pytest-qt tests for its behaviours: done. `tests/test_qt_widgets.py` (92 tests, in sections per widget: Toggle, Tooltip and InfoIcon, Card and SettingRow, Collapsible, SideNav, TokenChips, EmptyState, ScrollFrame and ScrollPage, stylesheet). Looks are tested on real pixels (`grab()`), tab order with real Tab/Shift+Tab, the footer with a scrolled page. Ported tkinter tests are ticked in PARITY.md "Theme, icon and widgets".

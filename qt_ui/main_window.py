@@ -1,15 +1,21 @@
-"""The main window: top bar, info line, four tabs, progress bar and status line (Phase 1: the frame only).
+"""The main window: top bar, info line, four tabs, progress bar and status line.
 
 Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, same texts, same order). The
-handlers of «Get info» and «Twitch API…» are stubs: they come in Phase 6 and Phase 4. The tabs are empty.
+handlers of «Get info» and «Twitch API…» are stubs: they come in Phase 6 and Phase 4. Phase 3 filled the Queue &
+log tab and added what belongs to the whole window: the progress bar and status line (``set_progress``), the
+«Job n/m» prefix, and closing (cancel a running job, save the settings, remove the heartbeat file).
 """
 
 from __future__ import annotations
 
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QProgressBar, QPushButton, QTabWidget, QVBoxLayout, QWidget,
 )
 
+from core import paths
+from core.settings import save_settings
+from qt_ui import dialogs
 from qt_ui.bridge import Bridge
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
 from qt_ui.theme import dark_titlebar
@@ -36,6 +42,12 @@ class MainWindow(QMainWindow):
         self.bridge = bridge if bridge is not None else Bridge(self)
         self.settings = settings if settings is not None else {}
         self.client = client
+        # state the later phases fill in: the tools setup (Phase 5) and the saved-chat overlay (Phase 5)
+        self.tools_busy = False
+        self.tools_ctx = None
+        self.saved_chat_busy = False
+        self._progress_mode = "determinate"
+        self._job_prefix = ""
 
         self.setWindowTitle(WINDOW_TITLE)
         self.resize(*START_SIZE)
@@ -80,7 +92,7 @@ class MainWindow(QMainWindow):
         self.tabs.tabBar().setExpanding(False)
         self.tabs.tabBar().setDrawBase(False)
         self.tab_search, self.tab_plan, self.tab_options, self.tab_queue = (
-            SearchTab(), PlanTab(), OptionsTab(), QueueTab())
+            SearchTab(), PlanTab(), OptionsTab(), QueueTab(self.bridge))
         for widget, name in zip((self.tab_search, self.tab_plan, self.tab_options, self.tab_queue), TAB_NAMES):
             self.tabs.addTab(widget, _tab_text(name))
         tabs_lay.addWidget(self.tabs)
@@ -105,6 +117,17 @@ class MainWindow(QMainWindow):
         self.setTabOrder(self.info_btn, self.api_btn)
         self.setTabOrder(self.api_btn, self.tabs.tabBar())
 
+        # the queue tab and the window talk through signals and two hooks
+        queue = self.tab_queue
+        queue.status_message.connect(self.set_status)
+        queue.plan_requested.connect(lambda: self.tabs.setCurrentWidget(self.tab_plan))
+        queue.show_requested.connect(lambda: self.tabs.setCurrentWidget(self.tab_queue))
+        queue.blocked_reason = self.queue_blocked_reason
+        queue.output_dir = lambda: self.settings.get("out_dir", "")
+        self.bridge.progress.connect(self.set_progress)
+        self.bridge.job.connect(self.on_job)
+        self.bridge.queue_done.connect(self.on_queue_done)
+
         if self.client is None:  # nothing to search with yet: start on the Plan tab
             self.tabs.setCurrentWidget(self.tab_plan)
         self.set_status(READY_TEXT)
@@ -113,6 +136,57 @@ class MainWindow(QMainWindow):
     # ---------------------------- helpers ---------------------------- #
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
+
+    def log(self, msg: str) -> None:
+        self.tab_queue.log(msg)
+
+    def set_progress(self, frac: float, text: str) -> None:
+        """A negative ``frac`` means «unknown»: the bar moves back and forth instead of filling."""
+        if frac < 0:
+            if self._progress_mode != "indeterminate":
+                self.progress.setRange(0, 0)
+                self._progress_mode = "indeterminate"
+            self.set_status(f"{self._job_prefix}{text}")
+        else:
+            if self._progress_mode != "determinate":
+                self.progress.setRange(0, 100)
+                self._progress_mode = "determinate"
+            self.progress.setValue(round(frac * 100))
+            self.set_status(f"{self._job_prefix}{text}  \u2014  {frac * 100:.0f}%")
+
+    def on_job(self, n: int, total: int) -> None:
+        self._job_prefix = f"Job {n}/{total}: " if total > 1 else ""
+
+    def on_queue_done(self) -> None:
+        self.set_progress(0, "")
+        self._job_prefix = ""
+        self.set_status("Queue finished.")
+
+    def queue_blocked_reason(self) -> str:
+        """Why «Start queue» must wait (a status-line sentence), or ''."""
+        if self.tools_busy:
+            return "Still preparing yt-dlp / ffmpeg, start the queue again in a moment."
+        if self.saved_chat_busy:
+            return "A chat overlay is being drawn, start the queue when it finishes."
+        return ""
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt name)
+        if self.tools_ctx:
+            self.tools_ctx.cancel()
+        runner = self.tab_queue.runner
+        if runner.is_running():
+            if not dialogs.ask_yes_no(self, "Quit", "A job is running. Cancel it and quit?"):
+                event.ignore()
+                return
+            if runner.ctx:
+                runner.ctx.cancel()
+        if self.settings:  # a window made without settings must not overwrite the saved file with nothing
+            save_settings(self.settings)
+        try:
+            paths.BEAT_PATH.unlink()  # a launch right after this one must not hand its link to a window that is gone
+        except OSError:
+            pass
+        event.accept()
 
     def tab_names(self) -> list[str]:
         """The titles as the person reads them (with the '&' of «Queue & log» unescaped)."""

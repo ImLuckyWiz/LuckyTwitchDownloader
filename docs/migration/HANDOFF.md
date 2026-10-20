@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-20 (Phase 2 done, waiting for approval). Last completed phase: 1 (approved); Phase 2 built, not yet approved.
+Last updated: 2026-10-20 (Phase 3 done, waiting for approval). Last completed phase: 2 (taken as approved because the Phase 3 session was started; the user did not report the Windows checks); Phase 3 built, not yet approved.
 
 ## 1. Status
 
@@ -10,8 +10,8 @@ Last updated: 2026-10-20 (Phase 2 done, waiting for approval). Last completed ph
 | --- | --- | --- | --- | --- |
 | 0 | Baseline and decisions | approved | migration-phase-0 | |
 | 1 | Skeleton and plumbing | approved | migration-phase-1 | |
-| 2 | Widget kit | done (waiting for approval) | migration-phase-2 | |
-| 3 | Queue and log tab | not started | | |
+| 2 | Widget kit | approved | migration-phase-2 | |
+| 3 | Queue and log tab | done (waiting for approval) | migration-phase-3 | |
 | 4 | Search tab and Twitch sign-in | not started | | |
 | 5 | Options tab | not started | | |
 | 6 | Plan tab (no timeline), Get info, links | not started | | |
@@ -41,6 +41,8 @@ Still open:
 - **D7** What Phase 9 (redesign) should look like: the user provides references. Not needed before Phase 9.
 
 Decided in Phase 1 (by the agent, not contested): `core/` modules read their file paths from `core.paths` when called, so tests monkeypatch `core.paths.SETTINGS_PATH` and friends. `_read_config`/`_write_config` became `read_config`/`write_config` in `core/config.py`. One `Bridge` signal per message kind, typed; "no value" is `""`. Qt tests run on the offscreen platform (`tests/conftest.py`). Palette tokens live in `core/palette.py`; `qt_ui/theme.py` generates the QSS from them. Phase 1 settings handling only reads: the SettingsBinder (Phase 5) and the save on close (Phase 3) do the writing.
+
+Decided in Phase 3 (by the agent, not contested): the queue tab owns the queue (`QueueModel`), the worker (`QueueRunner`) and the log; the main window owns the progress bar, status line, `Job n/m` prefix and closing, and talks to the tab through signals and two hooks (`blocked_reason`, `output_dir`). Message boxes go through `qt_ui/dialogs.py` (tests replace those functions). The tests of closing and the data folder use the autouse fixture in `tests/conftest.py` (only for `test_qt_*.py`). See MIGRATION_LOG.md no. 4 to 7.
 
 Where things are (decided in Phase 0): `PARITY.md`, `SETTINGS_KEYS.md`, `MIGRATION_LOG.md` and the `baseline/` folder are in `docs/migration/`, next to this file.
 
@@ -106,7 +108,8 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 - **Two tkinter tests were environment-sensitive (fixed in the Phase 1 follow-up, tests only, no app code).** `test_gui_search_tab.py::test_the_streamer_lists_keep_working_as_before` compared `str(tree.cget("show"))` with `""`; Tk 3.14 returns an empty tuple, so the string was `"()"`. It now asserts "nothing shown". `test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls` used a withdrawn window, which Windows does not lay out (heights stay 1); it now maps the window fully transparent first. Both pass on Linux/xvfb; the Windows result is a user check (Phase 2 start).
 - **Widget kit (Phase 2).** `qt_ui/widgets.py`; see PHASE_NOTES.md Phase 2 for the list. Rules for later phases: write `&&` for a literal ampersand in button, tab and label texts (Qt reads `&` as a shortcut mark); use `WrapLabel` for wrapped labels with a maximum width; call `ScrollPage.fix_tab_order()` after adding focusable widgets once the page is shown; `Toggle.clicked` is the user-only signal (the old `command`), `toggled` also fires for code. Check boxes, combo boxes and spin boxes are still not styled (first use: Phase 4 or 5), and the wheel-over-combo policy is a Phase 5 decision.
 - **Taskbar identity.** `qt_ui/theme.py` uses the same Windows AppUserModelID (`LuckyTwitch.Downloader`) as the tkinter app, for parity. Give the Qt build its own with the installer app id (see Installer collision).
-- **Duplicated helpers.** `core/` copies the UI-free helpers from `luckytwitch_downloader.py` (they cannot be imported from there because that module imports tkinter, and the existing tests monkeypatch those names on it). Main is frozen, so the copies will not drift; remove the duplication at cutover. `tests/test_core_matches_tkinter.py` compares the copies with the originals (remove it at cutover too).
+- **Queue & log tab (Phase 3).** `qt_ui/tabs/queue.py`, `queue_model.py`, `queue_runner.py`, `dialogs.py`; PHASE_NOTES.md Phase 3 has the list. Rules for later phases: put a job in the queue with `QueueTab.enqueue(job, label, n_parts, strategy)` (Phase 6 calls it from «Add to queue» / «Add & start»); a worker never touches a widget, it emits a Bridge signal; the tools setup and the saved-chat overlay (Phase 5) set `MainWindow.tools_busy` / `saved_chat_busy` / `tools_ctx` and call `tab_queue.set_running()`; tests replace `qt_ui.queue_runner.run_job` and the functions of `qt_ui/dialogs.py`. `MainWindow.closeEvent` saves `self.settings` (only when not empty) and removes `BEAT_PATH`: tests that close a window must run with the temp paths of `tests/conftest.py` (automatic in `test_qt_*.py`). `tools/queue_demo.py` shows the tab with fake jobs or one real job.
+- **Duplicated helpers.** `core/` copies the UI-free helpers from `luckytwitch_downloader.py` (they cannot be imported from there because that module imports tkinter, and the existing tests monkeypatch those names on it). Phase 3 added `core/files.py` (`open_in_file_manager`) to the copies. Main is frozen, so the copies will not drift; remove the duplication at cutover. `tests/test_core_matches_tkinter.py` compares the copies with the originals (remove it at cutover too).
 - **Two timeline tests** that used to fail: re-checked in Phase 0, they pass (they already compare with `pytest.approx(600.4)`). No fix and no xfail were needed. Nothing to do.
 - **`progress-eta.patch`** in the repository root is stale: the engine already contains `FfmpegProgress` and its tests, and the patch no longer applies. Safe to delete (`git rm progress-eta.patch`); the user decides.
 - **Line endings.** `luckytwitch_engine.py`, `tests/test_hls_sections.py` and some other files in the zip use CRLF; the docs and most other files use LF. Keep each file's existing style when editing. Delivered new files use LF.
@@ -123,7 +126,7 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 
 ## 7. Next step
 
-Phase 2 is built and waits for the user's approval (PHASE_NOTES.md, Phase 2). The user's checks: run the gallery on Windows (`python tools/widget_gallery.py`) and judge it; run `python -m pytest tests/test_qt_widgets.py -q` on Windows (expected 92 passed); the two fixed tkinter tests from the Phase 1 follow-up are still open. When approved: set Phase 2 to approved here, and start Phase 3 (PLAN.md section 6: Queue and log tab, the first vertical slice). First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 962 pass, then read `PARITY.md` "Queue and log tab", `build_queue_tab`, `refresh_queue_summary`, `set_item_status`, `start_queue`, `cancel_current`, `remove_selected`, `clear_finished`, `set_progress`, `poll_queue`, `on_close` and `tests/test_gui_queue_tab.py`. Phase 3 uses `EmptyState`, `Card` and the theme from this phase.
+Phase 3 is built and waits for the user's approval (PHASE_NOTES.md, Phase 3). The user's checks: run `python tools/queue_demo.py --fake` on Windows and try the tab (start, cancel the long job, close the window while it runs, resize the window); run `python tools/queue_demo.py --real <a short VOD URL>` once (the first 30 seconds are downloaded) and paste what the log and the table show; run `python -m pytest tests/test_qt_queue_tab.py tests/test_qt_main_window.py -q` on Windows (expected 81 passed); the Phase 1 and Phase 2 checks and the two fixed tkinter tests are still open. When approved: set Phase 3 to approved here, and start Phase 4 (PLAN.md section 6: Search tab and Twitch sign-in). First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 1031 pass, then read `PARITY.md` "Search tab and Twitch sign-in dialog", `build_search_tab`, `on_search*`, `load_channel`, `on_videos_*`, `_thumb_worker`, `on_thumb`, `ask_credentials` and `tests/test_gui_search_tab.py`. Phase 4 uses `Card`, `EmptyState`, the `Bridge` signals `search_ok`, `search_err`, `videos_ok`, `videos_err`, `thumb`, and `qt_ui/dialogs.py`.
 
 ## 8. Update checklist (end of every phase)
 

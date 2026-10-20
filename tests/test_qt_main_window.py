@@ -51,8 +51,8 @@ def test_the_four_tabs_have_the_same_names_in_the_same_order(win):
     assert win.tabs.tabText(3) == "Queue && log"
 
 
-def test_the_tabs_are_empty(win):
-    for i in range(win.tabs.count()):
+def test_the_tabs_that_are_not_built_yet_are_empty(win):
+    for i in range(3):  # Search, Plan, Options (the Queue & log tab is built in Phase 3)
         assert win.tabs.widget(i).findChildren(QLabel) == []
         assert win.tabs.widget(i).children() == []
 
@@ -142,7 +142,7 @@ def test_the_window_makes_its_own_bridge_or_uses_the_one_it_is_given(qtbot, them
 
 
 # ------------------------------------------------------------------ the entry point
-def test_main_builds_the_window_from_the_saved_settings_and_never_writes_them(qtbot, themed, tmp_path, monkeypatch):
+def test_main_builds_the_window_from_the_saved_settings_and_saves_them_on_close(qtbot, themed, tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "DATA_DIR", tmp_path / "data")
     monkeypatch.setattr(paths, "SETTINGS_PATH", tmp_path / "data" / "luckytwitch_settings.json")
     monkeypatch.setattr(paths, "CONFIG_PATH", tmp_path / "data" / "config.json")
@@ -166,5 +166,6 @@ def test_main_builds_the_window_from_the_saved_settings_and_never_writes_them(qt
     qtbot.addWidget(window)
     assert kwargs["settings"] == DEFAULTS and kwargs["client"] is None
     assert (tmp_path / "data").is_dir()  # the data folder is created
-    assert not paths.SETTINGS_PATH.exists()  # Phase 1 only reads settings
+    assert not paths.SETTINGS_PATH.exists()  # nothing is written until the window closes
     window.close()
+    assert paths.SETTINGS_PATH.exists()  # Phase 3: saved on close, same file and keys as the tkinter app

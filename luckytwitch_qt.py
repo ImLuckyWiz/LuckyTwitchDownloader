@@ -3,7 +3,7 @@
     python luckytwitch_qt.py
 
 The tkinter app (luckytwitch_downloader.py) stays the shipped one until the cutover. Both use the same data
-folder; this entry point only READS the settings and the Twitch login for now and never writes them.
+folder; the settings are saved when the window closes (Phase 3); the Twitch login is only read for now.
 """
 
 from __future__ import annotations
