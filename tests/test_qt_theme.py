@@ -137,3 +137,9 @@ def test_dark_titlebar_never_raises_and_does_nothing_off_windows(qtbot, monkeypa
     theme.dark_titlebar(w)  # whatever the platform: must not raise
     monkeypatch.setattr(theme.sys, "platform", "linux")
     theme.dark_titlebar(None)  # not even looking at the window off Windows
+
+
+def test_build_scripts_use_the_icon():
+    assert "assets\\icon.ico" in (ROOT / "build_windows.bat").read_text(encoding="utf-8")
+    assert "assets/icon.icns" in (ROOT / "build_mac.sh").read_text(encoding="utf-8")
+    assert "SetupIconFile=assets\\icon.ico" in (ROOT / "installer.iss").read_text(encoding="utf-8")

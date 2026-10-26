@@ -1,3 +1,13 @@
+## v2.0.0
+
+LuckyTwitch Downloader now runs on **Qt 6 (PySide6)** instead of tkinter. Every feature, setting, file format, and workflow is unchanged, and your existing settings, Twitch login, recent streamers, and downloaded tools carry over automatically.
+
+### What changed in 2.0
+- **New Qt 6 interface, same workflow:** all four tabs (**Search**, **Plan**, **Options**, **Queue & log**), the interactive **Timeline** with storyboard thumbnails and muted-audio stretches, **Twitch sign-in**, **chat overlay rendering**, **`luckytwitch://` links**, and both **Premiere Pro plugins** work the same way as in v1.16.0.
+- **Seamless upgrade from 1.x:** the installer upgrades in place and reads the same `luckytwitch_settings.json`, `config.json`, `luckytwitch_recent.json`, and `tools` folder—no need to sign in again or reconfigure templates.
+- **Smoother layout and High-DPI rendering:** crisp text and icons on High-DPI displays on Windows and macOS, native smooth scrolling that never accidentally changes a spin box or drop-down under the mouse wheel, and responsive `QPainter` timeline rendering.
+- **Tested parity:** 354 new automated Qt and core tests run alongside the existing engine and Premiere plugin suites in CI on Windows and macOS.
+
 ## v1.16.0
 
 Draw the chat overlay from a chat file you already have. Nothing was removed and nothing works differently when you do not use it.

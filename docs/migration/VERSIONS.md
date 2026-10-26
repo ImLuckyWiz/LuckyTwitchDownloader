@@ -2,6 +2,27 @@
 
 The user asked for **released versions while a phase is in progress, even half-made ones**. So every meaningful chunk of work ends in a numbered release: a zip of the whole repo (`lt-repo_phase<N>_v<K>.zip`) plus an entry below. An entry always says what is done, what is NOT done, and what was NOT run, so a half-made version is never mistaken for a finished one. A phase is only "done" when HANDOFF.md says so and the user approves it; versions are the steps on the way.
 
+## Phase 8: Packaging, CI and cutover
+
+### v1  (2026-10-26)  PyInstaller & Inno Setup cutover, pre-release isolation, CI pytest, and release notes complete
+
+**Done (new or changed files):**
+- `build_windows.bat`, `build_mac.sh`, `requirements.txt`: cut over to `luckytwitch_qt.py`, added `PySide6==6.12.0` to `requirements.txt`, wrote `build/version.txt` into the frozen bundle, collected `core` and `qt_ui`, excluded `tkinter` and unused `PySide6.Qt*` modules (`QtWebEngine*`, `QtQml`, `QtQuick*`, `QtMultimedia*`, `Qt3D*`, `QtCharts`, `QtPdf*`, `QtSql`, `QtNetwork*`, `QtSvg*`, `QtOpenGL*`, `QtPrintSupport`, `QtDesigner`, `QtHelp`, `QtUiTools`, `QtXml`, `QtTest`, etc.), and kept macOS `CFBundleURLTypes` (`luckytwitch://`) registration before `codesign`.
+- `installer.iss`, `core/paths.py`, `qt_ui/theme.py`, `luckytwitch_qt.py`: isolated pre-release builds (versions containing `-`, e.g. `v0.8.0-beta.1`) into their own Windows `AppId`, install folder (`LuckyTwitch-Beta`), macOS bundle ID (`com.luckytwitch.app.beta`), taskbar ID (`LuckyTwitch.Downloader.Beta`), and data folder (`LuckyTwitch-beta`), while preserving the standard `LuckyTwitch` identity and `user_data_dir()` for stable releases (`v2.0.0`) so 1.x users keep their settings, login, recent streamers, and tools.
+- `.github/workflows/build.yml`: installed `requirements-qt.txt` and `pytest`, added `QT_QPA_PLATFORM: offscreen` test steps on Windows (Qt + engine + tkinter) and macOS (Qt + engine), and passed the tag/version to `build_mac.sh`.
+- `docs/migration/RELEASE_NOTES_QT.md` & `RELEASE_NOTES.md`: added top entries `## v0.8.0-beta.1` and `## v2.0.0`.
+- `tests/test_qt_packaging.py` (new, 14 test cases) & `tests/test_qt_theme.py` (`test_build_scripts_use_the_icon` added): tests for packaging scripts, icon paths, module exclusions, macOS URL scheme order, pre-release vs stable path/installer isolation, CI workflow, and release notes headers.
+- `tools/measure_build.py`: helper script that measures source startup times (`luckytwitch_qt.py` median 975 ms vs `luckytwitch_downloader.py` median 1511 ms on Windows) and reports `dist/LuckyTwitch` and `dist/LuckyTwitch-Setup.exe` sizes once built.
+- Docs updated: `HANDOFF.md`, `PHASE_NOTES.md`, `VERSIONS.md`, `PARITY.md` (`test_build_scripts_use_the_icon` ticked), `MIGRATION_LOG.md` (no. 19).
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_packaging.py tests/test_qt_theme.py tests/test_core_helpers.py tests/test_core_matches_tkinter.py tests/test_gui_theme_and_icon.py -q` -> 110 passed in 22.73s.
+- `python tools/measure_build.py` -> Qt source startup min 954 ms / median 975 ms vs tkinter min 1490 ms / median 1511 ms (~35% faster).
+
+**NOT done:** running `build_windows.bat` to produce `dist/LuckyTwitch-Setup.exe` and measuring the final `.exe` installer size on Windows; pushing a tag to run the GitHub Actions CI matrix on Windows + macOS.
+
+**NOT run:** `build_windows.bat` (takes several minutes and modifies `dist/`/`build/`), full test suite in one invocation.
+
 ## Phase 7: Timeline (7a to 7e)
 
 ### v1  (2026-10-26)  Full Timeline (7a to 7e) and tests complete, targeted Qt tests green on Windows

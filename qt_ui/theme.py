@@ -28,9 +28,10 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
 
 from core.palette import MONO_FONT, TOKENS, UI_FONT
+from core.paths import BUNDLED_VERSION, resolve_app_user_model_id
 from core.resources import resource_path
 
-APP_ID = "LuckyTwitch.Downloader"  # Windows taskbar identity (same as the tkinter app, see HANDOFF.md warnings)
+APP_ID = resolve_app_user_model_id(BUNDLED_VERSION)  # Windows taskbar identity (Beta suffix on pre-releases)
 FONT_SIZE_PT = 10
 
 _QSS = Template("""

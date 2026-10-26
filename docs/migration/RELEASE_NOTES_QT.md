@@ -1,3 +1,17 @@
+## v0.8.0-beta.1
+
+**First complete PySide6 (Qt 6) release candidate.** All four tabs (**Search**, **Plan**, **Options**, and **Queue & log**), the interactive **Timeline** with storyboard thumbnails and muted-audio stretches, **Twitch sign-in**, **chat overlay rendering**, and **`luckytwitch://` links** now run on PySide6.
+
+### Safe side-by-side beta install
+- **Does not overwrite your stable 1.x install.** Because this tag is a pre-release (`v0.8.0-beta.1`), the Windows installer uses its own application ID (`LuckyTwitch (Beta)` in `%LOCALAPPDATA%\Programs\LuckyTwitch-Beta`), its own macOS bundle identifier (`com.luckytwitch.app.beta`), and its own data folder (`LuckyTwitch-beta`). Your existing 1.x installation, settings, and Twitch login stay untouched.
+- Note: if you leave the installer's **Open luckytwitch:// links** box ticked, `luckytwitch://` links from the browser will open this beta build until you switch them back in **Options → Tools → Links from web pages**.
+
+### What is included
+- **Search tab & Twitch sign-in:** search streamers, browse recent channels, filter VODs with background thumbnail loading, and sign in with Twitch device-code login or your own client ID/secret.
+- **Plan tab & interactive Timeline:** `QPainter` timeline strip with ruler, CRC32-coloured game bars, red muted-audio stretches (`Show muted`), storyboard thumbnails, floating hover preview, magnetic snapping (6 px) to game changes, clips, and muted stretches, double-click game isolation, mouse-wheel zoom anchored at the cursor, 100-step undo (`Undo` / `Ctrl+Z`), cut points editor with live plan preview, and `Clips → chapters` table.
+- **Options tab:** all 7 sections (`Output`, `Cuts`, `Chapters`, `Premiere Pro`, `Chat`, `Clips`, `Tools`), live filename/folder examples with clickable token chips, saved-chat overlay rendering, and background tool setup.
+- **Queue & log tab:** colour-coded job queue and log, indeterminate and determinate progress bar with `Job n/m` prefix, safe cancellation, and confirmation before closing while a job is running.
+
 ## v0.0.1-alpha.1
 
 **Pipeline test. This is not the PySide6 app yet.** It is the current tkinter app (same code as v1.16.0) built from the `qt-migration` branch, published as a pre-release to check that the branch, the tag, the notes and the build all work. No PySide6 code exists yet.

@@ -514,8 +514,8 @@ Phase 1 ported the first four (Qt tests: `test_qt_theme.py::test_icon_files_are_
   `test_gui_theme_and_icon.py::test_set_app_icon_installs_an_icon_and_never_raises`
 - [x] set app icon is silent when the files are missing  
   `test_gui_theme_and_icon.py::test_set_app_icon_is_silent_when_the_files_are_missing`
-- [ ] build scripts use the icon  
-  `test_gui_theme_and_icon.py::test_build_scripts_use_the_icon`
+- [x] build scripts use the icon  
+  `test_gui_theme_and_icon.py::test_build_scripts_use_the_icon` -> `test_qt_theme.py::test_build_scripts_use_the_icon`, `test_qt_packaging.py::test_build_scripts_use_the_icon` (Phase 8)
 - [x] theme defines the styles the ui uses  
   `test_gui_theme_and_icon.py::test_theme_defines_the_styles_the_ui_uses`  
   Qt: `test_qt_widgets.py::test_the_stylesheet_has_the_rules_of_the_widget_kit`, `::test_a_card_is_a_bordered_surface`, `::test_the_selected_entry_is_purple_tinted_and_the_others_flat`, `::test_chips_are_small_flat_buttons`

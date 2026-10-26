@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 7 done, waiting for approval, see VERSIONS.md: Phase 7 v1). Last completed phase: 6 (approved by the user, tag `migration-phase-6`; Phases 4 and 5 also approved, tags `migration-phase-4` and `migration-phase-5`).
+Last updated: 2026-10-26 (Phase 8 approved by the user, see VERSIONS.md: Phase 8 v1). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -21,8 +21,8 @@ Last updated: 2026-10-26 (Phase 7 done, waiting for approval, see VERSIONS.md: P
 | 4 | Search tab and Twitch sign-in | approved | migration-phase-4 | |
 | 5 | Options tab | approved | migration-phase-5 | |
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
-| 7 | Timeline (7a to 7e) | done (waiting for approval; v1 delivered, 7a–7e complete and 62 Qt timeline tests green on Windows) | | |
-| 8 | Packaging, CI, cutover | not started | | |
+| 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
+| 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
 | 9 | Redesign beyond parity | optional, not started | | |
 
 States: not started, in progress, done (waiting for approval), approved.
@@ -148,7 +148,11 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 7 (Timeline, 7a to 7e, version 1) is built and its 62 Qt timeline tests pass on Windows (`test_qt_timeline.py` 62 passed, `test_qt_plan_tab.py` 59 passed). It waits for the user's hands-on check of the Timeline on Windows (`python luckytwitch_qt.py` with a real VOD: ruler, game bars, muted red stretches, storyboard thumbnails, hover preview, click to cut/skip, drag edges with snapping, double-click a game, right-click to remove a cut, wheel zoom, Undo / Ctrl+Z), then approval and tag `migration-phase-7`. After Phase 7 is approved, the user says when to start Phase 8 (Packaging, CI and cutover; PLAN.md section 6).
+Phase 8 (Packaging, CI and cutover, version 1) is complete and its tests pass on Windows (`test_qt_packaging.py`, `test_qt_theme.py`, `test_core_helpers.py`, `test_core_matches_tkinter.py`, `test_gui_theme_and_icon.py` -> 110 passed). Every mandatory phase (0 through 8) of the tkinter-to-PySide6 migration is now built. Next for the user:
+1. Run `python -m pytest tests -q` on Windows to confirm the entire suite is green.
+2. Optionally run `build_windows.bat v0.8.0-beta.1` (or `build_windows.bat v2.0.0`) locally and `python tools/measure_build.py` to inspect the portable folder and Windows installer size.
+3. Commit Phase 8, tag `migration-phase-8`, push `qt-migration` to trigger the GitHub Actions CI build on Windows and macOS, and tag `v0.8.0-beta.1` (side-by-side beta pre-release) or `v2.0.0` (full cutover release).
+4. Phase 9 (Redesign beyond parity) is optional and user-led if the user later wants layout or visual changes beyond parity.
 
 ## 8. Update checklist (end of every phase)
 

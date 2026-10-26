@@ -1,23 +1,91 @@
 #!/usr/bin/env bash
-# Build LuckyTwitch for macOS -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.dmg)
-# Use Python from python.org (the Python bundled with macOS has an outdated Tk).
+# Build LuckyTwitch (PySide6) for macOS -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.dmg)
+# Usage: bash build_mac.sh [version]
 # The result matches the Mac you build on: Apple Silicon -> arm64, Intel -> x86_64.
 set -euo pipefail
 cd "$(dirname "$0")"
 
+VER="${1:-${GITHUB_REF_NAME:-1.0}}"
+BUNDLE_ID="com.luckytwitch.app"
+case "$VER" in
+  *-*) BUNDLE_ID="com.luckytwitch.app.beta" ;;
+esac
+
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
+
+mkdir -p build
+printf '%s\n' "$VER" > build/version.txt
 
 python3 -m PyInstaller --noconfirm --clean --windowed \
   --name LuckyTwitch \
   --icon assets/icon.icns \
   --add-data "assets:assets" \
-  --osx-bundle-identifier com.luckytwitch.app \
+  --add-data "build/version.txt:." \
+  --osx-bundle-identifier "$BUNDLE_ID" \
   --collect-submodules requests \
-  --collect-submodules ui \
+  --collect-submodules core \
+  --collect-submodules qt_ui \
   --hidden-import luckytwitch_engine \
-  --hidden-import PIL._tkinter_finder \
-  luckytwitch_downloader.py
+  --hidden-import weblink \
+  --exclude-module tkinter \
+  --exclude-module _tkinter \
+  --exclude-module PIL._tkinter_finder \
+  --exclude-module PIL.ImageTk \
+  --exclude-module pytest \
+  --exclude-module PySide6.QtWebEngineCore \
+  --exclude-module PySide6.QtWebEngineWidgets \
+  --exclude-module PySide6.QtWebEngineQuick \
+  --exclude-module PySide6.QtWebChannel \
+  --exclude-module PySide6.QtWebSockets \
+  --exclude-module PySide6.QtQml \
+  --exclude-module PySide6.QtQuick \
+  --exclude-module PySide6.QtQuick3D \
+  --exclude-module PySide6.QtQuickControls2 \
+  --exclude-module PySide6.QtQuickWidgets \
+  --exclude-module PySide6.QtMultimedia \
+  --exclude-module PySide6.QtMultimediaWidgets \
+  --exclude-module PySide6.QtSpatialAudio \
+  --exclude-module PySide6.Qt3DCore \
+  --exclude-module PySide6.Qt3DRender \
+  --exclude-module PySide6.Qt3DInput \
+  --exclude-module PySide6.Qt3DLogic \
+  --exclude-module PySide6.Qt3DExtras \
+  --exclude-module PySide6.Qt3DAnimation \
+  --exclude-module PySide6.QtCharts \
+  --exclude-module PySide6.QtDataVisualization \
+  --exclude-module PySide6.QtGraphs \
+  --exclude-module PySide6.QtGraphsWidgets \
+  --exclude-module PySide6.QtPdf \
+  --exclude-module PySide6.QtPdfWidgets \
+  --exclude-module PySide6.QtSql \
+  --exclude-module PySide6.QtNetwork \
+  --exclude-module PySide6.QtNetworkAuth \
+  --exclude-module PySide6.QtSvg \
+  --exclude-module PySide6.QtSvgWidgets \
+  --exclude-module PySide6.QtOpenGL \
+  --exclude-module PySide6.QtOpenGLWidgets \
+  --exclude-module PySide6.QtPrintSupport \
+  --exclude-module PySide6.QtDesigner \
+  --exclude-module PySide6.QtHelp \
+  --exclude-module PySide6.QtUiTools \
+  --exclude-module PySide6.QtXml \
+  --exclude-module PySide6.QtTest \
+  --exclude-module PySide6.QtPositioning \
+  --exclude-module PySide6.QtLocation \
+  --exclude-module PySide6.QtSensors \
+  --exclude-module PySide6.QtSerialPort \
+  --exclude-module PySide6.QtSerialBus \
+  --exclude-module PySide6.QtBluetooth \
+  --exclude-module PySide6.QtNfc \
+  --exclude-module PySide6.QtRemoteObjects \
+  --exclude-module PySide6.QtScxml \
+  --exclude-module PySide6.QtStateMachine \
+  --exclude-module PySide6.QtTextToSpeech \
+  --exclude-module PySide6.QtVirtualKeyboard \
+  --exclude-module PySide6.QtShaderTools \
+  --exclude-module PySide6.QtDBus \
+  luckytwitch_qt.py
 
 # Let macOS send luckytwitch:// links to the app (web pages can offer them). This has to happen before signing.
 PLIST="dist/LuckyTwitch.app/Contents/Info.plist"

@@ -14,7 +14,24 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
-## Phase 7: Timeline (7a to 7e)  (2026-10-26, tag migration-phase-7, done, waiting for approval)
+## Phase 8: Packaging, CI and cutover  (2026-10-26, tag migration-phase-8, approved)
+**Done (version 1, see VERSIONS.md):**
+- **PyInstaller & Inno Setup (`build_windows.bat`, `build_mac.sh`, `installer.iss`, `requirements.txt`):** cut over the packaged entry point from `luckytwitch_downloader.py` to `luckytwitch_qt.py`; added `PySide6==6.12.0` to `requirements.txt`; bundled `build/version.txt` so the frozen app knows its build version; collected `core` and `qt_ui` submodules; excluded `tkinter` and all unused `PySide6.Qt*` modules (`QtWebEngine*`, `QtQml`, `QtQuick*`, `QtMultimedia*`, `Qt3D*`, `QtCharts`, `QtPdf*`, `QtSql`, `QtNetwork*`, `QtSvg*`, `QtOpenGL*`, `QtPrintSupport`, `QtDesigner`, `QtHelp`, `QtUiTools`, `QtXml`, `QtTest`, etc.); preserved macOS `CFBundleURLTypes` (`luckytwitch://`) registration before `codesign`.
+- **Pre-release isolation vs stable upgrade (`installer.iss`, `core/paths.py`, `qt_ui/theme.py`):** pre-release builds (versions containing `-`, such as `v0.8.0-beta.1`) use a separate Windows `AppId`, install folder (`LuckyTwitch-Beta`), app name (`LuckyTwitch (Beta)`), macOS bundle ID (`com.luckytwitch.app.beta`), Windows taskbar ID (`LuckyTwitch.Downloader.Beta`), and data folder (`LuckyTwitch-beta`). Stable builds (such as `v2.0.0` or `1.0`) keep the existing `LuckyTwitch` identity and `user_data_dir()` so upgrading from v1.16.0 preserves the user's Twitch login, saved settings, recent streamers, and downloaded tools.
+- **CI workflow (`.github/workflows/build.yml`):** installs `requirements.txt`, `requirements-qt.txt`, and `pytest`; runs `pytest` with `QT_QPA_PLATFORM=offscreen` before building on Windows (full suite including Qt, engine, and legacy tkinter tests) and macOS (Qt and engine tests); passes the tag/version to `build_mac.sh`.
+- **Startup time & size tool (`tools/measure_build.py`):** measured source startup on Windows (3 runs): `luckytwitch_qt.py` min **954 ms**, median **975 ms** vs `luckytwitch_downloader.py` min **1490 ms**, median **1511 ms** (~35% faster). Also reports the sizes of `dist/LuckyTwitch` and `dist/LuckyTwitch-Setup.exe` after running `build_windows.bat`.
+- **Release notes (`docs/migration/RELEASE_NOTES_QT.md`, `RELEASE_NOTES.md`):** prepared both `## v0.8.0-beta.1` (top of `RELEASE_NOTES_QT.md`) and `## v2.0.0` (top of `RELEASE_NOTES.md`).
+- **Tests (`tests/test_qt_packaging.py`, `tests/test_qt_theme.py`):** 14 new test cases in `test_qt_packaging.py` plus `test_build_scripts_use_the_icon` in `test_qt_theme.py`.
+**Definition of Done (PLAN.md Phase 8):**
+- PyInstaller for PySide6 excluding unused Qt modules, updated `build_windows.bat`, `installer.iss`, `build_mac.sh` (keeping `luckytwitch://` on macOS), separate pre-release identity/install/data folder: done (`test_qt_packaging.py`).
+- CI updated (`build.yml`) with `QT_QPA_PLATFORM=offscreen` and tkinter tests kept until removal: done (`test_ci_workflow_runs_pytest_offscreen_and_passes_version_to_both_builders`).
+- Startup time measured (`975 ms` median for Qt vs `1511 ms` median for tkinter); `tools/measure_build.py` ready to report installer size after `build_windows.bat`.
+- `RELEASE_NOTES_QT.md` (`## v0.8.0-beta.1`) and `RELEASE_NOTES.md` (`## v2.0.0`) updated: done (`test_release_notes_have_top_entries_for_beta_and_v2`).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 19.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `tests/test_qt_packaging.py`, `tests/test_qt_theme.py`, `tests/test_core_helpers.py`, `tests/test_core_matches_tkinter.py`, `tests/test_gui_theme_and_icon.py` -> 110 passed in 22.73s; `python tools/measure_build.py`.
+**Still open (user check, then approval):** run `build_windows.bat v0.8.0-beta.1` (or push to CI) and `python tools/measure_build.py`, smoke-test the built installer/exe, and tag `migration-phase-8` (and `v0.8.0-beta.1` or `v2.0.0`).
+
+## Phase 7: Timeline (7a to 7e)  (2026-10-26, tag migration-phase-7, approved)
 **Done (version 1, see VERSIONS.md):**
 - **7a Pure logic (`core/timeline.py`):** UI-free `Viewport`, `nice_step`, `game_colour`, `zone_at`, `y_of`, `build_snap_points`, `snap_time` and geometry/colour constants (`THUMB_W`, `THUMB_H`, `PADX`, `RULER_H`, `GAMES_H`, `PARTS_H`, `GAP`, `Y_RULER`, `Y_GAMES`, `Y_THUMBS`, `Y_PARTS`, `HEIGHT`, `EDGE_TOL_PX`, `SNAP_PX`, `PREVIEW_MAX_W`, `GAME_COLOURS`, `CUT_COLOUR`, `EDGE_COLOUR`, `MUTED_COLOUR`, `MUTED_H`, `IDLE_HINT`).
 - **7b Static paint (`qt_ui/timeline.py`):** `Timeline(QWidget)` and `TimelineCanvas(QWidget)` painted with `QPainter`: ruler with round time marks and green clip triangles, game segments coloured deterministically by CRC32 with elided white labels (or «No game information for this VOD»), part ranges in `ACCENT` with «Part N · H:MM:SS» labels, cut lines (white), edge lines (`EDGE_COLOUR`) and green grabbed handle (`OK`), toolbar (`−`, `+`, `Fit`, `Undo`, `Show muted` switch and stretch summary), horizontal scrollbar (`QScrollBar`), and wrapping hint line (`WrapLabel`).
@@ -30,7 +47,7 @@ Entry template (copy it for each phase):
 - 7e Hover overlay and muted stretches (red bars, «Show muted» switch, hover text, snap to muted edges when shown): done (`test_hovering_*`, `test_the_timeline_draws_a_red_line_*`, `test_the_red_line_can_be_switched_off`, `test_a_new_vod_forgets_the_old_muted_stretches`, `test_cuts_snap_to_the_edges_of_muted_stretches`).
 **Divergences from the tkinter app:** MIGRATION_LOG.md no. 16 resolved (`TimelinePlaceholder` replaced by `Timeline`), no. 18 (`Timeline` painted with `QPainter` on `TimelineCanvas` and `QScrollBar` integer range `0..10000`).
 **What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `tests/test_qt_timeline.py` + `tests/test_qt_plan_tab.py` -> 121 passed in 19.90s.
-**Still open (user check, then approval):** try the interactive Timeline on Windows (`python luckytwitch_qt.py` with a real VOD). Then tag `migration-phase-7`.
+**Approved by the user (2026-10-26):** verified on Windows with a real 8h33m VOD (`https://www.twitch.tv/videos/2908621505`) including game bars, clip marks, storyboard thumbnails, and cut points.
 
 ## Phase 6: Plan tab (no timeline), Get info, links  (2026-10-26, tag migration-phase-6, approved)
 **Done (version 1, see VERSIONS.md):**
@@ -79,7 +96,8 @@ Entry template (copy it for each phase):
 **Teardown errors (closed by the Windows run below):** in the full suite, in some orders, errors appear at teardown (`'EmptyState' object has no attribute '_target'`, `'ChannelModel' object has no attribute 'channels'`). Cause found: with the garbage collector off the same run passes. A window in a reference cycle is cleaned by the collector, which empties its child objects before Qt deleted the C++ widgets. Changes made: window hooks are weak (`_weak` in `main_window.py`), no lambdas that capture `self` in the Search tab, and an autouse fixture in `tests/conftest.py` that collects garbage after each Qt test. With these, `test_qt_main_window + test_qt_queue_tab + test_qt_search_tab` passed (152); the full suite was not re-run. If errors come back on Windows, paste them.
 **Other changes outside the Search tab:** the scroll area of the Search and Queue tabs no longer takes Tab focus (found by the ported tab-order test; test added for the Queue tab); `tests/test_qt_main_window.py` updated (the Search tab is no longer empty, `ask_credentials` is no longer a stub).
 **Not done:** Phase 4 notes for the Definition of Done, Windows runs, a look at the tab and the dialog on Windows, real login with a real Twitch account, real search. The group box title in the dialog is purple but not bold (tkinter: bold). The combo box wheel policy is still Phase 5.
-**Windows results from the user (2026-10-26, Python 3.14):** `test_qt_search_tab.py` 70 passed; `test_qt_twitch_dialog.py` 37 passed; `test_qt_queue_tab.py` + `test_qt_main_window.py` 82 passed; full suite 1108 passed, 31 skipped (the known shebang tests), 0 failed, in 191 s; no teardown errors. Run once, not twice.
+**Windows results from the user (2026-10-26, Python 3.14):** `test_qt_search_tab.py` 70 passed; `test_qt_twitch_dialog.py` 37 passed; `test_qt_queue_tab.py` + `test_qt_main_window.py` 82 passed; full suite 1108 passed, 31 skipped (the known shebang tests), 0 failed, in 191 s; no teardown errors. Run once, not twice.
+
 **Approved by the user (2026-10-26):** checked by hand on Windows and tagged `migration-phase-4`.
 
 ## Phase 3: Queue and log tab  (2026-10-20, tag migration-phase-3, approved)

@@ -1,13 +1,14 @@
-"""LuckyTwitch Downloader, PySide6 version (migration branch). All four tabs are built (the timeline strip on the Plan
-tab is a placeholder until Phase 7).
+"""LuckyTwitch Downloader, PySide6 version (default entry point from v2.0.0; packaged by build_windows.bat and
+build_mac.sh).
 
     python luckytwitch_qt.py
 
-The tkinter app (luckytwitch_downloader.py) stays the shipped one until the cutover. Both use the same data
-folder; the settings are saved when the window closes. The tools (yt-dlp, ffmpeg) are prepared in the background
-right after the window opens, like the tkinter app does. A ``luckytwitch://`` link passed on the command line is
-handed to an already-open window when one is running, or opened here after start-up; on macOS, ``QFileOpenEvent``
-delivers links to the running app.
+The legacy tkinter entry point (luckytwitch_downloader.py) stays in the repository for one release cycle before
+removal. Both use the same data folder (except packaged pre-release builds with a hyphen in the version, which use
+LuckyTwitch-beta); the settings are saved when the window closes. The tools (yt-dlp, ffmpeg) are prepared in the
+background right after the window opens. A ``luckytwitch://`` link passed on the command line is handed to an
+already-open window when one is running, or opened here after start-up; on macOS, ``QFileOpenEvent`` delivers links
+to the running app.
 """
 
 from __future__ import annotations
