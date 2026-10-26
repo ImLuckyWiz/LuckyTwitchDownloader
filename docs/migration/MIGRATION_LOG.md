@@ -114,3 +114,21 @@ No entries for Phase 0 (it changed no behaviour).
 **Qt:** `MUTED` is raised to `#a3a6ad` (4.52:1 on `BG3`, 5.66:1 on `BG2`), and `ACCENT_TEXT` `#b380ff` (4.89:1 on `BG2`) is introduced for light accent text on dark surfaces. `BORDER_STRONG` (`#484b52`, 1.58:1 on `BG2`) provides visible container boundaries. Tested by `tests/test_qt_contrast.py`.
 **Why:** accessibility fix from PHASE_9_PLAN.md (A4). Approved by the user.
 
+## 21. Design tokens in QSS, rounded surfaces, keyboard focus rings, and motion controller  (Phase 9a v2)
+**tkinter:** sharp square corners (`border-radius: 0`), `focusthickness=0` (no keyboard focus ring on buttons/tables), and instant `Collapsible` show/hide.
+**Qt:** `qt_ui/theme.py` injects `DESIGN_TOKENS` (`qt_ui/tokens.py`) for rounded cards (`8 px`), buttons (`6 px`), inputs/chips (`4 px`), `FIELD_BORDER` input borders, `ACCENT_TEXT` on group titles/login code, `ACCENT_DIM` with a `3 px` left accent bar on selected table/list rows, and `1 px solid ACCENT_HOVER` keyboard focus rings on buttons, rail items, and tables. `qt_ui/motion.py` adds a central `Motion` controller (respecting Windows `SPI_GETCLIENTAREAANIMATION` and disabled in `tests/conftest.py`), height/width animators (`Collapsible` and `NavRail`), and `ButtonHoverAnimator` (120 ms `OutCubic` colour fade spike).
+**Why:** Phase 9a design system foundation (`PHASE_9_PLAN.md` A1–A6, D13). Approved by the user.
+
+## 22. Application shell: Left Navigation Rail, Command Bar, Loaded-VOD Strip, Toasts, Activity Pill, Shortcuts, UI State, and Plan Onboarding  (Phase 9b v1)
+**tkinter:** horizontal top tab bar (`Search`, `Plan`, `Options`, `Queue & log`), plain VOD entry row, plain one-line `info_label`, 18 px progress bar above a status label, modal `messagebox.showinfo` popups for routine confirmations, no global keyboard shortcuts (`Ctrl+L`, `Ctrl+1..4`, `Ctrl+,`, `F1`), no window geometry/tab memory, and no onboarding card on an empty Plan tab.
+**Qt:** `qt_ui/shell.py`, `qt_ui/toast.py`, `qt_ui/notify.py`, `qt_ui/main_window.py`, and `qt_ui/tabs/plan.py` introduce:
+- **Left Navigation Rail + `PageStack` shim (B1):** 56 px collapsed / 176 px expandable rail (`Search`, `Plan` with loaded-VOD dot, `Queue & log` with item count badge at top; `Options` and expand/collapse toggle at bottom; `# ICON NEEDED: <name>` seams for Claude's `qt_ui/icons.py`), paired with `PageStack` exposing the full `QTabWidget` API so all 28 `win.tabs` uses keep working.
+- **Command Bar & Account Status (B2, B4):** rounded command bar with inline `Paste` / `✕` clear action button, drag-and-drop URL/ID loading, clipboard Twitch VOD detection toast, and live `●` / `○` Twitch API sign-in indicator.
+- **Loaded-VOD Strip (B3):** 48 px bar under the command bar (hidden when no VOD is loaded) showing a 16:9 thumbnail (populated from the first storyboard frame when available), bold VOD title, metadata summary, `Open on Twitch`, and `Clear` button; clicking the strip jumps to the `Plan` page.
+- **Non-modal Toasts & System Notification (B5, B6):** `ToastHost` / `ToastCard` stacked at the bottom-right (auto-dismiss in 4 s, pauses on hover, optional action button like `Go to Queue` or `Open folder`), plus `notify.system_notify` when the queue finishes in the background.
+- **Compact Status Bar & Activity Pill (B7):** 3 px progress bar along the top edge of the status bar, status label on the left, and clickable `Job n/m · pct%` activity pill on the right that jumps to `Queue & log`.
+- **Keyboard Layer & UI State (B8, B9):** `Ctrl+L` (focus VOD bar), `Ctrl+1..4` (switch pages), `Ctrl+,` (Options), `Ctrl+Enter` / `Ctrl+Shift+Enter` (queue from Plan), `F1` (`ShortcutsDialog`), and window geometry/rail/tab persistence in `luckytwitch_ui.json`.
+- **Plan Empty-State Onboarding Card (B10):** 3-step teaching banner with `Search streamers` and `Paste from clipboard` buttons above the timeline when no VOD is loaded; hides automatically once a VOD is loaded.
+**Why:** Phase 9b shell redesign (`PHASE_9_PLAN.md` B1–B10, D8–D13). Approved by the user.
+
+

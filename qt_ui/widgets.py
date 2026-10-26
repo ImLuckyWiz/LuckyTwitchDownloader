@@ -454,7 +454,7 @@ class Collapsible(QWidget):
         self.body_layout.setSpacing(0)
         outer.addWidget(self.body)
         self.rows: list[SettingRow] = []
-        self._apply()
+        self._apply(animate=False)
 
     def add_row(self, title: str, hint: str = "", info: str = "", divider: bool = True) -> SettingRow:
         row = SettingRow(title, hint, info, divider, self.body)
@@ -469,13 +469,38 @@ class Collapsible(QWidget):
         if opened == self.opened:
             return
         self.opened = opened
-        self._apply()
+        self._apply(animate=True)
         self.toggled.emit(self.opened)
 
-    def _apply(self) -> None:
+    def _apply(self, animate: bool = False) -> None:
+        from qt_ui.motion import QWIDGETSIZE_MAX, Motion, animate_height
+
         arrow = "\u25be" if self.opened else "\u25b8"
         self.header.setText(f"{arrow}  {self.title}" + (f"   \u00b7   {self.hint}" if self.hint else ""))
-        self.body.setVisible(self.opened)
+        if not animate or not Motion.enabled() or not self.isVisible():
+            prev = getattr(self.body, "_height_anim", None)
+            if prev is not None:
+                prev.stop()
+                self.body._height_anim = None
+            self.body.setMaximumHeight(QWIDGETSIZE_MAX)
+            self.body.setVisible(self.opened)
+            return
+        if self.opened:
+            self.body.setMaximumHeight(0)
+            self.body.setVisible(True)
+            target = max(self.body.sizeHint().height(), 1)
+            animate_height(
+                self.body, 0, target, Motion.NORMAL_MS,
+                on_finished=lambda: self.body.setMaximumHeight(QWIDGETSIZE_MAX),
+            )
+        else:
+            start = max(self.body.height(), 1)
+
+            def _after_close() -> None:
+                self.body.setVisible(False)
+                self.body.setMaximumHeight(QWIDGETSIZE_MAX)
+
+            animate_height(self.body, start, 0, Motion.NORMAL_MS, on_finished=_after_close)
 
 
 # --------------------------------------------------------------------------- #

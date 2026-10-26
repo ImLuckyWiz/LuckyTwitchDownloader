@@ -17,7 +17,7 @@ from typing import Callable, Sequence
 from PySide6.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, Qt, Signal
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor, QTextOption
 from PySide6.QtWidgets import (
-    QAbstractItemView, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QPushButton, QScrollBar, QSizePolicy,
+    QAbstractItemView, QFrame, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QPushButton, QScrollBar, QSizePolicy,
     QTableView, QVBoxLayout, QWidget,
 )
 
@@ -107,6 +107,8 @@ TimelinePlaceholder = Timeline  # backward-compatible alias
 
 class PlanTab(ScrollPage):
     add_requested = Signal(bool)  # False = «Add to queue», True = «Add & start»
+    search_requested = Signal()
+    paste_requested = Signal()
 
     def __init__(self, settings: dict | None = None, bridge: Bridge | None = None, parent: QWidget | None = None):
         super().__init__(8, parent)
@@ -124,6 +126,7 @@ class PlanTab(ScrollPage):
         self._timeline_src = None
         self.preview_kind = "muted"
 
+        self._build_onboarding_card()
         self._build_timeline_card()
         self._build_cuts_card()
         self._build_clips_card()
@@ -134,6 +137,37 @@ class PlanTab(ScrollPage):
         self.refresh_clips()
 
     # ---------------------------- building ---------------------------- #
+    def _build_onboarding_card(self) -> None:
+        """First-run / empty-state teaching banner shown when no VOD is loaded (Phase 9b, B10)."""
+        self.onboarding_card = QFrame(self.body)
+        self.onboarding_card.setObjectName("onboardingCard")
+        self.onboarding_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        olay = QHBoxLayout(self.onboarding_card)
+        olay.setContentsMargins(14, 10, 14, 10)
+        olay.setSpacing(12)
+
+        steps = WrapLabel(
+            "1. Paste a link or search a streamer   \u00b7   2. Mark where to cut   \u00b7   3. Add to queue",
+            self.onboarding_card,
+        )
+        steps.setProperty("role", "muted")
+        olay.addWidget(steps, 1)
+
+        # ICON NEEDED: search
+        self.onboard_search_btn = QPushButton("Search streamers", self.onboarding_card)
+        self.onboard_search_btn.setProperty("variant", "ghost")
+        self.onboard_search_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.onboard_search_btn.clicked.connect(self.search_requested.emit)
+        olay.addWidget(self.onboard_search_btn)
+
+        # ICON NEEDED: clipboard
+        self.onboard_paste_btn = QPushButton("Paste from clipboard", self.onboarding_card)
+        self.onboard_paste_btn.setProperty("variant", "ghost")
+        self.onboard_paste_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.onboard_paste_btn.clicked.connect(self.paste_requested.emit)
+        olay.addWidget(self.onboard_paste_btn)
+
+        self.body_layout.addWidget(self.onboarding_card)
     def _build_timeline_card(self) -> None:
         self.timeline_card = Card("Timeline")
         self.body_layout.addWidget(self.timeline_card)
@@ -441,6 +475,7 @@ class PlanTab(ScrollPage):
     def sync_timeline(self) -> None:
         """Show the current VOD and the parts the cut text describes (called after every change of either)."""
         src = self.source
+        self.onboarding_card.setVisible(src is None)
         if src is not self._timeline_src:
             self._timeline_src = src
             if src is None:

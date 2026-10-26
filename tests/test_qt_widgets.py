@@ -376,7 +376,7 @@ def test_a_card_can_hold_any_widget(qtbot):
 def test_a_card_is_a_bordered_surface(qtbot):
     card = shown(qtbot, Card("T"), size=(300, 120))
     assert card.objectName() == "card"
-    assert near(pixel(card, 0, 0), pal.BORDER) and near(pixel(card, 150, 100), pal.BG2)
+    assert near(pixel(card, 150, 0), pal.BORDER) and near(pixel(card, 150, 100), pal.BG2)
 
 
 def test_a_card_pads_its_content(qtbot):

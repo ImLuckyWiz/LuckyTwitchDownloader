@@ -27,9 +27,16 @@ def _data_folder_in_tmp(request, tmp_path, monkeypatch):
     except ImportError:  # pragma: no cover
         return
     for name, leaf in (("SETTINGS_PATH", "luckytwitch_settings.json"), ("RECENT_PATH", "luckytwitch_recent.json"),
-                       ("CONFIG_PATH", "config.json"), ("LINKS_DIR", "links"), ("BEAT_PATH", "running.beat")):
+                       ("CONFIG_PATH", "config.json"), ("LINKS_DIR", "links"), ("BEAT_PATH", "running.beat"),
+                       ("UI_STATE_PATH", "luckytwitch_ui.json")):
         monkeypatch.setattr(paths, name, tmp_path / "data" / leaf)
     (tmp_path / "data").mkdir(exist_ok=True)
+    try:
+        from qt_ui.motion import Motion
+
+        Motion.set_enabled(False)
+    except ImportError:  # pragma: no cover
+        pass
 
 
 @pytest.fixture(autouse=True)

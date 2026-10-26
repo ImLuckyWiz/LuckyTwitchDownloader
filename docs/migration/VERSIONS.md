@@ -1,5 +1,26 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9b v1 (includes 9a v2)  (2026-10-26)  QSS token refactor, motion & button hover spike (9a v2), and The Shell: NavRail, PageStack, CommandBar, VodStrip, Toasts, Activity Pill, Shortcuts, UI State, and Plan Onboarding (9b v1)
+
+**Done (new or changed files):**
+- `qt_ui/motion.py` (new): A6 central `Motion` controller (`FAST_MS = 120`, `NORMAL_MS = 180`, `SLIDE_MS = 150`, `OutCubic`, Windows `SPI_GETCLIENTAREAANIMATION` check, `Motion.set_enabled(False)` in `tests/conftest.py`), `animate_height`, `animate_width`, and `ButtonHoverAnimator` (9a button hover spike).
+- `qt_ui/theme.py` & `qt_ui/widgets.py`: A1–A3 QSS template substitution with `DESIGN_TOKENS`, rounded surfaces (`8 px` cards, `6 px` buttons, `4 px` inputs/chips), `FIELD_BORDER` input borders, `ACCENT_TEXT` on group titles/login code, `ACCENT_DIM` with `3 px` left accent bar on selected rows, `1 px solid ACCENT_HOVER` keyboard focus rings, shell QSS rules, and smooth `Collapsible` height animation when `Motion.enabled()` is true.
+- `qt_ui/toast.py` & `qt_ui/notify.py` (new): B5 & B6 non-modal bottom-right `ToastCard` / `ToastHost` (4 s auto-dismiss, hover pause, action button, `✕` close button) and `notify.info` / `notify.success` / `notify.warning` / `notify.system_notify` with `notify.calls` test seam.
+- `qt_ui/shell.py` (new): B1 `NavRail` (56 px collapsed / 176 px expanded, loaded-VOD dot, queue count badge, Up/Down arrow stepping, `# ICON NEEDED: <name>` seams) + `PageStack` (`QTabWidget`-compatible shim); B2 & B4 `CommandBar` (inline `Paste`/`✕` button, `Get info` CTA, live `●`/`○` Twitch account status); B3 `VodStrip` (48 px loaded-VOD bar with 16:9 storyboard thumbnail, title, metadata, `Open on Twitch`, `Clear`, click-to-open-Plan); B8 `ShortcutsDialog` (`F1`).
+- `qt_ui/main_window.py` & `qt_ui/tabs/plan.py`: wired the shell, B2 drag-and-drop and clipboard VOD detection toast, B7 3 px top-edge progress bar and clickable `activity_pill`, B8 global shortcuts (`Ctrl+L`, `Ctrl+1..4`, `Ctrl+,`, `Ctrl+Enter`, `Ctrl+Shift+Enter`, `F1`), B9 `luckytwitch_ui.json` load/save, and B10 3-step empty-state onboarding card on `PlanTab`.
+- `tests/conftest.py` & `tests/test_qt_widgets.py`: isolated `UI_STATE_PATH` and disabled `Motion` by default in `conftest.py`; updated `test_a_card_is_a_bordered_surface` top-border probe from `(0, 0)` to `(150, 0)` for `8 px` rounded cards.
+- `tests/test_qt_notify.py` (new, 6 tests) & `tests/test_qt_shell.py` (new, 16 tests): 22 new tests covering motion, button hover spike, collapsible animation, `ToastCard`/`ToastHost`/`notify`, `NavRail`, `PageStack`, `CommandBar`, `VodStrip`, account chip, drag-and-drop, clipboard VOD toast, `activity_pill`, keyboard shortcuts, `UIState` persistence, and the Plan onboarding card.
+- Docs updated: `MIGRATION_LOG.md` (no. 21 and 22), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_theme.py tests/test_qt_widgets.py tests/test_qt_contrast.py -q` -> 109 passed in 5.39s.
+- `python -m pytest tests/test_qt_main_window.py tests/test_qt_plan_tab.py -q` -> 71 passed in 15.98s.
+- `python -m pytest tests/test_qt_notify.py tests/test_qt_shell.py tests/test_qt_search_tab.py tests/test_qt_options_tab.py tests/test_qt_queue_tab.py -q` -> 222 passed in 25.86s (after fixing `ToastCard` deletion check in `test_qt_notify.py`: 22 passed in 4.05s in `test_qt_notify.py` + `test_qt_shell.py`).
+
+**NOT done:** A5 SVG icon paths (`qt_ui/icons.py`, reserved for Claude — `# ICON NEEDED: <name>` seams are in place); Phases 9c–9h.
+
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`), full test suite in one invocation.
+
 ### 9a v1  (2026-10-26)  Design foundation: tokens, WCAG contrast repair, UI-state manager, and screenshot baseline
 
 **Done (new or changed files):**

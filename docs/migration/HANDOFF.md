@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 9 PLAN written, no code: see `PHASE_9_PLAN.md` and VERSIONS.md: Phase 9 v0). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9a v2 + Phase 9b v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -30,7 +30,7 @@ Last updated: 2026-10-26 (Phase 9 PLAN written, no code: see `PHASE_9_PLAN.md` a
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
 | 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
 | 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
-| 9 | Redesign beyond parity | in progress (9a version 1 delivered: tokens, contrast tests, UI state, screenshots) | | |
+| 9 | Redesign beyond parity | in progress (9a v1–v2 & 9b v1 delivered: design tokens/QSS, motion, NavRail + PageStack, CommandBar, VodStrip, Toasts, Activity Pill, Shortcuts, UI state, Plan onboarding) | | |
 
 States: not started, in progress, done (waiting for approval), approved.
 
@@ -156,11 +156,11 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 8 (Packaging, CI and cutover, version 1) is complete and its tests pass on Windows (`test_qt_packaging.py`, `test_qt_theme.py`, `test_core_helpers.py`, `test_core_matches_tkinter.py`, `test_gui_theme_and_icon.py` -> 110 passed). Every mandatory phase (0 through 8) of the tkinter-to-PySide6 migration is now built. Next for the user:
-1. Run `python -m pytest tests -q` on Windows to confirm the entire suite is green.
-2. Optionally run `build_windows.bat v0.8.0-beta.1` (or `build_windows.bat v2.0.0`) locally and `python tools/measure_build.py` to inspect the portable folder and Windows installer size.
-3. Commit Phase 8, tag `migration-phase-8`, push `qt-migration` to trigger the GitHub Actions CI build on Windows and macOS, and tag `v0.8.0-beta.1` (side-by-side beta pre-release) or `v2.0.0` (full cutover release).
-4. Phase 9 (Redesign beyond parity): the plan is written (`PHASE_9_PLAN.md`, docs only, no code). Next for the user: read it, answer D8 to D15 (section 9 there; the recommended answers are listed first). Next for the agent, only after that: version 9a (design foundation, no layout change), delivered as `phase-9-a-v1.zip`. Do not write code for Phase 9 before the user has answered D8, D9 and D10 at least.
+Phase 9a (v1–v2) and Phase 9b (The Shell, v1) are built and their Qt test suites pass on Windows (`test_qt_notify.py`, `test_qt_shell.py`, `test_qt_main_window.py`, `test_qt_plan_tab.py`, `test_qt_search_tab.py`, `test_qt_options_tab.py`, `test_qt_queue_tab.py`, `test_qt_theme.py`, `test_qt_widgets.py`, `test_qt_contrast.py` -> 402 passed).
+Next:
+1. **User check on Windows:** launch `python luckytwitch_qt.py` to inspect the new Left Navigation Rail (expand/collapse), Command Bar (`Paste`/`✕`, Twitch account dot), Loaded-VOD Strip (with 16:9 storyboard thumbnail), non-modal bottom-right Toasts, 3 px progress bar + Activity Pill, `F1` Keyboard Shortcuts sheet, and Plan onboarding card; commit Phase 9b v1.
+2. **Claude (when switched in):** build `qt_ui/icons.py` (A5) and attach the icons to the `# ICON NEEDED: <name>` seams in `qt_ui/shell.py` and `qt_ui/tabs/plan.py`.
+3. **Phase 9c (Search & Twitch Sign-In):** VOD filter box + infinite scroll (C4), LIVE indicator badge (C5), and Twitch sign-in polish (C1, H1).
 
 ## 8. Update checklist (end of every phase)
 

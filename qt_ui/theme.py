@@ -30,23 +30,26 @@ from PySide6.QtWidgets import QApplication, QWidget
 from core.palette import MONO_FONT, TOKENS, UI_FONT
 from core.paths import BUNDLED_VERSION, resolve_app_user_model_id
 from core.resources import resource_path
+from qt_ui.tokens import DESIGN_TOKENS, FONT_SIZE_BODY
 
 APP_ID = resolve_app_user_model_id(BUNDLED_VERSION)  # Windows taskbar identity (Beta suffix on pre-releases)
-FONT_SIZE_PT = 10
+FONT_SIZE_PT = FONT_SIZE_BODY
 
 _QSS = Template("""
-QToolTip { background-color: ${BG3}; color: ${FG}; border: 1px solid ${BORDER}; padding: 4px 6px; }
+QToolTip { background-color: ${BG3}; color: ${FG}; border: 1px solid ${BORDER}; padding: 4px 6px; border-radius: ${R_INPUT}px; }
 
 /* ---- buttons ---- */
-QPushButton { background-color: ${BG3}; color: ${FG}; border: none; padding: 7px 14px; }
+QPushButton { background-color: ${BG3}; color: ${FG}; border: none; border-radius: ${R_BTN}px; padding: 7px 14px; outline: none; }
 QPushButton:hover { background-color: ${HOVER}; }
 QPushButton:pressed { background-color: ${PRESSED}; }
-QPushButton:disabled { background-color: ${BG2}; color: ${DISABLED}; }
+QPushButton:focus { border: 1px solid ${ACCENT_HOVER}; outline: none; }
+QPushButton:disabled { background-color: ${BG2}; color: ${DISABLED}; border: none; }
 QPushButton[variant="accent"] { background-color: ${ACCENT}; color: ${WHITE}; font-weight: bold; padding: 7px 16px; }
 QPushButton[variant="accent"]:hover { background-color: ${ACCENT_HOVER}; }
 QPushButton[variant="accent"]:pressed { background-color: ${ACCENT_PRESS}; }
-QPushButton[variant="accent"]:disabled { background-color: ${BG3}; color: ${DISABLED}; }
-QPushButton[variant="ghost"] { background-color: ${BG}; color: ${MUTED}; padding: 5px 10px; }
+QPushButton[variant="accent"]:focus { border: 1px solid ${WHITE}; outline: none; }
+QPushButton[variant="accent"]:disabled { background-color: ${BG3}; color: ${DISABLED}; border: none; }
+QPushButton[variant="ghost"] { background-color: ${BG}; color: ${MUTED}; padding: 5px 10px; border-radius: ${R_INPUT}px; }
 QPushButton[variant="ghost"]:hover { background-color: ${BG3}; color: ${FG}; }
 QPushButton[variant="ghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
 QPushButton[variant="ghost"]:disabled { background-color: ${BG}; color: ${DISABLED}; }
@@ -54,21 +57,25 @@ QPushButton[variant="ghost"]:disabled { background-color: ${BG}; color: ${DISABL
 /* ---- labels (transparent, so they sit on any surface) ---- */
 QLabel { background: transparent; color: ${FG}; }
 QLabel:disabled { color: ${DISABLED}; }
+QLabel[role="caption"] { font-size: ${FONT_CAPTION}pt; color: ${MUTED}; }
 QLabel[role="muted"] { color: ${MUTED}; }
 QLabel[role="err"] { color: ${ERR}; }
-QLabel[role="title"] { font-size: 15pt; font-weight: bold; }
-QLabel[role="heading"] { font-size: 11pt; font-weight: bold; }
-QLabel[role="rowtitle"] { font-weight: bold; }
+QLabel[role="ok"] { color: ${OK}; }
+QLabel[role="warn"] { color: ${WARN}; }
+QLabel[role="accent"] { color: ${ACCENT_TEXT}; }
+QLabel[role="title"] { font-size: ${FONT_TITLE}pt; font-weight: bold; }
+QLabel[role="heading"], QLabel[role="section"] { font-size: ${FONT_SECTION}pt; font-weight: bold; }
+QLabel[role="rowtitle"] { font-size: ${FONT_ROW}pt; font-weight: bold; }
 QLabel[role="emptytitle"] { color: ${FG}; font-weight: bold; }
 
 /* ---- text fields: a hairline that turns purple on focus ---- */
 QLineEdit, QPlainTextEdit, QTextEdit {
-    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; padding: 5px 6px;
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${FIELD_BORDER}; border-radius: ${R_INPUT}px; padding: 5px 6px;
     selection-background-color: ${ACCENT}; selection-color: ${WHITE};
 }
 QLineEdit:hover, QPlainTextEdit:hover, QTextEdit:hover { border-color: ${HOVER}; }
 QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus { border-color: ${ACCENT}; }
-QLineEdit:disabled { background-color: ${BG}; color: ${DISABLED}; }
+QLineEdit:disabled { background-color: ${BG}; color: ${DISABLED}; border-color: ${BORDER}; }
 
 /* ---- tabs (flat, the selected one purple) ---- */
 QTabWidget::pane { border: 1px solid ${BORDER}; background-color: ${BG}; }
@@ -82,8 +89,12 @@ QTabBar::tab:selected { background-color: ${ACCENT}; color: ${WHITE}; }
 
 /* ---- lists and tables ---- */
 QTableView, QListView, QTreeView {
-    background-color: ${BG2}; alternate-background-color: ${BG2}; color: ${FG}; border: none; outline: none;
-    selection-background-color: ${ACCENT}; selection-color: ${WHITE};
+    background-color: ${BG2}; alternate-background-color: ${BG2}; color: ${FG}; border: 1px solid transparent; outline: none;
+    selection-background-color: ${ACCENT_DIM}; selection-color: ${WHITE};
+}
+QTableView:focus, QListView:focus, QTreeView:focus { border: 1px solid ${ACCENT_HOVER}; }
+QTableView::item:selected, QListView::item:selected, QTreeView::item:selected {
+    background-color: ${ACCENT_DIM}; color: ${WHITE}; border-left: 3px solid ${ACCENT};
 }
 QHeaderView::section {
     background-color: ${BG3}; color: ${FG}; border: none; padding: 7px 8px; font-weight: bold;
@@ -93,44 +104,44 @@ QHeaderView::section:hover { background-color: ${HOVER}; }
 /* ---- list items, combo boxes, group boxes (Search tab, Twitch dialog) ---- */
 QListView::item { padding: 0 6px; }
 QComboBox {
-    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; padding: 5px 6px; min-height: 18px;
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${FIELD_BORDER}; border-radius: ${R_INPUT}px; padding: 5px 6px; min-height: 18px;
     selection-background-color: ${BG2}; selection-color: ${FG};
 }
 QComboBox:hover { border-color: ${HOVER}; }
 QComboBox:focus, QComboBox:on { border-color: ${ACCENT}; }
-QComboBox:disabled { background-color: ${BG}; color: ${DISABLED}; }
+QComboBox:disabled { background-color: ${BG}; color: ${DISABLED}; border-color: ${BORDER}; }
 QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 22px; border: none; }
 QComboBox::down-arrow { image: none; width: 0; height: 0; }
 QComboBox QAbstractItemView {
-    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; outline: none;
-    selection-background-color: ${ACCENT}; selection-color: ${WHITE};
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER_STRONG}; outline: none;
+    selection-background-color: ${ACCENT_DIM}; selection-color: ${WHITE};
 }
 QSpinBox {
-    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; padding: 5px 6px; min-height: 18px;
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${FIELD_BORDER}; border-radius: ${R_INPUT}px; padding: 5px 6px; min-height: 18px;
     selection-background-color: ${ACCENT}; selection-color: ${WHITE};
 }
 QSpinBox:hover { border-color: ${HOVER}; }
 QSpinBox:focus { border-color: ${ACCENT}; }
-QSpinBox:disabled { background-color: ${BG}; color: ${DISABLED}; }
+QSpinBox:disabled { background-color: ${BG}; color: ${DISABLED}; border-color: ${BORDER}; }
 QSpinBox::up-button { subcontrol-origin: border; subcontrol-position: top right; width: 18px; border: none; }
 QSpinBox::down-button { subcontrol-origin: border; subcontrol-position: bottom right; width: 18px; border: none; }
 QSpinBox::up-arrow, QSpinBox::down-arrow { image: none; width: 0; height: 0; }
 /* fields on a card are darker than the card (BG on BG2), like the tkinter «Card.TEntry»; a disabled one melts into it */
 QFrame#card QLineEdit, QFrame#card QSpinBox, QFrame#card QComboBox { background-color: ${BG}; }
 QFrame#card QLineEdit:disabled, QFrame#card QSpinBox:disabled, QFrame#card QComboBox:disabled { background-color: ${BG2}; }
-QGroupBox { border: 1px solid ${BORDER}; margin-top: 8px; padding-top: 8px; }
-QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 10px; padding: 0 4px; color: ${ACCENT}; font-weight: bold; }
+QGroupBox { border: 1px solid ${BORDER}; border-radius: ${R_CARD}px; margin-top: 8px; padding-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 10px; padding: 0 4px; color: ${ACCENT_TEXT}; font-weight: bold; }
 
 /* ---- the sign-in banner of the Search tab and the code of the Twitch dialog ---- */
-#signinBar { background-color: ${ACCENT_DIM}; }
+#signinBar { background-color: ${ACCENT_DIM}; border-radius: ${R_INPUT}px; }
 #signinBar QLabel { color: ${WHITE}; background: transparent; }
-QLabel#loginCode { color: ${ACCENT}; }
+QLabel#loginCode { color: ${ACCENT_TEXT}; }
 
 /* ---- slim scrollbars without arrows ---- */
 QScrollBar:vertical { background: ${BG}; width: 11px; margin: 0; border: none; }
 QScrollBar:horizontal { background: ${BG}; height: 11px; margin: 0; border: none; }
-QScrollBar::handle:vertical { background: ${BG3}; min-height: 24px; }
-QScrollBar::handle:horizontal { background: ${BG3}; min-width: 24px; }
+QScrollBar::handle:vertical { background: ${BG3}; min-height: 24px; border-radius: 4px; }
+QScrollBar::handle:horizontal { background: ${BG3}; min-width: 24px; border-radius: 4px; }
 QScrollBar::handle:hover { background: ${HOVER}; }
 QScrollBar::handle:pressed { background: ${PRESSED}; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
@@ -141,10 +152,10 @@ QPlainTextEdit#logView, QPlainTextEdit#cutPoints { background-color: ${BG}; bord
 QPlainTextEdit#logView:hover, QPlainTextEdit#logView:focus, QPlainTextEdit#cutPoints:hover, QPlainTextEdit#cutPoints:focus { border: none; }
 QPlainTextEdit#planPreview { background-color: ${BG2}; border: none; padding: 2px; }
 QPlainTextEdit#planPreview:hover, QPlainTextEdit#planPreview:focus { border: none; }
-QWidget#timelineWell { background-color: ${BG}; }
+QWidget#timelineWell { background-color: ${BG}; border-radius: ${R_INPUT}px; }
 
 /* ---- widget kit (Phase 2) ---- */
-QFrame#card { background-color: ${BG2}; border: 1px solid ${BORDER}; }
+QFrame#card { background-color: ${BG2}; border: 1px solid ${BORDER}; border-radius: ${R_CARD}px; }
 QFrame#divider { background-color: ${BORDER}; border: none; }
 QFrame#sideNav { background-color: ${BG2}; border: none; }
 QWidget#emptyState { background-color: ${BG2}; }
@@ -152,7 +163,7 @@ QLabel#tooltipBubble { background-color: ${BG3}; color: ${FG}; border: 1px solid
 QScrollArea#scrollFrame { background-color: ${BG}; border: none; }
 QWidget#scrollBody { background-color: ${BG}; }
 QPushButton[variant="nav"] {
-    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 9px 14px; font-weight: normal;
+    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 9px 14px; font-weight: normal; border-radius: ${R_INPUT}px;
 }
 QPushButton[variant="nav"]:hover { background-color: ${BG3}; color: ${FG}; }
 QPushButton[variant="nav"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
@@ -160,14 +171,49 @@ QPushButton[variant="nav"][selected="true"] { background-color: ${ACCENT_DIM}; c
 QPushButton[variant="nav"][selected="true"]:hover { background-color: ${ACCENT_DIM}; color: ${WHITE}; }
 QPushButton[variant="nav"][selected="true"]:pressed { background-color: ${PRESSED}; color: ${WHITE}; }
 QPushButton[variant="cardghost"] {
-    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 5px 8px; font-weight: bold;
+    background-color: ${BG2}; color: ${MUTED}; text-align: left; padding: 5px 8px; font-weight: bold; border-radius: ${R_INPUT}px;
 }
 QPushButton[variant="cardghost"]:hover { background-color: ${BG3}; color: ${FG}; }
 QPushButton[variant="cardghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
-QPushButton[variant="chip"] { background-color: ${BG3}; color: ${FG}; padding: 2px 8px; font-size: 9pt; }
+QPushButton[variant="chip"] { background-color: ${BG3}; color: ${FG}; padding: 2px 8px; font-size: ${FONT_CAPTION}pt; border-radius: ${R_CHIP}px; }
 QPushButton[variant="chip"]:hover { background-color: ${HOVER}; color: ${WHITE}; }
 QPushButton[variant="chip"]:pressed { background-color: ${ACCENT_PRESS}; color: ${WHITE}; }
 QPushButton[variant="chip"]:disabled { background-color: ${BG2}; color: ${DISABLED}; }
+
+/* ---- shell (Phase 9b: nav rail, command bar, VOD strip, status bar, toasts) ---- */
+QFrame#navRail { background-color: ${BG2}; border-right: 1px solid ${BORDER}; }
+QPushButton[variant="rail"] {
+    background-color: transparent; color: ${MUTED}; border: none; border-left: 3px solid transparent;
+    border-radius: 0px; text-align: left; padding: 10px 12px; font-weight: normal;
+}
+QPushButton[variant="rail"]:hover { background-color: ${BG3}; color: ${FG}; }
+QPushButton[variant="rail"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
+QPushButton[variant="rail"][selected="true"] {
+    background-color: ${ACCENT_DIM}; color: ${WHITE}; border-left: 3px solid ${ACCENT}; font-weight: bold;
+}
+QPushButton[variant="rail"][selected="true"]:hover { background-color: ${ACCENT_DIM}; color: ${WHITE}; }
+QPushButton[variant="rail"]:focus { border: 1px solid ${ACCENT_HOVER}; outline: none; }
+QFrame#commandBar { background-color: ${BG2}; border: 1px solid ${BORDER}; border-radius: ${R_CARD}px; }
+QPushButton[variant="account"], QPushButton#apiBtn {
+    background-color: ${BG3}; color: ${FG}; border: 1px solid ${BORDER_STRONG}; border-radius: ${R_BTN}px; padding: 6px 12px;
+}
+QPushButton[variant="account"][signed_in="true"], QPushButton#apiBtn[signed_in="true"] {
+    background-color: ${ACCENT_DIM}; color: ${WHITE}; border: 1px solid ${ACCENT}; font-weight: bold;
+}
+QPushButton[variant="account"]:hover, QPushButton#apiBtn:hover { background-color: ${HOVER}; color: ${WHITE}; }
+QFrame#vodStrip { background-color: ${BG2}; border: 1px solid ${BORDER}; border-radius: ${R_BTN}px; }
+QFrame#vodStrip:hover { border-color: ${BORDER_STRONG}; }
+QLabel#vodThumb { background-color: ${BG}; border: 1px solid ${BORDER}; border-radius: ${R_INPUT}px; color: ${MUTED}; }
+QFrame#statusBar { background-color: ${BG2}; border-top: 1px solid ${BORDER}; }
+QProgressBar#shellProgress { background-color: ${BG2}; border: none; min-height: 3px; max-height: 3px; }
+QProgressBar#shellProgress::chunk { background-color: ${ACCENT}; }
+QPushButton[variant="pill"] {
+    background-color: ${ACCENT_DIM}; color: ${WHITE}; border: 1px solid ${ACCENT}; border-radius: 10px;
+    padding: 2px 10px; font-size: ${FONT_CAPTION}pt; font-weight: bold;
+}
+QPushButton[variant="pill"]:hover { background-color: ${ACCENT}; }
+QFrame#toastCard { background-color: ${BG3}; border: 1px solid ${BORDER_STRONG}; border-radius: ${R_CARD}px; }
+QFrame#onboardingCard { background-color: ${BG2}; border: 1px dashed ${BORDER_STRONG}; border-radius: ${R_CARD}px; }
 
 /* ---- progress bar ---- */
 QProgressBar { background-color: ${BG2}; border: none; min-height: 18px; max-height: 18px; text-align: center; }
@@ -176,8 +222,8 @@ QProgressBar::chunk { background-color: ${ACCENT}; }
 
 
 def build_qss() -> str:
-    """The stylesheet, generated from the palette tokens (``Template.substitute`` raises on an unknown token)."""
-    return _QSS.substitute(TOKENS)
+    """The stylesheet, generated from the palette and design tokens (``Template.substitute`` raises on an unknown token)."""
+    return _QSS.substitute({**TOKENS, **DESIGN_TOKENS})
 
 
 def build_palette() -> QPalette:

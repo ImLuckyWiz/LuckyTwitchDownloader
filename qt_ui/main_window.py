@@ -1,25 +1,20 @@
-"""The main window: top bar, info line, four tabs, progress bar and status line.
+"""The main window (Phase 1 frame, upgraded in Phase 9b to the Left Navigation Rail + Command Bar +
+VOD Strip + Compact Status Bar + Toasts + Keyboard Layer + UI State shell).
 
-Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, same texts, same order). Phase 3 filled
-the Queue & log tab and added what belongs to the whole window: the progress bar and status line (``set_progress``),
-the «Job n/m» prefix, and closing (cancel a running job, save the settings, remove the heartbeat file). Phase 4 filled
-the Search tab and the Twitch API dialog; the window owns the Twitch ``client`` (setting it refreshes the Search tab).
-Phase 5 filled the Options tab: the window owns the two background jobs it starts (the tools setup and the overlay of a
-saved chat), builds the engine's ``JobOptions`` from the settings (``build_options``) and passes the settings
-dictionary to the tab, which edits it. Phase 6 filled the Plan tab (without the timeline), the «Get info» flow, adding
-jobs and selected clips to the queue, and ``luckytwitch://`` links.
+Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, same texts, same order).
 """
 
 from __future__ import annotations
 
+import re
 import weakref
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QProgressBar, QPushButton, QTabWidget, QVBoxLayout, QWidget,
+    QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QProgressBar, QPushButton, QVBoxLayout, QWidget,
 )
 
 import weblink
@@ -27,10 +22,12 @@ from core import paths
 from core.config import make_client
 from core.options import build_filter, build_options, flag, num
 from core.settings import save_settings
+from core.ui_state import UIState, load_ui_state, save_ui_state
 from luckytwitch_engine import EngineError, Job, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
-from qt_ui import dialogs
+from qt_ui import dialogs, notify
 from qt_ui.background_jobs import InfoRunner, SavedChatRunner, ToolsRunner
 from qt_ui.bridge import Bridge
+from qt_ui.shell import CommandBar, NavRail, PageStack, ShortcutsDialog, VodStrip
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
 from qt_ui.theme import dark_titlebar
 from qt_ui.twitch_dialog import TwitchDialog
@@ -41,6 +38,21 @@ MIN_SIZE = (900, 560)
 TAB_NAMES = ("Search", "Plan", "Options", "Queue & log")
 READY_TEXT = "Ready. Paste a VOD URL or ID and press «Get info»."
 NO_VOD_TEXT = "No VOD loaded."
+
+_VOD_URL_RE = re.compile(r"(?:https?://(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|\w+/v/\d+)|luckytwitch://\S+)", re.I)
+
+
+def extract_vod_input(text: str) -> str | None:
+    """Return a Twitch VOD URL / luckytwitch:// link / numeric VOD ID from ``text``, or None."""
+    s = (text or "").strip()
+    if not s:
+        return None
+    m = _VOD_URL_RE.search(s)
+    if m:
+        return m.group(0)
+    if s.isdigit() and 7 <= len(s) <= 12:
+        return s
+    return None
 
 
 def _weak(method):
@@ -69,6 +81,8 @@ class MainWindow(QMainWindow):
         self.settings = settings if settings is not None else {}
         self._client = client
         self._login_dialog: TwitchDialog | None = None
+        self._shortcuts_dialog: ShortcutsDialog | None = None
+        self._last_clipboard_offer: str = ""
         # the background jobs: the tools setup, the overlay of a saved chat, and «Get info»
         self.tools_busy = False
         self.tools_ctx = None
@@ -101,6 +115,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(WINDOW_TITLE)
         self.resize(*START_SIZE)
         self.setMinimumSize(*MIN_SIZE)
+        self.setAcceptDrops(True)
 
         central = QWidget(self)
         outer = QVBoxLayout(central)
@@ -108,72 +123,91 @@ class MainWindow(QMainWindow):
         outer.setSpacing(0)
         self.setCentralWidget(central)
 
-        # top bar: the VOD entry, «Get info», «Twitch API…»
-        top = QWidget()
-        row = QHBoxLayout(top)
-        row.setContentsMargins(10, 10, 10, 2)
-        row.setSpacing(8)
-        row.addWidget(QLabel("VOD URL or ID:"))
-        self.vod_entry = QLineEdit()
+        # Top command bar + loaded-VOD strip (Phase 9b, B2, B3, B4)
+        top_wrap = QWidget(central)
+        top_lay = QVBoxLayout(top_wrap)
+        top_lay.setContentsMargins(10, 8, 10, 4)
+        top_lay.setSpacing(6)
+
+        self.command_bar = CommandBar(top_wrap)
+        self.vod_entry: QLineEdit = self.command_bar.vod_entry
+        self.vod_action_btn: QPushButton = self.command_bar.vod_action_btn
+        self.info_btn: QPushButton = self.command_bar.info_btn
+        self.api_btn: QPushButton = self.command_bar.api_btn
+        self.info_label: QLabel = self.command_bar.info_label
         self.vod_entry.returnPressed.connect(self.on_get_info)
-        row.addWidget(self.vod_entry, 1)
-        self.info_btn = QPushButton("Get info")
-        self.info_btn.setProperty("variant", "accent")
-        self.info_btn.setMinimumWidth(96)
         self.info_btn.clicked.connect(self.on_get_info)
-        row.addWidget(self.info_btn)
-        self.api_btn = QPushButton("Twitch API…")
         self.api_btn.clicked.connect(self.ask_credentials)
-        row.addWidget(self.api_btn)
-        outer.addWidget(top)
+        self.command_bar.set_signed_in(self._client is not None)
+        top_lay.addWidget(self.command_bar)
 
-        # info line under it
-        self.info_label = QLabel(NO_VOD_TEXT)
-        self.info_label.setProperty("role", "muted")
-        self.info_label.setContentsMargins(12, 0, 10, 4)
-        outer.addWidget(self.info_label)
+        self.vod_strip = VodStrip(top_wrap)
+        self.vod_strip.clicked.connect(self.show_plan_tab)
+        self.vod_strip.clear_requested.connect(self.clear_vod)
+        top_lay.addWidget(self.vod_strip)
+        outer.addWidget(top_wrap)
 
-        # the four tabs
-        tabs_box = QWidget()
+        # Middle shell: Left Navigation Rail + PageStack (Phase 9b, B1)
+        tabs_box = QWidget(central)
         tabs_lay = QHBoxLayout(tabs_box)
-        tabs_lay.setContentsMargins(10, 0, 10, 4)
-        self.tabs = QTabWidget()
-        self.tabs.tabBar().setExpanding(False)
-        self.tabs.tabBar().setDrawBase(False)
+        tabs_lay.setContentsMargins(0, 0, 10, 4)
+        tabs_lay.setSpacing(8)
+
+        self.rail = NavRail(expanded=False, parent=tabs_box)
+        tabs_lay.addWidget(self.rail)
+
+        self.tabs = PageStack(self.rail, parent=tabs_box)
         self.tab_search, self.tab_plan, self.tab_options, self.tab_queue = (
-            SearchTab(self.bridge), PlanTab(self.settings, self.bridge), OptionsTab(self.settings), QueueTab(self.bridge))
+            SearchTab(self.bridge), PlanTab(self.settings, self.bridge), OptionsTab(self.settings), QueueTab(self.bridge),
+        )
         for widget, name in zip((self.tab_search, self.tab_plan, self.tab_options, self.tab_queue), TAB_NAMES):
             self.tabs.addTab(widget, _tab_text(name))
-        tabs_lay.addWidget(self.tabs)
+        tabs_lay.addWidget(self.tabs, 1)
         outer.addWidget(tabs_box, 1)
 
-        # bottom, always visible: progress bar and status line
-        bottom = QWidget()
+        # Bottom compact status bar: 3 px progress bar along top edge + status line + activity pill (Phase 9b, B7)
+        bottom = QFrame(central)
+        bottom.setObjectName("statusBar")
         bot = QVBoxLayout(bottom)
-        bot.setContentsMargins(10, 4, 10, 8)
-        bot.setSpacing(4)
-        self.progress = QProgressBar()
+        bot.setContentsMargins(0, 0, 0, 0)
+        bot.setSpacing(0)
+        self.progress = QProgressBar(bottom)
+        self.progress.setObjectName("shellProgress")
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
         bot.addWidget(self.progress)
-        self.status_label = QLabel()
-        bot.addWidget(self.status_label)
+
+        status_row = QHBoxLayout()
+        status_row.setContentsMargins(10, 4, 10, 5)
+        status_row.setSpacing(8)
+        self.status_label = QLabel(bottom)
+        status_row.addWidget(self.status_label, 1)
+
+        self.activity_pill = QPushButton("", bottom)
+        self.activity_pill.setProperty("variant", "pill")
+        self.activity_pill.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.activity_pill.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.activity_pill.setToolTip("Open Queue & log")
+        self.activity_pill.setVisible(False)
+        self.activity_pill.clicked.connect(self.show_queue_tab)
+        status_row.addWidget(self.activity_pill)
+        bot.addLayout(status_row)
         outer.addWidget(bottom)
 
-        # keyboard order of the top bar, then the tabs
+        # Keyboard order of the top bar, then the tabs/rail
         self.setTabOrder(self.vod_entry, self.info_btn)
         self.setTabOrder(self.info_btn, self.api_btn)
         self.setTabOrder(self.api_btn, self.tabs.tabBar())
 
-        # the queue tab and the window talk through signals and two hooks
+        # The queue tab and the window talk through signals and two hooks
         queue = self.tab_queue
         queue.status_message.connect(self.set_status)
         queue.plan_requested.connect(self.show_plan_tab)
         queue.show_requested.connect(self.show_queue_tab)
-        # hooks hold the window WEAKLY: a hook that kept the window alive would make a reference cycle, and when the
-        # garbage collector breaks such a cycle it empties the child widgets' Python objects before Qt has finished
-        # deleting them (Qt then calls into half-dead objects: errors at random moments, mostly in tests)
+        queue.model.rowsInserted.connect(self._sync_queue_badge)
+        queue.model.rowsRemoved.connect(self._sync_queue_badge)
+        queue.model.modelReset.connect(self._sync_queue_badge)
         queue.blocked_reason = _weak(self.queue_blocked_reason)
         queue.output_dir = _weak(self.output_dir)
         search = self.tab_search
@@ -195,8 +229,11 @@ class MainWindow(QMainWindow):
         plan = self.tab_plan
         plan.add_requested.connect(self.add_to_queue)
         plan.clip_download_requested.connect(self.download_clips)
+        plan.search_requested.connect(self.show_search_tab)
+        plan.paste_requested.connect(self.paste_vod_from_clipboard)
         self.bridge.info_ok.connect(self.on_info_ok)
         self.bridge.error.connect(self.on_info_error)
+        self.bridge.frames.connect(self._on_frames_for_strip)
         self.bridge.tools_info.connect(options.set_tools_info)
         self.bridge.tools_done.connect(self.on_tools_done)
         self.bridge.saved_chat_done.connect(self.on_saved_chat_done)
@@ -204,21 +241,157 @@ class MainWindow(QMainWindow):
         self.bridge.job.connect(self.on_job)
         self.bridge.queue_done.connect(self.on_queue_done)
 
+        self._setup_shortcuts()
+        self._restore_ui_state()
         self.start_link_listener()
-        if self.client is None:  # nothing to search with yet: start on the Plan tab
-            self.tabs.setCurrentWidget(self.tab_plan)
         self.set_status(READY_TEXT)
         dark_titlebar(self)
+
+    # ---------------------------- keyboard & UI state (B8, B9) ---------------------------- #
+    def _setup_shortcuts(self) -> None:
+        self.shortcuts: dict[str, QShortcut] = {}
+
+        def bind(seq: str, slot) -> None:
+            sc = QShortcut(QKeySequence(seq), self)
+            sc.setContext(Qt.ShortcutContext.WindowShortcut)
+            sc.activated.connect(slot)
+            self.shortcuts[seq] = sc
+
+        bind("Ctrl+L", self.focus_vod_bar)
+        bind("Ctrl+1", lambda: self.tabs.setCurrentIndex(0))
+        bind("Ctrl+2", lambda: self.tabs.setCurrentIndex(1))
+        bind("Ctrl+3", lambda: self.tabs.setCurrentIndex(2))
+        bind("Ctrl+4", lambda: self.tabs.setCurrentIndex(3))
+        bind("Ctrl+,", self.show_options_tab)
+        bind("Ctrl+Return", lambda: self._plan_shortcut_add(start=True))
+        bind("Ctrl+Shift+Return", lambda: self._plan_shortcut_add(start=False))
+        bind("F1", self.show_shortcuts)
+
+    def _plan_shortcut_add(self, start: bool) -> None:
+        if self.tabs.currentWidget() is self.tab_plan:
+            self.add_to_queue(start=start)
+
+    def focus_vod_bar(self) -> None:
+        self.vod_entry.setFocus()
+        self.vod_entry.selectAll()
+
+    def show_shortcuts(self) -> ShortcutsDialog:
+        if self._shortcuts_dialog is not None:
+            self._shortcuts_dialog.close()
+            self._shortcuts_dialog.deleteLater()
+        self._shortcuts_dialog = ShortcutsDialog(self)
+        self._shortcuts_dialog.open()
+        return self._shortcuts_dialog
+
+    def _restore_ui_state(self) -> None:
+        ui_path = getattr(paths, "UI_STATE_PATH", paths.DATA_DIR / "luckytwitch_ui.json")
+        has_saved = ui_path.is_file()
+        state = load_ui_state(ui_path)
+        self.rail.set_expanded(state.rail_expanded, animate=False)
+        if has_saved:
+            w = max(state.window_w, MIN_SIZE[0])
+            h = max(state.window_h, MIN_SIZE[1])
+            self.resize(w, h)
+            if state.window_x is not None and state.window_y is not None:
+                self.move(state.window_x, state.window_y)
+        if self.client is None:
+            if has_saved and state.active_tab in TAB_NAMES and state.active_tab != "Search":
+                self.tabs.setCurrentIndex(TAB_NAMES.index(state.active_tab))
+            else:
+                self.tabs.setCurrentWidget(self.tab_plan)
+
+    def _save_ui_state(self) -> None:
+        idx = self.tabs.currentIndex()
+        active_name = TAB_NAMES[idx] if 0 <= idx < len(TAB_NAMES) else "Plan"
+        state = UIState(
+            window_x=self.x(),
+            window_y=self.y(),
+            window_w=self.width(),
+            window_h=self.height(),
+            active_tab=active_name,
+            rail_expanded=self.rail.expanded,
+        )
+        save_ui_state(state)
+
+    # ---------------------------- drag & drop / clipboard (B2) ---------------------------- #
+    def dragEnterEvent(self, event) -> None:  # noqa: N802
+        mime = event.mimeData()
+        if mime is not None and (mime.hasUrls() or mime.hasText()):
+            event.acceptProposedAction()
+            return
+        super().dragEnterEvent(event)
+
+    def dropEvent(self, event) -> None:  # noqa: N802
+        mime = event.mimeData()
+        if mime is None:
+            return
+        raw = ""
+        if mime.hasUrls() and mime.urls():
+            raw = mime.urls()[0].toString()
+        elif mime.hasText():
+            raw = mime.text()
+        raw = raw.strip()
+        if not raw:
+            return
+        event.acceptProposedAction()
+        if raw.lower().startswith("luckytwitch://"):
+            self.open_link(raw)
+            return
+        vod = extract_vod_input(raw) or raw
+        self.vod_entry.setText(vod)
+        self.on_get_info()
+
+    def paste_vod_from_clipboard(self) -> None:
+        clip = QApplication.clipboard()
+        if clip is None:
+            return
+        text = clip.text().strip()
+        if not text:
+            return
+        vod = extract_vod_input(text) or text
+        self.vod_entry.setText(vod)
+        self.vod_entry.setFocus()
+        if extract_vod_input(text):
+            self.on_get_info()
+
+    def check_clipboard_for_vod(self) -> bool:
+        """If the VOD entry is empty and a new Twitch VOD link is on the clipboard, offer a one-click toast."""
+        if self.vod_entry.text().strip() or self.source is not None:
+            return False
+        clip = QApplication.clipboard()
+        if clip is None:
+            return False
+        raw = clip.text().strip()
+        vod = extract_vod_input(raw)
+        if not vod or not vod.lower().startswith("http") or vod == self._last_clipboard_offer:
+            return False
+        self._last_clipboard_offer = vod
+
+        def _load() -> None:
+            self.vod_entry.setText(vod)
+            self.on_get_info()
+
+        notify.info(self, "Twitch VOD in clipboard", vod, action=("Load VOD", _load))
+        return True
+
+    def event(self, event) -> bool:
+        if event.type() == QEvent.Type.WindowActivate:
+            app = QApplication.instance()
+            if app is not None and app.platformName() != "offscreen":
+                self.check_clipboard_for_vod()
+        return super().event(event)
 
     # ---------------------------- helpers ---------------------------- #
     @property
     def client(self):
-        """The Twitch client, or None when nobody is signed in. Setting it refreshes the Search tab."""
+        """The Twitch client, or None when nobody is signed in. Setting it refreshes the Search tab and account chip."""
         return self._client
 
     @client.setter
     def client(self, value) -> None:
         self._client = value
+        if hasattr(self, "command_bar"):
+            self.command_bar.set_signed_in(value is not None)
         self.update_search_state()
 
     def get_client(self):
@@ -231,8 +404,14 @@ class MainWindow(QMainWindow):
     def output_dir(self) -> str:
         return self.settings.get("out_dir", "")
 
+    def show_search_tab(self) -> None:
+        self.tabs.setCurrentWidget(self.tab_search)
+
     def show_plan_tab(self) -> None:
         self.tabs.setCurrentWidget(self.tab_plan)
+
+    def show_options_tab(self) -> None:
+        self.tabs.setCurrentWidget(self.tab_options)
 
     def show_queue_tab(self) -> None:
         self.tabs.setCurrentWidget(self.tab_queue)
@@ -241,6 +420,10 @@ class MainWindow(QMainWindow):
         tab = getattr(self, "tab_search", None)
         if tab is not None:
             tab.update_search_state()
+
+    def _sync_queue_badge(self, *_args) -> None:
+        if hasattr(self, "rail") and hasattr(self, "tab_queue"):
+            self.rail.set_queue_count(len(self.tab_queue.items))
 
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
@@ -255,20 +438,37 @@ class MainWindow(QMainWindow):
                 self.progress.setRange(0, 0)
                 self._progress_mode = "indeterminate"
             self.set_status(f"{self._job_prefix}{text}")
+            if self._job_prefix:
+                self.activity_pill.setText(self._job_prefix.rstrip(": "))
+                self.activity_pill.setVisible(True)
         else:
             if self._progress_mode != "determinate":
                 self.progress.setRange(0, 100)
                 self._progress_mode = "determinate"
-            self.progress.setValue(round(frac * 100))
+            pct = round(frac * 100)
+            self.progress.setValue(pct)
             self.set_status(f"{self._job_prefix}{text}  \u2014  {frac * 100:.0f}%")
+            if frac > 0 or self._job_prefix:
+                prefix = self._job_prefix.rstrip(": ") or "Running"
+                self.activity_pill.setText(f"{prefix} \u00b7 {pct}%")
+                self.activity_pill.setVisible(True)
+            else:
+                self.activity_pill.setVisible(False)
 
     def on_job(self, n: int, total: int) -> None:
         self._job_prefix = f"Job {n}/{total}: " if total > 1 else ""
+        self.activity_pill.setText(f"Job {n}/{total}")
+        self.activity_pill.setVisible(True)
 
     def on_queue_done(self) -> None:
         self.set_progress(0, "")
         self._job_prefix = ""
+        self.activity_pill.setVisible(False)
         self.set_status("Queue finished.")
+        notify.system_notify(
+            self, "Queue finished", "All queued downloads have finished.",
+            action=("Open folder", self.tab_queue.open_output_folder),
+        )
 
     def queue_blocked_reason(self) -> str:
         """Why «Start queue» must wait (a status-line sentence), or ''."""
@@ -286,6 +486,12 @@ class MainWindow(QMainWindow):
     @source.setter
     def source(self, value) -> None:
         self.tab_plan.source = value
+        if hasattr(self, "rail"):
+            self.rail.set_vod_loaded(value is not None)
+        if hasattr(self, "tab_plan") and hasattr(self.tab_plan, "onboarding_card"):
+            self.tab_plan.onboarding_card.setVisible(value is None)
+        if value is None and hasattr(self, "vod_strip"):
+            self.vod_strip.clear()
 
     @property
     def clips(self) -> list[dict]:
@@ -305,6 +511,20 @@ class MainWindow(QMainWindow):
 
     def get_source(self):
         return self.tab_plan.source
+
+    def clear_vod(self) -> None:
+        """Clear the currently loaded VOD from the strip and Plan tab (Phase 9b, B3)."""
+        self.source, self.clips, self.clips_loaded = None, [], False
+        self.info_label.setText(NO_VOD_TEXT)
+        self.vod_strip.clear()
+        self.update_preview()
+        self.refresh_clips()
+        self.tab_options.refresh_name_examples()
+        self.set_status(READY_TEXT)
+
+    def _on_frames_for_strip(self, src, frames) -> None:
+        if src is self.source and frames:
+            self.vod_strip.set_thumbnail_from_pil(frames[0])
 
     def cut_text(self) -> str:
         """The text of the Plan tab's cut points box."""
@@ -425,9 +645,12 @@ class MainWindow(QMainWindow):
         self._link_retry_timer.stop()
         if self._login_dialog is not None:
             self._login_dialog.close()  # cancels a sign-in that is waiting for the person
+        if self._shortcuts_dialog is not None:
+            self._shortcuts_dialog.close()
         self.tab_search.shutdown()
         if self.settings:  # a window made without settings must not overwrite the saved file with nothing
             save_settings(self.settings)
+        self._save_ui_state()
         try:
             paths.BEAT_PATH.unlink()  # a launch right after this one must not hand its link to a window that is gone
         except OSError:
@@ -487,6 +710,7 @@ class MainWindow(QMainWindow):
         self.source, self.clips, self.clips_loaded = info, list(clips), bool(loaded)
         extra = f" \u00b7 {len(self.clips)} clips" if loaded else ""
         self.info_label.setText(f"{info.uploader} \u00b7 {info.title} \u00b7 {fmt_hms(info.duration)} \u00b7 {info.date}{extra}")
+        self.vod_strip.set_vod(info, self.clips if loaded else [], warn)
         if not self.cut_text():
             self.tab_plan.set_cut_text("0:00:00 - end")
         self.update_preview()
@@ -522,12 +746,15 @@ class MainWindow(QMainWindow):
         label = f"{self.source.uploader} \u00b7 {self.source.title}"[:70]
         strat = {"full": "full VOD + split", "sections": "only the parts"}[plan.strategy]
         self.tab_queue.enqueue(job, label, len(plan.parts), strat)
+        self._sync_queue_badge()
         if self.settings:
             save_settings(self.settings)
         if start:
             self.tab_queue.start_queue()
         else:
-            self.set_status(f"Added to queue ({len(self.tab_queue.items)} item(s)).")
+            msg = f"Added to queue ({len(self.tab_queue.items)} item(s))."
+            self.set_status(msg)
+            notify.success(self, "Added to queue", label, action=("Go to Queue", self.show_queue_tab))
 
     def download_clips(self) -> None:
         """Queue each selected clip as its own download (just that clip, named after the clip)."""
@@ -561,10 +788,15 @@ class MainWindow(QMainWindow):
             self.tab_queue.enqueue(job, label, 1, "only the clip")
             added += 1
         if added:
+            self._sync_queue_badge()
             if self.settings:
                 save_settings(self.settings)
             self.set_status(f"Added {added} clip(s) to the queue ({len(self.tab_queue.items)} item(s)). "
                             "Open «Queue & log» and press «Start queue».")
+            notify.success(
+                self, "Clips added", f"Added {added} clip(s) to the queue.",
+                action=("Go to Queue", self.show_queue_tab),
+            )
 
     # ---------------------------- luckytwitch:// links ---------------------------- #
     def start_link_listener(self) -> None:
