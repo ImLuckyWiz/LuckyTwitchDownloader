@@ -7,8 +7,15 @@ Last updated: 2026-10-26 (Phase 9 PLAN written, no code: see `PHASE_9_PLAN.md` a
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
 **Working modes (the user switches between them, so this file must keep working in both):**
-- **Claude on the web:** no access to the repository. Sections 3 and 4 below apply as written (uploaded zip, delivered zip of changed files, PowerShell block).
+- **Claude on the web:** no access to the repository. Sections 3 and 4 below apply as written (uploaded zip, delivered zip of changed files, PowerShell block). Claude is also specifically tasked with authoring the icon layer (`qt_ui/icons.py`).
 - **Antigravity:** edits the project files directly in the repository (`git status` and `git diff` allowed; never commit, push, tag, merge, switch branches or touch `.git`). Ignore the zip rules in sections 3 and 4 during an Antigravity session (do not delete or rewrite them); at the end of each version give the created/changed/deleted files, the exact `git add` paths (never `git add -A`), the commit message (`Phase N (version K): ...`), and any `git rm` commands. Every other rule is the same in both modes.
+
+**Multi-agent task division & Icon Rule for Phase 9 (decided 2026-10-26):**
+- **Argon (Deep Reasoning):** Phase 9 spikes, the shell (`9b`), Plan layout (`9e`), Timeline (`9f`), and anything involving background threads, workers, or signals.
+- **Flash (Fast & Focused):** Doc bookkeeping (`HANDOFF.md`, `PHASE_NOTES.md`, `VERSIONS.md`, `MIGRATION_LOG.md`), token & QSS refactors, contrast tests, UI-state JSON, screenshot scripts, and small targeted UI items (G2 changed dots, G5 tool rows, C5 LIVE badge).
+- **Icons (`qt_ui/icons.py`) are strictly reserved for Claude:**
+  - Any agent other than Claude working on Phase 9 must **never permanently replace icons with plain text or standard buttons** just because the icon file is not drawn yet.
+  - Instead, lay out the widget to accommodate the icon and leave a clear `# ICON NEEDED: <name>` marker/seam in code, or pause and inform the user that Claude is needed to provide the icon paths.
 
 ## 1. Status
 

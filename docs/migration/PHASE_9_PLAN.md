@@ -49,6 +49,10 @@ Rendered offscreen from the uploaded zip (Qt 6.12.0, DejaVu fonts, so fonts diff
 5. **Versions, not a batch** (HANDOFF.md section 4): `phase-9-<letter>-v1`, each one runnable and looked at by the user on Windows before the next. No tag until the whole phase is approved. Each version updates HANDOFF.md, PHASE_NOTES.md, VERSIONS.md.
 6. **Looks first, layout second, features last.** The order of the versions in section 6 follows this: a new design system underneath, then the shell around the tabs, then one tab at a time. New features (the ones that are not just a better way to do an existing thing) are tagged **[new feature]** and each needs the user's yes.
 7. **Offscreen-testable.** Anything that animates must also have a state the tests can read without waiting (a property with the end value), and a way to switch animations off (tests, and users who want it, see B6/A6).
+8. **Multi-agent split & Icon Rule (decided 2026-10-26):**
+   - **Icons (`qt_ui/icons.py`) are strictly reserved for Claude.** Any other agent working on Phase 9 must **never permanently replace icons with plain text or standard buttons** just because the icon is not drawn yet. If an element should have an icon, lay out the widget for the icon and leave a clear `# ICON NEEDED: <name>` seam in code, or pause and send a message that Claude is needed for the icons.
+   - **Argon (Pro):** Phase 9 spikes, the shell (`9b`), Plan layout (`9e`), Timeline (`9f`), and background threads/signals.
+   - **Flash (Fast):** Doc bookkeeping (`HANDOFF.md`, `PHASE_NOTES.md`, etc.), token & QSS refactors, contrast tests, UI-state JSON, screenshot scripts, and small items (G2, G5, C5).
 
 ---
 
@@ -88,7 +92,8 @@ Tier: **M** = I would do it, **S** = worth doing, **C** = optional. "Risk" is ri
 *What:* raise MUTED a few points so it passes 4.5:1 on BG3 (it is 4.06 today); add `ACCENT_TEXT` (a lighter tint, about 4.5:1 on BG2) for accent-coloured text; keep DISABLED visibly dimmer but not below about 3:1 on BG and BG2. A pure-Python test (`tests/test_qt_contrast.py`, no Qt) computes the ratios of every text/surface pair the QSS uses and fails under 4.5 (text) or 3 (UI boundaries); disabled is exempt but must stay above a floor.
 *Why:* it turns a taste argument into a number, and it stops later phases from regressing it.
 
-**A5. Icons. (M)**
+**A5. Icons. (M) — [ASSIGNED TO CLAUDE]**
+*Agent rule:* **Strictly reserved for Claude.** Any other agent building UI elements that need icons must NOT replace them permanently with text or buttons; leave a clear `# ICON NEEDED: <name>` seam or pause and notify the user.
 *What:* a small icon layer, `qt_ui/icons.py`, `icon(name, size, colour)`, drawn with `QPainterPath` at any DPI and colour (so hover/disabled/accent colours are free). The set I would draw: search, film/vod, scissors, list/queue, gear, play, pause/stop, plus, minus, fit, undo, redo, folder, folder-open, copy, trash, check, x, alert, info, chevron-right/down, external-link, refresh, user, link, download, clock, eye (views), flag (clip), grid, list-view, filter, sliders.
 *Where they go:* nav rail (B1), buttons that act on something (Add to queue gets a plus; Open folder a folder; Copy log a copy), status chips in the queue, empty states (a 48 px outline icon instead of just text), toasts, the timeline toolbar.
 *Rule:* an icon never replaces the text on a primary action; icon-only buttons (zoom, undo) always have a tooltip and an accessible name.
