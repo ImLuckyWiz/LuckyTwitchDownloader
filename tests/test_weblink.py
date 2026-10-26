@@ -177,6 +177,7 @@ def test_stale_and_oversized_floods_are_ignored(tmp_path):
     assert not list(inbox.glob("*.link"))
     for i in range(wl.MAX_WAITING):
         assert wl._drop(inbox, f"l{i}") is not None
+        time.sleep(0.001)
     assert wl._drop(inbox, "one more") is None  # the folder is full
 
 

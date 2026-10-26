@@ -35,6 +35,12 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QScrollBar, QSizePolicy, QVBoxLayout, QWidget,
 )
 
+try:
+    from shiboken6 import isValid
+except ImportError:
+    def isValid(obj: object) -> bool:  # noqa: N802
+        return True
+
 from core.palette import ACCENT, BG, BG2, BG3, ERR, FG, MUTED, OK, UI_FONT, WHITE
 from core.timeline import (
     CUT_COLOUR, EDGE_COLOUR, EDGE_TOL_PX, GAME_COLOURS, GAMES_H, GAP, HEIGHT, IDLE_HINT, MUTED_COLOUR, MUTED_H,
@@ -172,6 +178,9 @@ class Timeline(QWidget):
         self._hover_pos: tuple[float, float, bool] | None = None  # (x, y, dragging)
         self._updating_bar = False
         self._redraw_pending = False
+        self._redraw_timer = QTimer(self)
+        self._redraw_timer.setSingleShot(True)
+        self._redraw_timer.timeout.connect(self._flush_redraw)
 
         # scene records from the last paint pass (so tests and inspectors can query drawn texts and rectangles)
         self.drawn_texts: list[str] = []
@@ -599,12 +608,28 @@ class Timeline(QWidget):
         self._update_scrollbar()
         if not self._redraw_pending:
             self._redraw_pending = True
-            QTimer.singleShot(0, self._flush_redraw)
-        self.canvas.update()
+            if hasattr(self, "_redraw_timer"):
+                self._redraw_timer.start(0)
+            else:
+                QTimer.singleShot(0, self._flush_redraw)
+        try:
+            if hasattr(self, "canvas") and isValid(self.canvas):
+                self.canvas.update()
+        except RuntimeError:
+            pass
 
     def _flush_redraw(self) -> None:
         self._redraw_pending = False
-        self.canvas.update()
+        try:
+            if hasattr(self, "canvas") and isValid(self.canvas):
+                self.canvas.update()
+        except RuntimeError:
+            pass
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        if hasattr(self, "_redraw_timer"):
+            self._redraw_timer.stop()
+        super().closeEvent(event)
 
     def redraw(self) -> None:
         """Force an immediate synchronous paint/state update (useful in tests)."""
