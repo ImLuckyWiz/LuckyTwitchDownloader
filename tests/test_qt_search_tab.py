@@ -886,3 +886,80 @@ def test_closing_the_window_stops_the_thumbnail_workers(qtbot, win, fake_fetch):
     threads = list(tab.thumbs.threads)
     win.close()
     qtbot.waitUntil(lambda: not any(t.is_alive() for t in threads), timeout=3000)
+
+
+
+# ------------------------------------------------------------------ Phase 9g: ChannelDelegate, Grid/List mode, filter, infinite scroll
+def test_channel_delegate_renders_avatar_initials_and_live_badge(qtbot, tab, session):
+    sign_in(tab, session)
+    tab.on_search_ok("stre", RESULTS)
+    assert search_models.channel_avatar_colour("Streamer") == search_models.channel_avatar_colour("  streamer ")
+    tab.results_view.viewport().repaint()
+    img = tab.results_view.viewport().grab().toImage()
+    rect = tab.results_view.visualRect(tab.results_model.index(0, 0))
+    # Red LIVE badge (#eb0400) painted near the right end of row 0
+    badge_pixel = img.pixelColor(rect.right() - 20, rect.center().y())
+    assert badge_pixel == QColor("#eb0400")
+
+
+def test_list_and_grid_view_switcher_shares_selection_and_paints_cards(qtbot, tab, session, fake_fetch):
+    sign_in(tab, session)
+    fake_fetch.colours["https://img/1.jpg"] = "#00cc66"
+    load_vods(tab, with_thumbs(2))
+    qtbot.waitUntil(lambda: len(tab.vod_model.cache) == 2, timeout=5000)
+
+    assert tab.view_mode == "list"
+    assert tab.vod_stack.currentWidget() is tab.vod_table
+    tab.select_vod(1)
+    assert tab.selected_video()["title"] == "Stream 2"
+
+    # Switch to grid view
+    tab.grid_mode_btn.click()
+    assert tab.view_mode == "grid"
+    assert tab.vod_stack.currentWidget() is tab.vod_grid
+    assert tab.selected_video()["title"] == "Stream 2"
+
+    # Paint grid cards and double-click card 0
+    tab.vod_grid.viewport().repaint()
+    img = tab.vod_grid.viewport().grab().toImage()
+    assert not img.isNull()
+    idx0 = tab.vod_model.index(0, 0)
+    pos = tab.vod_grid.visualRect(idx0).center()
+    qtbot.mouseClick(tab.vod_grid.viewport(), Qt.MouseButton.LeftButton, pos=pos)
+    with qtbot.waitSignal(tab.vod_chosen, timeout=1000) as sig:
+        qtbot.mouseDClick(tab.vod_grid.viewport(), Qt.MouseButton.LeftButton, pos=pos)
+    assert sig.args == ["https://www.twitch.tv/videos/1"]
+
+    # Switch back to list view
+    tab.list_mode_btn.click()
+    assert tab.view_mode == "list"
+    assert tab.vod_stack.currentWidget() is tab.vod_table
+
+
+def test_vod_filter_bar_hides_non_matching_rows_in_table_and_grid(tab, session):
+    sign_in(tab, session)
+    load_vods(tab, [
+        {**vod(1), "title": "Elden Ring Boss Rush", "date": "2026-10-01"},
+        {**vod(2), "title": "Just Chatting Chill", "date": "2026-10-02"},
+        {**vod(3), "title": "Elden Ring Finale", "date": "2026-10-03"},
+    ])
+    assert tab.visible_vod_rows() == [0, 1, 2]
+    tab.vod_filter_edit.setText("elden")
+    assert tab.visible_vod_rows() == [0, 2]
+    assert tab.vod_table.isRowHidden(1) and tab.vod_grid.isRowHidden(1)
+    tab.vod_filter_edit.clear()
+    assert tab.visible_vod_rows() == [0, 1, 2]
+
+
+def test_infinite_scroll_loads_next_page_at_bottom(qtbot, tab, session, monkeypatch):
+    sign_in(tab, session)
+    pages = {None: ([vod(i) for i in range(1, 15)], "cur2"), "cur2": ([vod(15)], None)}
+    monkeypatch.setattr(search_tab, "fetch_videos", lambda client, cid, kind, after=None: pages[after])
+    tab.load_channel(RESULTS[0])
+    qtbot.waitUntil(lambda: tab.vod_model.rowCount() == 14 and tab.sv_cursor == "cur2", timeout=3000)
+    bar = tab.vod_table.verticalScrollBar()
+    if bar.maximum() > 0:
+        bar.setValue(bar.maximum())
+    else:
+        tab._on_vod_scroll(bar.maximum())
+    qtbot.waitUntil(lambda: tab.vod_model.rowCount() == 15, timeout=3000)

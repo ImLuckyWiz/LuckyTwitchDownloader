@@ -1,3 +1,14 @@
+## Phase 9g: The Search Page & Twitch Sign-In  (2026-10-26, version 1 delivered)
+**Done (9g v1, see VERSIONS.md):**
+- **C1 & C5 — Streamer Avatars & Red LIVE Badge (`ChannelDelegate`, `channel_avatar_colour` in `qt_ui/search_models.py`, `qt_ui/tabs/search.py`):** 24 px circular avatar with deterministic hue and initial letter, streamer name, and bold red `LIVE` badge (`#eb0400`) on live channels.
+- **C2 & C3 — List / Grid View Switcher & Skeleton Tiles (`VodGridView`, `VodGridDelegate`, `ThumbDelegate` in `qt_ui/search_models.py`, `qt_ui/tabs/search.py`):** `list_mode_btn` and `grid_mode_btn` switch `vod_stack` between `VodTable` and `VodGridView` (shared `VodModel` and `selectionModel`, 220x192 cards with 16:9 thumbnail, duration badge, 2-line title, `date · views`, hover lift, and `BG3` skeleton tiles).
+- **C4 — Client-Side Title Filter & Infinite Scroll (`vod_filter_edit`, `_on_vod_scroll` in `qt_ui/tabs/search.py`):** instant substring filtering across title/date in both table and grid views, plus automatic next-page loading when scrolled to the bottom.
+- **H1 — Twitch Sign-In Copy Code Button (`copy_code_btn` in `qt_ui/twitch_dialog.py`):** one-click `Copy code` button next to `#loginCode` with clipboard copy and `Copied!` state.
+- **New tests (`tests/test_qt_search_tab.py`, `tests/test_qt_twitch_dialog.py`):** 5 new Phase 9g tests (112 total across both files, all passing).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 27.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `test_qt_search_tab.py` + `test_qt_twitch_dialog.py` -> **112 passed** in 9.88s.
+**Still open:** Phase 9h (final polish, accessibility & DPI check, screenshots, release notes).
+
 ## Phase 9f: The Timeline  (2026-10-26, version 1 delivered)
 **Done (9f v1, see VERSIONS.md):**
 - **E1 — Visual Part Styling (`core/timeline.py`, `qt_ui/timeline.py`):** rounded part pills (`PART_RADIUS = 6.0`, squared at viewport-clipped ends) with `1 px` hover lift (`ACCENT_HOVER`), and diagonal hatching (`Qt.BrushStyle.BDiagPattern`, recorded in `drawn_skipped_rects`) across skipped sections (`gaps_of`).

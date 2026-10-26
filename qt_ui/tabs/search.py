@@ -24,7 +24,7 @@ import types
 from PySide6.QtCore import QItemSelectionModel, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListView, QPushButton,
-    QSizePolicy, QTableView, QVBoxLayout, QWidget,
+    QSizePolicy, QStackedWidget, QTableView, QToolButton, QVBoxLayout, QWidget,
 )
 
 from core.recent import load_recent, save_recent
@@ -33,8 +33,10 @@ from core.search import VIDEO_KINDS
 from luckytwitch_engine import fetch_videos, search_channels
 from qt_ui import dialogs
 from qt_ui.bridge import Bridge
+from qt_ui.icons import icon
 from qt_ui.search_models import (
-    CHANNEL_ROW_HEIGHT, ROW_HEIGHT, THUMB_COLUMN_WIDTH, VOD_COLUMNS, ChannelModel, ThumbDelegate, VodModel,
+    CHANNEL_ROW_HEIGHT, ChannelDelegate, GRID_CARD_H, GRID_CARD_W, ROW_HEIGHT, THUMB_COLUMN_WIDTH, VOD_COLUMNS,
+    ChannelModel, ThumbDelegate, VodGridDelegate, VodModel,
 )
 from qt_ui.thumbs import ThumbFetcher
 from qt_ui.widgets import Card, ComboBox, EmptyState, ScrollFrame, WrapLabel
@@ -65,9 +67,42 @@ class VodTable(QTableView):
         super().keyPressEvent(event)
 
 
-def _channel_list(model: ChannelModel, rows: int) -> QListView:
+class VodGridView(QListView):
+    """Grid of 16:9 VOD cards (Phase 9g, C2). Shares ``VodModel`` and ``selectionModel`` with ``VodTable``."""
+
+    use_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("vodGrid")
+        self.setViewMode(QListView.ViewMode.IconMode)
+        self.setResizeMode(QListView.ResizeMode.Adjust)
+        self.setMovement(QListView.Movement.Static)
+        self.setWrapping(True)
+        self.setUniformItemSizes(True)
+        self.setGridSize(VodGridDelegate().sizeHint(None, None))
+        self.setSpacing(6)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.doubleClicked.connect(self._on_double_clicked)
+
+    def _on_double_clicked(self, index) -> None:
+        if index.isValid():
+            self.use_requested.emit()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.use_requested.emit()
+            return
+        super().keyPressEvent(event)
+
+
+def _channel_list(model: ChannelModel, rows: int, live_marker: bool = False) -> QListView:
     view = QListView()
     view.setModel(model)
+    view.setItemDelegate(ChannelDelegate(live_marker=live_marker, parent=view))
     view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
     view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
     view.setUniformItemSizes(True)
@@ -167,7 +202,7 @@ class SearchTab(QWidget):
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(10)
         res_card = Card("Results", "● = live now", padding=12)
-        self.results_view = _channel_list(self.results_model, 6)
+        self.results_view = _channel_list(self.results_model, 6, live_marker=True)
         res_card.add_widget(self.results_view)
         box.addWidget(res_card)
         rec_card = Card("Recent streamers", "The ones you opened lately", padding=12)
@@ -189,17 +224,47 @@ class SearchTab(QWidget):
 
     def _build_right(self) -> QWidget:
         """The VODs of the picked streamer."""
+        self.view_mode = "list"
+        self.vod_filter_text = ""
         right = QWidget()
         box = QVBoxLayout(right)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(0)
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 6)
+        head.setSpacing(6)
         self.title_label = WrapLabel(START_TITLE)
         self.title_label.setProperty("role", "heading")
         self.title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.title_label.setMinimumWidth(0)
         head.addWidget(self.title_label, 1)  # at the minimum window width the title wraps, the list never gets cut
+
+        self.vod_filter_edit = QLineEdit()
+        self.vod_filter_edit.setPlaceholderText("Filter titles…")
+        self.vod_filter_edit.setClearButtonEnabled(True)
+        self.vod_filter_edit.setMaximumWidth(170)
+        self.vod_filter_edit.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.vod_filter_edit.textChanged.connect(self.set_vod_filter)
+        head.addWidget(self.vod_filter_edit, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.list_mode_btn = QToolButton()
+        self.list_mode_btn.setIcon(icon("list-view", 16))
+        self.list_mode_btn.setToolTip("List view")
+        self.list_mode_btn.setCheckable(True)
+        self.list_mode_btn.setChecked(True)
+        self.list_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.list_mode_btn.clicked.connect(lambda: self.set_view_mode("list"))
+        head.addWidget(self.list_mode_btn, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.grid_mode_btn = QToolButton()
+        self.grid_mode_btn.setIcon(icon("grid", 16))
+        self.grid_mode_btn.setToolTip("Grid view")
+        self.grid_mode_btn.setCheckable(True)
+        self.grid_mode_btn.setChecked(False)
+        self.grid_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.grid_mode_btn.clicked.connect(lambda: self.set_view_mode("grid"))
+        head.addWidget(self.grid_mode_btn, 0, Qt.AlignmentFlag.AlignTop)
+
         self.type_combo = ComboBox()
         self.type_combo.addItems(list(VIDEO_KINDS))
         self.type_combo.setMinimumContentsLength(16)
@@ -209,6 +274,7 @@ class SearchTab(QWidget):
         head.addWidget(self.type_combo, 0, Qt.AlignmentFlag.AlignTop)
         box.addLayout(head)
 
+        self.vod_stack = QStackedWidget()
         self.vod_table = VodTable()
         self.vod_table.setObjectName("vodTable")
         self.vod_table.setModel(self.vod_model)
@@ -230,7 +296,18 @@ class SearchTab(QWidget):
                 head_view.resizeSection(col, width)
         self.vod_table.setMinimumHeight(HEADER_HEIGHT + 5 * ROW_HEIGHT // 2)  # tkinter: height=5 rows, then it grows
         self.vod_table.use_requested.connect(self.use_selected_vod)
-        box.addWidget(self.vod_table, 1)
+        self.vod_table.verticalScrollBar().valueChanged.connect(self._on_vod_scroll)
+
+        self.vod_grid = VodGridView()
+        self.vod_grid.setModel(self.vod_model)
+        self.vod_grid.setSelectionModel(self.vod_table.selectionModel())
+        self.vod_grid.setItemDelegate(VodGridDelegate(self.vod_grid))
+        self.vod_grid.use_requested.connect(self.use_selected_vod)
+        self.vod_grid.verticalScrollBar().valueChanged.connect(self._on_vod_scroll)
+
+        self.vod_stack.addWidget(self.vod_table)
+        self.vod_stack.addWidget(self.vod_grid)
+        box.addWidget(self.vod_stack, 1)
         self.sv_empty = EmptyState(self.vod_table, top=HEADER_HEIGHT)  # under the column headings
 
         buttons = QHBoxLayout()
@@ -451,6 +528,38 @@ class SearchTab(QWidget):
         if self.sv_channel and self.sv_cursor:
             self.load_channel(self.sv_channel, more=True)
 
+    def set_view_mode(self, mode: str) -> None:
+        """Switch between ``'list'`` (table) and ``'grid'`` (16:9 cards) (Phase 9g, C2)."""
+        if mode not in ("list", "grid"):
+            return
+        self.view_mode = mode
+        is_grid = mode == "grid"
+        self.list_mode_btn.setChecked(not is_grid)
+        self.grid_mode_btn.setChecked(is_grid)
+        self.vod_stack.setCurrentWidget(self.vod_grid if is_grid else self.vod_table)
+
+    def set_vod_filter(self, text: str) -> None:
+        """Filter loaded VOD rows client-side by title or date substring (Phase 9g, C4)."""
+        self.vod_filter_text = text.strip().lower()
+        self._apply_vod_filter()
+
+    def _apply_vod_filter(self) -> None:
+        q = self.vod_filter_text
+        for row, v in enumerate(self.sv_videos):
+            hay = f"{v.get('title', '')} {v.get('date', '')}".lower()
+            hide = bool(q and q not in hay)
+            self.vod_table.setRowHidden(row, hide)
+            self.vod_grid.setRowHidden(row, hide)
+
+    def visible_vod_rows(self) -> list[int]:
+        return [r for r in range(self.vod_model.rowCount()) if not self.vod_table.isRowHidden(r)]
+
+    def _on_vod_scroll(self, value: int) -> None:
+        """Infinite scroll (C4): when the user scrolls to the bottom of the VOD view, automatically load more."""
+        bar = self.vod_grid.verticalScrollBar() if self.view_mode == "grid" else self.vod_table.verticalScrollBar()
+        if bar.maximum() > 0 and value >= bar.maximum() - 8 and self.sv_cursor and not self.sv_loading:
+            self.load_more()
+
     def on_videos_ok(self, gen: int, videos: list[dict], cursor: str | None) -> None:
         if gen != self.sv_gen or not self.sv_channel:
             return  # the user already picked something else
@@ -459,6 +568,7 @@ class SearchTab(QWidget):
         for i, v in enumerate(videos):
             if v["thumb"]:
                 self.thumbs.submit(gen, str(start + i), v["thumb"])
+        self._apply_vod_filter()
         self.sv_cursor = cursor
         self.more_btn.setEnabled(bool(cursor))
         name = self.sv_channel["name"]
@@ -489,8 +599,8 @@ class SearchTab(QWidget):
 
     # ---------------------------- using a VOD ---------------------------- #
     def selected_video(self) -> dict | None:
-        rows = self.vod_table.selectionModel().selectedRows()
-        return self.sv_videos[rows[0].row()] if rows else None
+        idxs = self.vod_table.selectionModel().selectedIndexes()
+        return self.sv_videos[idxs[0].row()] if idxs else None
 
     def select_vod(self, row: int) -> None:
         index = self.vod_model.index(row, 0)

@@ -75,6 +75,10 @@ class TwitchDialog(QDialog):
         self.status_label.setFixedWidth(STATUS_WIDTH)
         self.status_label.setContentsMargins(0, 10, 0, 2)
         box.addWidget(self.status_label)
+        self.code_card = QWidget()
+        code_box = QHBoxLayout(self.code_card)
+        code_box.setContentsMargins(0, 4, 0, 4)
+        code_box.setSpacing(8)
         self.code_label = QLabel("")
         self.code_label.setObjectName("loginCode")
         self.code_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
@@ -83,8 +87,20 @@ class TwitchDialog(QDialog):
         font.setBold(True)
         self.code_label.setFont(font)
         self.code_label.setContentsMargins(0, 2, 0, 2)
-        self.code_label.setMinimumHeight(self.code_label.fontMetrics().lineSpacing() + 4)  # the line is kept while empty
-        box.addWidget(self.code_label)
+        self.code_label.setMinimumHeight(self.code_label.fontMetrics().lineSpacing() + 4)
+        code_box.addStretch(1)
+        code_box.addWidget(self.code_label)
+        from qt_ui.icons import icon
+        from PySide6.QtWidgets import QToolButton
+        self.copy_code_btn = QToolButton()
+        self.copy_code_btn.setText("Copy code")
+        self.copy_code_btn.setIcon(icon("copy", 14))
+        self.copy_code_btn.setProperty("variant", "ghost")
+        self.copy_code_btn.setVisible(False)
+        self.copy_code_btn.clicked.connect(self.copy_code)
+        code_box.addWidget(self.copy_code_btn)
+        code_box.addStretch(1)
+        box.addWidget(self.code_card)
 
         login_row = QHBoxLayout()
         login_row.setContentsMargins(0, 6, 0, 0)
@@ -190,7 +206,20 @@ class TwitchDialog(QDialog):
             return
         self.state["url"] = url
         self.code_label.setText(user_code)
+        if hasattr(self, "copy_code_btn"):
+            self.copy_code_btn.setVisible(bool(user_code))
         self.status_label.setText(WAITING_TEXT)
+    def copy_code(self) -> None:
+        code = self.code_label.text().strip()
+        if code:
+            from PySide6.QtWidgets import QApplication
+            from qt_ui.icons import icon
+            QApplication.clipboard().setText(code)
+            self.copy_code_btn.setText("Copied!")
+            self.copy_code_btn.setIcon(icon("check", 14))
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(2000, lambda: (self.copy_code_btn.setText("Copy code"), self.copy_code_btn.setIcon(icon("copy", 14))) if not self.closed else None)
+
 
     def finish_login(self, access: str, refresh: str) -> None:
         if self.closed:
@@ -199,6 +228,8 @@ class TwitchDialog(QDialog):
         save_login_tokens(access, refresh)
         self.host.client = make_client()
         self.code_label.setText("")
+        if hasattr(self, "copy_code_btn"):
+            self.copy_code_btn.setVisible(False)
         self.state["busy"] = False
         self.login_btn.setEnabled(True)
         self.host.set_status("Signed in with Twitch.")
@@ -208,6 +239,8 @@ class TwitchDialog(QDialog):
         if self.closed:
             return
         self.code_label.setText("")
+        if hasattr(self, "copy_code_btn"):
+            self.copy_code_btn.setVisible(False)
         self.state["busy"] = False
         self.login_btn.setEnabled(True)
         self.refresh_status()
@@ -217,6 +250,8 @@ class TwitchDialog(QDialog):
         if self.closed:
             return
         self.code_label.setText("")
+        if hasattr(self, "copy_code_btn"):
+            self.copy_code_btn.setVisible(False)
         self.state["busy"] = False
         self.login_btn.setEnabled(True)
         self.refresh_status()

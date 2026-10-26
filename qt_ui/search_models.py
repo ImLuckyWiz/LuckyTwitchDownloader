@@ -27,7 +27,7 @@ THUMB_ROLE = Qt.ItemDataRole.UserRole + 2  # the QPixmap of a row (or None)
 THUMB_MARGIN = 6  # space to the left of a thumbnail
 THUMB_COLUMN_WIDTH = THUMB_MARGIN + THUMB_SIZE[0] + THUMB_GAP
 ROW_HEIGHT = THUMB_SIZE[1] + 8  # tall rows: room for the thumbnails
-CHANNEL_ROW_HEIGHT = 26
+CHANNEL_ROW_HEIGHT = 36
 MAX_CACHED_THUMBS = 300
 
 VOD_COLUMNS = (  # key, heading, width, alignment, stretches
@@ -196,11 +196,199 @@ class ThumbDelegate(QStyledItemDelegate):
         if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(option.rect, option.palette.highlight())
         pix = index.data(THUMB_ROLE)
+        box = QRect(option.rect.left() + THUMB_MARGIN, option.rect.top() + (option.rect.height() - THUMB_SIZE[1]) // 2,
+                    THUMB_SIZE[0], THUMB_SIZE[1])
         if pix is not None:
-            box = QRect(option.rect.left() + THUMB_MARGIN, option.rect.top() + (option.rect.height() - THUMB_SIZE[1]) // 2,
-                        THUMB_SIZE[0], THUMB_SIZE[1])
             painter.drawPixmap(box, pix)
+        else:
+            from PySide6.QtGui import QColor
+            from core.palette import BG3
+            painter.setRenderHint(painter.RenderHint.Antialiasing, True)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(BG3))
+            painter.drawRoundedRect(box, 4, 4)
         painter.restore()
 
     def sizeHint(self, option, index) -> QSize:  # noqa: N802
         return QSize(THUMB_COLUMN_WIDTH, ROW_HEIGHT)
+
+
+GRID_CARD_W = 220
+GRID_CARD_H = 192
+GRID_THUMB_W = 204
+GRID_THUMB_H = 115
+
+
+class VodGridDelegate(QStyledItemDelegate):
+    """Paints a VOD card in Grid mode (C2, C3): 16:9 thumbnail (or skeleton tile), duration badge, 2-line title,
+    and ``date · views`` subtitle."""
+
+    def paint(self, painter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        painter.save()
+        painter.setRenderHint(painter.RenderHint.Antialiasing, True)
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QColor, QFont, QPen
+        from core.palette import ACCENT, ACCENT_DIM, ACCENT_HOVER, BG, BG2, BG3, BORDER, FG, MUTED, WHITE
+
+        v = index.data(VIDEO_ROLE) or {}
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
+        lift = -1.0 if hovered else 0.0
+        card = QRectF(option.rect).adjusted(4.0, 4.0 + lift, -4.0, -4.0 + lift)
+
+        bg_col = QColor(ACCENT_DIM if selected else (BG3 if hovered else BG2))
+        border_col = QColor(ACCENT if selected else (ACCENT_HOVER if hovered else BORDER))
+        painter.setPen(QPen(border_col, 1.5 if selected else 1.0))
+        painter.setBrush(bg_col)
+        painter.drawRoundedRect(card, 8.0, 8.0)
+
+        thumb_rect = QRectF(card.left() + 8.0, card.top() + 8.0, card.width() - 16.0, GRID_THUMB_H)
+        model = index.model()
+        row_idx = index.row()
+        pix = model.index(row_idx, 0).data(THUMB_ROLE) if model is not None else None
+        if pix is not None and not pix.isNull():
+            scaled = pix.scaled(int(thumb_rect.width()), int(thumb_rect.height()),
+                                Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            painter.drawPixmap(thumb_rect.topLeft().toPoint(), scaled)
+        else:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(BG3))
+            painter.drawRoundedRect(thumb_rect, 4.0, 4.0)
+
+        dur_txt = fmt_hms(v.get("duration", 0))
+        font_badge = QFont(option.font)
+        font_badge.setPointSize(8)
+        font_badge.setBold(True)
+        painter.setFont(font_badge)
+        fm_badge = painter.fontMetrics()
+        bw = fm_badge.horizontalAdvance(dur_txt) + 10.0
+        bh = 18.0
+        badge_rect = QRectF(thumb_rect.right() - bw - 4.0, thumb_rect.bottom() - bh - 4.0, bw, bh)
+        pill_bg = QColor(BG)
+        pill_bg.setAlpha(220)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(pill_bg)
+        painter.drawRoundedRect(badge_rect, 4.0, 4.0)
+        painter.setPen(QColor(WHITE))
+        painter.drawText(badge_rect, int(Qt.AlignmentFlag.AlignCenter), dur_txt)
+
+        title = str(v.get("title") or "")
+        font_title = QFont(option.font)
+        font_title.setPointSize(9)
+        font_title.setBold(True)
+        painter.setFont(font_title)
+        painter.setPen(QColor(FG))
+        title_rect = QRectF(thumb_rect.left(), thumb_rect.bottom() + 6.0, thumb_rect.width(), 34.0)
+        painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap),
+                         painter.fontMetrics().elidedText(title, Qt.TextElideMode.ElideRight, int(title_rect.width() * 1.9)))
+
+        meta = f"{v.get('date', '')}  ·  {v.get('views', 0)} views"
+        font_meta = QFont(option.font)
+        font_meta.setPointSize(8)
+        painter.setFont(font_meta)
+        painter.setPen(QColor(MUTED))
+        meta_rect = QRectF(thumb_rect.left(), card.bottom() - 20.0, thumb_rect.width(), 16.0)
+        painter.drawText(meta_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), meta)
+
+        painter.restore()
+
+    def sizeHint(self, option, index) -> QSize:  # noqa: N802
+        return QSize(GRID_CARD_W, GRID_CARD_H)
+
+
+
+def channel_avatar_colour(name: str) -> str:
+    """Deterministic vibrant hue for a streamer avatar background."""
+    import zlib
+    from core.timeline import GAME_COLOURS
+    h = zlib.crc32(name.strip().lower().encode("utf-8"))
+    return GAME_COLOURS[h % len(GAME_COLOURS)]
+
+
+class ChannelDelegate(QStyledItemDelegate):
+    """Paints streamer list rows: avatar initials circle, display name, and a red LIVE badge (C1, C5)."""
+
+    def __init__(self, live_marker: bool = False, parent=None):
+        super().__init__(parent)
+        self.live_marker = live_marker
+
+    def paint(self, painter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        painter.save()
+        painter.setRenderHint(painter.RenderHint.Antialiasing, True)
+        from PySide6.QtGui import QColor, QFont
+        from PySide6.QtCore import QRectF
+        from core.palette import BG2, FG, WHITE
+
+        rect = option.rect
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+
+        if selected:
+            painter.fillRect(rect, option.palette.highlight())
+        elif hovered:
+            painter.fillRect(rect, QColor(BG2))
+
+        ch = index.data(CHANNEL_ROLE) or {}
+        raw_name = str(ch.get("name") or ch.get("login") or index.data(Qt.ItemDataRole.DisplayRole) or "")
+        clean_name = raw_name[2:] if raw_name.startswith("● ") else raw_name
+        is_live = bool(ch.get("live", False)) or raw_name.startswith("● ")
+
+        # Avatar circle
+        size = 24.0
+        pad_x = 8.0
+        cy = rect.top() + (rect.height() - size) / 2.0
+        avatar_rect = QRectF(rect.left() + pad_x, cy, size, size)
+
+        col = QColor(channel_avatar_colour(clean_name))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(col)
+        painter.drawEllipse(avatar_rect)
+
+        # Initial letter
+        initial = (clean_name[:1] or "?").upper()
+        font_init = QFont(option.font)
+        font_init.setPointSize(10)
+        font_init.setBold(True)
+        painter.setFont(font_init)
+        painter.setPen(QColor(WHITE))
+        painter.drawText(avatar_rect, int(Qt.AlignmentFlag.AlignCenter), initial)
+
+        # Streamer name
+        name_x = rect.left() + pad_x + size + 8.0
+        avail_w = rect.width() - (name_x - rect.left()) - 6.0
+        if is_live and self.live_marker:
+            avail_w -= 46.0
+
+        font_name = QFont(option.font)
+        font_name.setPointSize(10)
+        painter.setFont(font_name)
+        text_col = option.palette.highlightedText().color() if selected else QColor(FG)
+        painter.setPen(text_col)
+        name_rect = QRectF(name_x, rect.top(), max(avail_w, 10.0), rect.height())
+        fm = painter.fontMetrics()
+        elided = fm.elidedText(clean_name, Qt.TextElideMode.ElideRight, int(name_rect.width()))
+        painter.drawText(name_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), elided)
+
+        # Red LIVE badge (C5)
+        if is_live and self.live_marker:
+            badge_w, badge_h = 38.0, 16.0
+            bx = rect.right() - badge_w - 6.0
+            by = rect.top() + (rect.height() - badge_h) / 2.0
+            badge_rect = QRectF(bx, by, badge_w, badge_h)
+
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor("#eb0400"))
+            painter.drawRoundedRect(badge_rect, 3.0, 3.0)
+
+            font_live = QFont(option.font)
+            font_live.setPointSize(7)
+            font_live.setBold(True)
+            painter.setFont(font_live)
+            painter.setPen(QColor(WHITE))
+            painter.drawText(badge_rect, int(Qt.AlignmentFlag.AlignCenter), "LIVE")
+
+        painter.restore()
+
+    def sizeHint(self, option, index) -> QSize:
+        return QSize(200, CHANNEL_ROW_HEIGHT)

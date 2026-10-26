@@ -589,3 +589,13 @@ def test_closing_the_window_closes_the_dialog_and_cancels_the_login(qtbot, win, 
     qtbot.waitUntil(lambda: dialog.code_label.text() != "", timeout=3000)
     win.close()
     assert dialog.cancel_ev.is_set() and dialog.closed
+
+
+
+def test_copy_code_button_copies_device_code_to_clipboard(qtbot, dlg):
+    assert not dlg.copy_code_btn.isVisible()
+    dlg.on_code("WXYZ-1234", "https://www.twitch.tv/activate")
+    assert not dlg.copy_code_btn.isHidden()
+    dlg.copy_code_btn.click()
+    assert QApplication.clipboard().text() == "WXYZ-1234"
+    assert dlg.copy_code_btn.text() == "Copied!"

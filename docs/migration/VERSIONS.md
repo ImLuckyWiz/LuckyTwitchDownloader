@@ -1,5 +1,21 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9g v1  (2026-10-26)  The Search page & Twitch sign-in: streamer avatars & red LIVE badge, List/Grid VOD view switcher, skeleton placeholders, client-side title filter & infinite scroll, and Copy Code button
+
+**Done (new or changed files):**
+- `qt_ui/search_models.py`: added `channel_avatar_colour`, `ChannelDelegate` (24 px circular initial avatars + `#eb0400` `LIVE` pill badge), `VodGridDelegate` (220x192 16:9 VOD cards with duration pill overlay, 2-line title, `date · views` subtitle, hover lift, and `BG3` skeleton tile), and rounded skeleton placeholder in `ThumbDelegate`.
+- `qt_ui/tabs/search.py`: added `VodGridView` (`QListView` in `IconMode` sharing `VodModel` and `selectionModel` with `VodTable`), `vod_stack`, `list_mode_btn` / `grid_mode_btn` (`set_view_mode`), `vod_filter_edit` (`set_vod_filter`, `visible_vod_rows`), and infinite scroll (`_on_vod_scroll`).
+- `qt_ui/twitch_dialog.py`: added `copy_code_btn` (`copy_code()`) next to `code_label` with clipboard copy and `Copied!` feedback.
+- `tests/test_qt_search_tab.py` & `tests/test_qt_twitch_dialog.py`: added 5 new Phase 9g tests (**74 passed** in `test_qt_search_tab.py`, **38 passed** in `test_qt_twitch_dialog.py`).
+- Docs updated: `MIGRATION_LOG.md` (no. 27), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_search_tab.py tests/test_qt_twitch_dialog.py -q` -> **112 passed** in 9.88s.
+
+**NOT done:** Phase 9h (final polish, accessibility & DPI check, screenshots, release notes).
+
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`).
+
 ### 9f v1  (2026-10-26)  The Timeline: rounded part pills & hatched skipped sections, keyboard editing & Redo, overview minimap, game legend chips, clustered clip flags, icon toolbar & zoom readout, context menu, snap feedback, and loading shimmer
 
 **Done (new or changed files):**
