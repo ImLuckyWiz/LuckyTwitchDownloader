@@ -47,6 +47,24 @@ def test_build_scripts_exclude_unused_qt_modules_and_tkinter():
             assert f"--nofollow-import-to={mod}" in script, mod
 
 
+def test_build_windows_sanitizes_pe_version_for_nuitka():
+    win = (ROOT / "build_windows.bat").read_text(encoding="utf-8")
+    assert "--product-version=%PRODUCT_VER%" in win
+    assert "--file-version=%PRODUCT_VER%" in win
+
+    import re
+
+    def sanitize(ver: str) -> str:
+        nums = [str(min(int(n), 65535)) for n in re.findall(r"\d+", ver)[:4]] or ["1", "0"]
+        return ".".join(nums)
+
+    assert sanitize("v0.8.0-beta") == "0.8.0"
+    assert sanitize("v0.8.0-beta.1") == "0.8.0.1"
+    assert sanitize("v2.0.0") == "2.0.0"
+    assert sanitize("1.0") == "1.0"
+    assert sanitize("") == "1.0"
+
+
 def test_requirements_include_pyside6():
     req = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     req_qt = (ROOT / "requirements-qt.txt").read_text(encoding="utf-8")

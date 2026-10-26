@@ -15,6 +15,12 @@ python -m pip install -r requirements.txt || goto :err
 if not exist build mkdir build
 > build\version.txt echo %VER%
 
+REM Windows PE version info (--product-version / --file-version in Nuitka) must be a numeric
+REM sequence of up to 4 numbers (e.g. 0.8.0 or 1.0.0.0), rejecting 'v' prefixes and '-beta' suffixes.
+python -c "import re, sys; v = sys.argv[1]; nums = [str(min(int(n), 65535)) for n in re.findall(r'\d+', v)[:4]] or ['1', '0']; open('build/pe_version.txt', 'w').write('.'.join(nums))" "%VER%" || goto :err
+set /p PRODUCT_VER=<build\pe_version.txt
+if "%PRODUCT_VER%"=="" set PRODUCT_VER=1.0.0.0
+
 if exist dist\LuckyTwitch rmdir /s /q dist\LuckyTwitch
 if exist dist\LuckyTwitch.dist rmdir /s /q dist\LuckyTwitch.dist
 
@@ -24,7 +30,8 @@ python -m nuitka --mode=standalone ^
   --windows-icon-from-ico=assets\icon.ico ^
   --company-name=LuckyTwitch ^
   --product-name=LuckyTwitch ^
-  --product-version=%VER% ^
+  --product-version=%PRODUCT_VER% ^
+  --file-version=%PRODUCT_VER% ^
   --output-dir=dist ^
   --output-folder-name=LuckyTwitch ^
   --output-filename=LuckyTwitch.exe ^
