@@ -14,7 +14,7 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
-## Phase 5: Options tab  (2026-10-26, IN PROGRESS: version 2 delivered, no tag yet)
+## Phase 5: Options tab  (2026-10-26, tag migration-phase-5, done, waiting for approval)
 **Done (version 1, see VERSIONS.md):** `qt_ui/tabs/options.py`, `qt_ui/binder.py` (SettingsBinder), `core/options.py`, `core/examples.py`, `qt_ui/background_jobs.py` (tools setup and saved-chat overlay threads), `SpinBox`/`ComboBox` wheel policy, folder and file pickers, MainWindow wiring. MIGRATION_LOG.md no. 13 to 15.
 **Windows result for v1 (user, 2026-10-26):** 296 Qt tests passed; one warning: the tools-setup thread kept going after its window (and Bridge) was deleted and crashed on `emit`.
 **Done (version 2):**
@@ -27,7 +27,15 @@ Entry template (copy it for each phase):
 **What I ran (Linux, Python 3.12, offscreen, PySide6 6.12.0):** `test_core_options.py` + `test_qt_options_tab.py` 73 passed; `test_qt_main_window.py` + `test_qt_queue_tab.py` 82 passed. Everything compiles. NOT run: the full suite, the golden test (tkinter), anything on Windows.
 **Divergences from the tkinter app:** MIGRATION_LOG.md no. 13 (whole-number fields), 14 (wheel needs focus), 15 (closing cancels a chat overlay).
 **Known issues / left for later:** the golden test has not run yet. `tests/test_core_matches_tkinter.py` fixtures leave out text like `1e999` on purpose (tkinter lets an `OverflowError` escape there; core gives the fallback, see log no. 13). The Options hands-on check on Windows is open.
-**Next:** the user runs the Windows checks of version 2 (VERSIONS.md) and pastes the results; fix what fails in v3; then the phase notes get the Definition of Done table and the user approves.
+**Windows results for v2 (user, 2026-10-26, Python 3.14):** `test_core_options.py` 13 passed; `test_qt_options_tab.py` 60 passed; `test_qt_main_window.py` + `test_qt_queue_tab.py` 82 passed; golden test (`-k "golden or qt_build_options"`) 25 passed; full suite 1206 passed, 31 skipped (the known shebang tests), 0 failed, 261 s. No warnings or teardown errors reported. The golden test therefore ran against the real tkinter app and passed.
+**Definition of Done (PLAN.md Phase 5):**
+- Sidebar with seven sections, one visible, scroll reset, Advanced collapsed: done (`test_the_sidebar_has_the_seven_sections_and_starts_on_output`, `test_only_one_section_is_visible_at_a_time`, `test_switching_sections_scrolls_back_to_the_top`, `test_advanced_starts_collapsed_and_opens_on_click`).
+- SettingsBinder on every key; `build_options()` / `build_filter()` with tolerant numbers: done (`test_every_old_setting_has_a_control_bound_to_it`, `test_core_options.py`).
+- Template chips and live examples from the engine's own naming functions; half-typed templates never raise; Stream folder name greyed while subfolders is off: done (the chip, example and subfolder tests).
+- Chat section with overlay options and «Render saved chat»; Tools section and the tools setup thread: done (overlay and tools-setup tests).
+- Golden test, Qt `build_options()` equals the tkinter `JobOptions`: done, 25 passed on Windows.
+- PARITY.md behaviours: ticked, except the tkinter-only «scroll frame importable» box (no Qt counterpart) and the general tab-order box, which stays open until the other tabs are done.
+**Still open (user check, then approval):** look at the Options tab on Windows (switch sections, open Advanced, click chips, watch the example lines, «Render saved chat…» with a real chat file, «Update yt-dlp now», «Open tools folder»). Then the user tags `migration-phase-5`.
 
 ## Phase 4: Search tab and Twitch sign-in  (2026-10-26, tag migration-phase-4, done, waiting for approval)
 **Done (version 1):** `qt_ui/tabs/search.py` (banner, results and recent lists, kind combo, VOD table, Load more, Use this VOD, generation counter), `qt_ui/search_models.py` (models, size-capped `ThumbCache`, `ThumbDelegate`), `qt_ui/thumbs.py` (4 lazy worker threads), `qt_ui/twitch_dialog.py` (device-code sign-in in a thread, sign out, own app, cancel on close), `core/search.py`, `ComboBox` in `qt_ui/widgets.py`, QSS for combo, group box, banner, list items; `MainWindow` owns the client and opens the dialog. Tests: `tests/test_qt_search_tab.py` (70), `tests/test_qt_twitch_dialog.py` (37), one more in `test_qt_queue_tab.py`. PARITY.md: 18 Search boxes and the search type-list box ticked. MIGRATION_LOG.md no. 8 to 12.

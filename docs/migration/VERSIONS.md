@@ -39,5 +39,9 @@ Only the changed files are in `phase-5-options-v2.zip` (no full repository zip t
 
 **NOT run:** the golden test (the sandbox has no tkinter), the full suite, anything on Windows. The PARITY ticks come from the Linux run; the Windows run confirms them.
 
-### v3  (planned)
-Whatever the Windows run of v2 shows, then the Definition of Done table.
+### v3  (2026-10-26)  docs only, Windows run clean
+
+No code changed. The Windows run of v2 (Python 3.14) passed everything: 13 + 60 + 82 tests, the golden test (25), and the full suite 1206 passed, 31 skipped. PHASE_NOTES.md has the Definition of Done table and HANDOFF.md marks Phase 5 as done, waiting for approval.
+
+**NOT done:** the hands-on look at the Options tab on Windows.
+
