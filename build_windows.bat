@@ -1,5 +1,5 @@
 @echo off
-REM Build LuckyTwitch (PySide6) for Windows:
+REM Build LuckyTwitch (PySide6) for Windows with Nuitka:
 REM   dist\LuckyTwitch\LuckyTwitch.exe   (portable folder)
 REM   dist\LuckyTwitch-Setup.exe         (installer, if Inno Setup is installed)
 REM Usage: build_windows.bat [version]
@@ -15,77 +15,42 @@ python -m pip install -r requirements.txt || goto :err
 if not exist build mkdir build
 > build\version.txt echo %VER%
 
-python -m PyInstaller --noconfirm --clean --windowed ^
-  --name LuckyTwitch ^
-  --icon assets\icon.ico ^
-  --add-data "assets;assets" ^
-  --add-data "build\version.txt;." ^
-  --collect-submodules requests ^
-  --collect-submodules core ^
-  --collect-submodules qt_ui ^
-  --hidden-import luckytwitch_engine ^
-  --hidden-import weblink ^
-  --exclude-module tkinter ^
-  --exclude-module _tkinter ^
-  --exclude-module PIL._tkinter_finder ^
-  --exclude-module PIL.ImageTk ^
-  --exclude-module pytest ^
-  --exclude-module PySide6.QtWebEngineCore ^
-  --exclude-module PySide6.QtWebEngineWidgets ^
-  --exclude-module PySide6.QtWebEngineQuick ^
-  --exclude-module PySide6.QtWebChannel ^
-  --exclude-module PySide6.QtWebSockets ^
-  --exclude-module PySide6.QtQml ^
-  --exclude-module PySide6.QtQuick ^
-  --exclude-module PySide6.QtQuick3D ^
-  --exclude-module PySide6.QtQuickControls2 ^
-  --exclude-module PySide6.QtQuickWidgets ^
-  --exclude-module PySide6.QtMultimedia ^
-  --exclude-module PySide6.QtMultimediaWidgets ^
-  --exclude-module PySide6.QtSpatialAudio ^
-  --exclude-module PySide6.Qt3DCore ^
-  --exclude-module PySide6.Qt3DRender ^
-  --exclude-module PySide6.Qt3DInput ^
-  --exclude-module PySide6.Qt3DLogic ^
-  --exclude-module PySide6.Qt3DExtras ^
-  --exclude-module PySide6.Qt3DAnimation ^
-  --exclude-module PySide6.QtCharts ^
-  --exclude-module PySide6.QtDataVisualization ^
-  --exclude-module PySide6.QtGraphs ^
-  --exclude-module PySide6.QtGraphsWidgets ^
-  --exclude-module PySide6.QtPdf ^
-  --exclude-module PySide6.QtPdfWidgets ^
-  --exclude-module PySide6.QtSql ^
-  --exclude-module PySide6.QtNetwork ^
-  --exclude-module PySide6.QtNetworkAuth ^
-  --exclude-module PySide6.QtSvg ^
-  --exclude-module PySide6.QtSvgWidgets ^
-  --exclude-module PySide6.QtOpenGL ^
-  --exclude-module PySide6.QtOpenGLWidgets ^
-  --exclude-module PySide6.QtPrintSupport ^
-  --exclude-module PySide6.QtDesigner ^
-  --exclude-module PySide6.QtHelp ^
-  --exclude-module PySide6.QtUiTools ^
-  --exclude-module PySide6.QtXml ^
-  --exclude-module PySide6.QtTest ^
-  --exclude-module PySide6.QtPositioning ^
-  --exclude-module PySide6.QtLocation ^
-  --exclude-module PySide6.QtSensors ^
-  --exclude-module PySide6.QtSerialPort ^
-  --exclude-module PySide6.QtSerialBus ^
-  --exclude-module PySide6.QtBluetooth ^
-  --exclude-module PySide6.QtNfc ^
-  --exclude-module PySide6.QtRemoteObjects ^
-  --exclude-module PySide6.QtScxml ^
-  --exclude-module PySide6.QtStateMachine ^
-  --exclude-module PySide6.QtTextToSpeech ^
-  --exclude-module PySide6.QtVirtualKeyboard ^
-  --exclude-module PySide6.QtShaderTools ^
-  --exclude-module PySide6.QtDBus ^
+if exist dist\LuckyTwitch rmdir /s /q dist\LuckyTwitch
+if exist dist\LuckyTwitch.dist rmdir /s /q dist\LuckyTwitch.dist
+
+python -m nuitka --mode=standalone ^
+  --enable-plugin=pyside6 ^
+  --windows-console-mode=disable ^
+  --windows-icon-from-ico=assets\icon.ico ^
+  --company-name=LuckyTwitch ^
+  --product-name=LuckyTwitch ^
+  --product-version=%VER% ^
+  --output-dir=dist ^
+  --output-folder-name=LuckyTwitch ^
+  --output-filename=LuckyTwitch.exe ^
+  --include-data-dir=assets=assets ^
+  --include-data-files=build\version.txt=version.txt ^
+  --include-package=core ^
+  --include-package=qt_ui ^
+  --include-package=requests ^
+  --include-module=luckytwitch_engine ^
+  --include-module=weblink ^
+  --nofollow-import-to=tkinter ^
+  --nofollow-import-to=_tkinter ^
+  --nofollow-import-to=pytest ^
+  --assume-yes-for-downloads ^
+  --update-check=never ^
   luckytwitch_qt.py || goto :err
+
+if exist dist\LuckyTwitch.dist (
+  ren dist\LuckyTwitch.dist LuckyTwitch || goto :err
+)
 
 set ISCC=
 where iscc >nul 2>nul && set ISCC=iscc
+if not defined ISCC if exist "%ProgramFiles(x86)%\Inno Setup 7\ISCC.exe" set ISCC="%ProgramFiles(x86)%\Inno Setup 7\ISCC.exe"
+if not defined ISCC if exist "%ProgramFiles%\Inno Setup 7\ISCC.exe" set ISCC="%ProgramFiles%\Inno Setup 7\ISCC.exe"
+if not defined ISCC if exist "%LOCALAPPDATA%\Programs\Inno Setup 7\ISCC.exe" set ISCC="%LOCALAPPDATA%\Programs\Inno Setup 7\ISCC.exe"
 if not defined ISCC if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set ISCC="%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if not defined ISCC if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set ISCC="%ProgramFiles%\Inno Setup 6\ISCC.exe"
 if not defined ISCC if exist "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" set ISCC="%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"

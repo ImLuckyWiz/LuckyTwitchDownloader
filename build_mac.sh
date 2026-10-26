@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build LuckyTwitch (PySide6) for macOS -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.dmg)
+# Build LuckyTwitch (PySide6) for macOS with Nuitka -> dist/LuckyTwitch.app (+ dist/LuckyTwitch-macos-<arch>.dmg)
 # Usage: bash build_mac.sh [version]
 # The result matches the Mac you build on: Apple Silicon -> arm64, Intel -> x86_64.
 set -euo pipefail
@@ -17,74 +17,30 @@ python3 -m pip install -r requirements.txt
 mkdir -p build
 printf '%s\n' "$VER" > build/version.txt
 
-python3 -m PyInstaller --noconfirm --clean --windowed \
-  --name LuckyTwitch \
-  --icon assets/icon.icns \
-  --add-data "assets:assets" \
-  --add-data "build/version.txt:." \
-  --osx-bundle-identifier "$BUNDLE_ID" \
-  --collect-submodules requests \
-  --collect-submodules core \
-  --collect-submodules qt_ui \
-  --hidden-import luckytwitch_engine \
-  --hidden-import weblink \
-  --exclude-module tkinter \
-  --exclude-module _tkinter \
-  --exclude-module PIL._tkinter_finder \
-  --exclude-module PIL.ImageTk \
-  --exclude-module pytest \
-  --exclude-module PySide6.QtWebEngineCore \
-  --exclude-module PySide6.QtWebEngineWidgets \
-  --exclude-module PySide6.QtWebEngineQuick \
-  --exclude-module PySide6.QtWebChannel \
-  --exclude-module PySide6.QtWebSockets \
-  --exclude-module PySide6.QtQml \
-  --exclude-module PySide6.QtQuick \
-  --exclude-module PySide6.QtQuick3D \
-  --exclude-module PySide6.QtQuickControls2 \
-  --exclude-module PySide6.QtQuickWidgets \
-  --exclude-module PySide6.QtMultimedia \
-  --exclude-module PySide6.QtMultimediaWidgets \
-  --exclude-module PySide6.QtSpatialAudio \
-  --exclude-module PySide6.Qt3DCore \
-  --exclude-module PySide6.Qt3DRender \
-  --exclude-module PySide6.Qt3DInput \
-  --exclude-module PySide6.Qt3DLogic \
-  --exclude-module PySide6.Qt3DExtras \
-  --exclude-module PySide6.Qt3DAnimation \
-  --exclude-module PySide6.QtCharts \
-  --exclude-module PySide6.QtDataVisualization \
-  --exclude-module PySide6.QtGraphs \
-  --exclude-module PySide6.QtGraphsWidgets \
-  --exclude-module PySide6.QtPdf \
-  --exclude-module PySide6.QtPdfWidgets \
-  --exclude-module PySide6.QtSql \
-  --exclude-module PySide6.QtNetwork \
-  --exclude-module PySide6.QtNetworkAuth \
-  --exclude-module PySide6.QtSvg \
-  --exclude-module PySide6.QtSvgWidgets \
-  --exclude-module PySide6.QtOpenGL \
-  --exclude-module PySide6.QtOpenGLWidgets \
-  --exclude-module PySide6.QtPrintSupport \
-  --exclude-module PySide6.QtDesigner \
-  --exclude-module PySide6.QtHelp \
-  --exclude-module PySide6.QtUiTools \
-  --exclude-module PySide6.QtXml \
-  --exclude-module PySide6.QtTest \
-  --exclude-module PySide6.QtPositioning \
-  --exclude-module PySide6.QtLocation \
-  --exclude-module PySide6.QtSensors \
-  --exclude-module PySide6.QtSerialPort \
-  --exclude-module PySide6.QtSerialBus \
-  --exclude-module PySide6.QtBluetooth \
-  --exclude-module PySide6.QtNfc \
-  --exclude-module PySide6.QtRemoteObjects \
-  --exclude-module PySide6.QtScxml \
-  --exclude-module PySide6.QtStateMachine \
-  --exclude-module PySide6.QtTextToSpeech \
-  --exclude-module PySide6.QtVirtualKeyboard \
-  --exclude-module PySide6.QtShaderTools \
-  --exclude-module PySide6.QtDBus \
+rm -rf dist/LuckyTwitch.app
+
+python3 -m nuitka --mode=app \
+  --enable-plugin=pyside6 \
+  --macos-create-app-bundle \
+  --macos-app-icon=assets/icon.icns \
+  --macos-app-name=LuckyTwitch \
+  --macos-signed-app-name="$BUNDLE_ID" \
+  --macos-app-version="$VER" \
+  --output-dir=dist \
+  --output-folder-name=LuckyTwitch \
+  --output-filename=LuckyTwitch \
+  --include-data-dir=assets=assets \
+  --include-data-files=build/version.txt=version.txt \
+  --include-package=core \
+  --include-package=qt_ui \
+  --include-package=requests \
+  --include-module=luckytwitch_engine \
+  --include-module=weblink \
+  --nofollow-import-to=tkinter \
+  --nofollow-import-to=_tkinter \
+  --nofollow-import-to=pytest \
+  --assume-yes-for-downloads \
+  --update-check=never \
   luckytwitch_qt.py
 
 # Let macOS send luckytwitch:// links to the app (web pages can offer them). This has to happen before signing.

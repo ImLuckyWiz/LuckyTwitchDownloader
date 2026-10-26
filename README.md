@@ -129,7 +129,7 @@ Python 3.10+ with Tk is required (on macOS use Python from python.org, since the
 
 ## Build it yourself
 
-PyInstaller cannot cross-compile, so build each system on that system.
+Nuitka compiles native standalone binaries, so build each system on that system.
 
 - **Windows:** run `build_windows.bat [version]` → `dist\LuckyTwitch\LuckyTwitch.exe`, plus `dist\LuckyTwitch-Setup.exe` if [Inno Setup 6](https://jrsoftware.org/isdl.php) is installed.
 - **macOS:** run `./build_mac.sh` → `dist/LuckyTwitch.app` and `dist/LuckyTwitch-macos-<arch>.dmg`. It also installs the app into Applications on that Mac. The result matches the Mac's chip (Apple Silicon or Intel).

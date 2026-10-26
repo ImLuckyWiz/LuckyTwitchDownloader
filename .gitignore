@@ -11,7 +11,10 @@ bin/
 # Build output
 build/
 dist/
+*.dist/
+*.build/
 *.spec
+nuitka-crash-report.xml
 
 # Premiere plugin
 node_modules/

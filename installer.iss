@@ -1,5 +1,5 @@
 ; Inno Setup script for LuckyTwitch (Windows installer)
-; Build with:  iscc /DAppVersion=1.0 installer.iss   (run after PyInstaller)
+; Build with:  iscc /DAppVersion=1.0 installer.iss   (run after Nuitka)
 ; Pre-release versions (containing '-', e.g. v0.8.0-beta.1) get their own AppId and install folder
 ; so they can be installed side-by-side without overwriting a stable LuckyTwitch installation.
 #ifndef AppVersion

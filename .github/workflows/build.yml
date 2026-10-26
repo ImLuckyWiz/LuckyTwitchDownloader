@@ -57,6 +57,16 @@ jobs:
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") -and -not (Get-Command iscc -ErrorAction SilentlyContinue)) {
             choco install innosetup -y --no-progress
           }
+      - name: Cache Nuitka compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/Nuitka
+            ~/AppData/Local/Nuitka/Nuitka/Cache
+            ~/Library/Caches/Nuitka
+          key: ${{ runner.os }}-nuitka-${{ hashFiles('requirements.txt', 'luckytwitch_qt.py') }}
+          restore-keys: |
+            ${{ runner.os }}-nuitka-
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: cmd

@@ -1,4 +1,4 @@
-"""Phase 8: packaging scripts (PyInstaller, Inno Setup, macOS bundle), CI workflow, release notes, and pre-release isolation."""
+"""Phase 8: packaging scripts (Nuitka, Inno Setup, macOS bundle), CI workflow, release notes, and pre-release isolation."""
 
 from __future__ import annotations
 
@@ -24,11 +24,12 @@ def test_build_scripts_package_the_qt_entry_point_and_collect_qt_modules():
     for script in (win, mac):
         assert "luckytwitch_qt.py" in script
         assert "luckytwitch_downloader.py" not in script
-        assert "--collect-submodules core" in script
-        assert "--collect-submodules qt_ui" in script
-        assert "--collect-submodules requests" in script
-        assert "--hidden-import luckytwitch_engine" in script
-        assert "--hidden-import weblink" in script
+        assert "nuitka" in script.lower()
+        assert "--include-package=core" in script
+        assert "--include-package=qt_ui" in script
+        assert "--include-package=requests" in script
+        assert "--include-module=luckytwitch_engine" in script
+        assert "--include-module=weblink" in script
         assert "version.txt" in script
 
 
@@ -38,26 +39,12 @@ def test_build_scripts_exclude_unused_qt_modules_and_tkinter():
     expected_excludes = (
         "tkinter",
         "_tkinter",
-        "PIL._tkinter_finder",
-        "PIL.ImageTk",
-        "PySide6.QtWebEngineCore",
-        "PySide6.QtWebEngineWidgets",
-        "PySide6.QtQml",
-        "PySide6.QtQuick",
-        "PySide6.QtMultimedia",
-        "PySide6.Qt3DCore",
-        "PySide6.QtCharts",
-        "PySide6.QtPdf",
-        "PySide6.QtSql",
-        "PySide6.QtNetwork",
-        "PySide6.QtSvg",
-        "PySide6.QtOpenGL",
-        "PySide6.QtPrintSupport",
-        "PySide6.QtTest",
+        "pytest",
     )
     for script in (win, mac):
+        assert "--enable-plugin=pyside6" in script
         for mod in expected_excludes:
-            assert f"--exclude-module {mod}" in script, mod
+            assert f"--nofollow-import-to={mod}" in script, mod
 
 
 def test_requirements_include_pyside6():
@@ -65,6 +52,7 @@ def test_requirements_include_pyside6():
     req_qt = (ROOT / "requirements-qt.txt").read_text(encoding="utf-8")
     assert "PySide6==6.12.0" in req
     assert "PySide6==6.12.0" in req_qt
+    assert "nuitka" in req
 
 
 def test_macos_build_script_registers_the_luckytwitch_scheme_before_codesign():
