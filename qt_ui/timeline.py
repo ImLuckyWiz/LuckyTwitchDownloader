@@ -463,15 +463,18 @@ class Timeline(QWidget):
         self.btn_fit = QPushButton("Fit")
         self.btn_fit.setIcon(icon("fit", 16))
         self.btn_fit.setToolTip("Show the whole VOD  (0)")
+        self.btn_fit.setAccessibleName("Fit timeline to window")
         self.btn_fit.clicked.connect(self.zoom_fit)
         self.btn_undo = QPushButton("Undo")
         self.btn_undo.setIcon(icon("undo", 16))
         self.btn_undo.setToolTip("Undo the last edit  (Ctrl+Z)")
+        self.btn_undo.setAccessibleName("Undo last cut edit")
         self.btn_undo.setEnabled(False)
         self.btn_undo.clicked.connect(self.undo)
         self.btn_redo = QPushButton("Redo")
         self.btn_redo.setIcon(icon("redo", 16))
         self.btn_redo.setToolTip("Redo the edit you took back  (Ctrl+Y)")
+        self.btn_redo.setAccessibleName("Redo last undone cut edit")
         self.btn_redo.setEnabled(False)
         self.btn_redo.clicked.connect(self.redo)
         for b in (self.btn_out, self.btn_in, self.btn_fit):
@@ -504,6 +507,8 @@ class Timeline(QWidget):
         outer.addLayout(bar)
 
         self.canvas = TimelineCanvas(self)
+        self.canvas.setAccessibleName("Interactive VOD timeline")
+        self.canvas.setAccessibleDescription("Interactive timeline strip for cutting and isolating segments")
         outer.addWidget(self.canvas)
 
         self.minimap = TimelineMinimap(self)

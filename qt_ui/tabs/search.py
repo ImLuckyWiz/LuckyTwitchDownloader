@@ -116,6 +116,7 @@ class SearchTab(QWidget):
     status_message = Signal(str)
     signin_requested = Signal()
     vod_chosen = Signal(str)
+    avatar_ready = Signal(str, str)
 
     def __init__(self, bridge: Bridge | None = None, parent: QWidget | None = None):
         super().__init__(parent)
@@ -157,6 +158,7 @@ class SearchTab(QWidget):
         self.bridge.videos_ok.connect(self.on_videos_ok)
         self.bridge.videos_err.connect(self.on_videos_err)
         self.bridge.thumb.connect(self.on_thumb)
+        self.avatar_ready.connect(self._on_avatar_ready)
         self.results_view.selectionModel().selectionChanged.connect(self._results_selected)
         self.recent_view.selectionModel().selectionChanged.connect(self._recent_selected)
         self.refresh_recent()  # fills the recent list and shows the empty-state messages
@@ -250,6 +252,7 @@ class SearchTab(QWidget):
         self.list_mode_btn = QToolButton()
         self.list_mode_btn.setIcon(icon("list-view", 16))
         self.list_mode_btn.setToolTip("List view")
+        self.list_mode_btn.setAccessibleName("Switch to list table view")
         self.list_mode_btn.setCheckable(True)
         self.list_mode_btn.setChecked(True)
         self.list_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -259,6 +262,7 @@ class SearchTab(QWidget):
         self.grid_mode_btn = QToolButton()
         self.grid_mode_btn.setIcon(icon("grid", 16))
         self.grid_mode_btn.setToolTip("Grid view")
+        self.grid_mode_btn.setAccessibleName("Switch to grid card view")
         self.grid_mode_btn.setCheckable(True)
         self.grid_mode_btn.setChecked(False)
         self.grid_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -366,6 +370,11 @@ class SearchTab(QWidget):
         self.signin_bar.setVisible(not signed_in)
         self.search_btn.setEnabled(signed_in)
         self.refresh_search_empty_states()
+        if signed_in:
+            if self.recent:
+                self._spawn_avatar_fetch(self.recent, for_results=False)
+            if self.sv_results:
+                self._spawn_avatar_fetch(self.sv_results, for_results=True)
 
     def refresh_search_empty_states(self) -> None:
         """Show a friendly message over each list of the tab that has nothing in it (and only then)."""
@@ -407,6 +416,8 @@ class SearchTab(QWidget):
     def refresh_recent(self) -> None:
         self.recent_model.set_channels(self.recent)
         self.refresh_search_empty_states()
+        if self.client and self.recent:
+            self._spawn_avatar_fetch(self.recent, for_results=False)
 
     def add_recent(self, ch: dict) -> None:
         entry = {"id": ch["id"], "login": ch.get("login", ""), "name": ch.get("name") or ch.get("login", "")}
@@ -617,56 +628,68 @@ class SearchTab(QWidget):
         self.vod_chosen.emit(video["url"])
 
 
+    def _on_avatar_ready(self, cid: str, path: str) -> None:
+        """Invoked on the GUI thread when a channel avatar image is ready on disk."""
+        if getattr(self, "_closing", False):
+            return
+        from qt_ui.search_models import load_avatar
+        pix = load_avatar(path)
+        if pix is not None and not pix.isNull():
+            self.results_model.set_avatar(cid, pix)
+            self.recent_model.set_avatar(cid, pix)
+
     def _spawn_avatar_fetch(self, channels: list[dict], for_results: bool = True) -> None:
         if not self.client or not channels:
             return
         client = self.client
-        gen = self.sv_gen
-
-        def on_avatar(cid: str, path: str):
-            # Delivered to main/GUI thread via QTimer
-            from PySide6.QtCore import QTimer
-            from qt_ui.search_models import load_thumb
-            def apply():
-                if self.sv_gen != gen:
-                    return
-                pix = load_thumb(path)
-                if pix is not None and not pix.isNull():
-                    if for_results:
-                        self.results_model.set_avatar(cid, pix)
-                    else:
-                        self.recent_model.set_avatar(cid, pix)
-            QTimer.singleShot(0, apply)
+        model = self.results_model if for_results else self.recent_model
+        needed = [c for c in channels if c.get("id") and not model.has_avatar(str(c["id"]))]
+        if not needed:
+            return
 
         threading.Thread(target=_fetch_channel_avatars,
-                         args=(client, list(channels), on_avatar, lambda: self.sv_gen, gen),
+                         args=(client, list(needed), self.avatar_ready.emit, lambda: not getattr(self, "_closing", False)),
                          daemon=True).start()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        from PySide6.QtCore import QTimer
+        def focus_search():
+            if not getattr(self, "_closing", False) and hasattr(self, "search_edit"):
+                self.search_edit.setFocus()
+                self.search_edit.selectAll()
+        QTimer.singleShot(0, focus_search)
 
     def shutdown(self) -> None:
         """The window is closing: the thumbnail threads end."""
+        self._closing = True
         self.thumbs.stop()
 
 
-def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, gen_fn, current_gen) -> None:
-    """Background worker: fetches Twitch profile pictures for channels and invokes on_avatar_cb(cid, pixmap)."""
+def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active_cb) -> None:
+    """Background worker: fetches Twitch profile pictures for channels and invokes on_avatar_cb(cid, path)."""
     if not client or not channels:
         return
     uids = [str(c.get("id")) for c in channels if c.get("id")]
     if not uids:
         return
     try:
-        # Twitch Helix /users endpoint accepts multiple id params: ?id=1&id=2...
-        params = [("id", uid) for uid in uids[:50]]
-        # client.get expects a dict or params tuple list
-        data = client.get("users", dict(params)).get("data", [])
-        for u in data:
-            if gen_fn() != current_gen:
+        # Helix /users endpoint accepts multiple id params: ?id=1&id=2...
+        # In requests, passing params={"id": [u1, u2, ...]} produces ?id=u1&id=u2...
+        # Twitch Helix accepts up to 100 IDs per request.
+        for i in range(0, len(uids), 100):
+            if not is_active_cb():
                 return
-            uid = str(u.get("id", ""))
-            pic_url = u.get("profile_image_url")
-            if uid and pic_url:
-                path = fetch_thumbnail(pic_url)
-                if path and gen_fn() == current_gen:
-                    on_avatar_cb(uid, str(path))
+            batch = uids[i:i + 100]
+            data = client.get("users", {"id": batch}).get("data", [])
+            for u in data:
+                if not is_active_cb():
+                    return
+                uid = str(u.get("id", ""))
+                pic_url = u.get("profile_image_url")
+                if uid and pic_url:
+                    path = fetch_thumbnail(pic_url)
+                    if path and is_active_cb():
+                        on_avatar_cb(uid, str(path))
     except Exception:
         pass

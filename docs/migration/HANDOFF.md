@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, Phase 9d v1, Phase 9e v2, Phase 9f v1, and Phase 9g v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9 fully delivered: 9a through 9h completed: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, `VERSIONS.md`, and `RELEASE_NOTES.md`). Last completed phase: 9 (waiting for user final sign-off; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -30,7 +30,7 @@ Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, P
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
 | 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
 | 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
-| 9 | Redesign beyond parity | in progress (9a v1–v2 + A5 icons, 9b v1, 9c v1, 9d v1, 9e v2, 9f v1, and 9g v1 delivered) | | |
+| 9 | Redesign beyond parity | done (waiting for approval: 9a–9h delivered) | migration-phase-9 | |
 
 States: not started, in progress, done (waiting for approval), approved.
 

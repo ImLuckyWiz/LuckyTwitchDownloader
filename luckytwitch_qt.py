@@ -13,6 +13,7 @@ to the running app.
 
 from __future__ import annotations
 
+import signal
 import sys
 
 from PySide6.QtCore import QEvent, QTimer, Signal
@@ -59,6 +60,31 @@ def main(argv: list[str] | None = None) -> int:
     window.start_tools_setup()
     if link:
         QTimer.singleShot(300, lambda: window.open_link(link))
+
+    # Allow closing cleanly via Ctrl+C from a terminal without spamming tracebacks
+    def _sigint_handler(*_args):
+        window.close()
+        app.quit()
+
+    try:
+        signal.signal(signal.SIGINT, _sigint_handler)
+    except (ValueError, AttributeError):
+        pass
+
+    def _excepthook(exc_type, exc_val, tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            window.close()
+            app.quit()
+            return
+        sys.__excepthook__(exc_type, exc_val, tb)
+
+    sys.excepthook = _excepthook
+
+    # Wake Python interpreter periodically so SIGINT / Ctrl+C is caught during Qt's event loop
+    sig_timer = QTimer(window)
+    sig_timer.timeout.connect(lambda: None)
+    sig_timer.start(200)
+
     return app.exec()
 
 

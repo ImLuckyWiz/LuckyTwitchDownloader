@@ -978,3 +978,43 @@ def test_channel_model_renders_real_avatar_pixmap_when_set(qtbot, tab, tmp_path)
     rect = tab.results_view.visualRect(tab.results_model.index(0, 0))
     # Probe inside circular avatar area
     assert img.pixelColor(rect.left() + 20, rect.center().y()) == QColor("#9933cc")
+
+def test_spawn_avatar_fetch_downloads_profile_pictures_for_all_channels(qtbot, tab, session, tmp_path, monkeypatch):
+    class FakeClient:
+        def __init__(self):
+            self.calls = []
+        def get(self, endpoint, params):
+            self.calls.append((endpoint, params))
+            if endpoint == "users":
+                return {
+                    "data": [
+                        {"id": "10", "profile_image_url": "https://img.test/10.png"},
+                        {"id": "20", "profile_image_url": "https://img.test/20.png"},
+                    ]
+                }
+            return {}
+
+    client = FakeClient()
+    session.client = client
+    tab.update_search_state()
+
+    p10 = png(tmp_path / "10.png", colour="#ff0000", size=(48, 48))
+    p20 = png(tmp_path / "20.png", colour="#00ff00", size=(48, 48))
+    thumbs_map = {"https://img.test/10.png": p10, "https://img.test/20.png": p20}
+    monkeypatch.setattr(search_tab, "fetch_thumbnail", lambda url: thumbs_map.get(url))
+
+    tab.results_model.set_channels([
+        dict(id="10", login="ch10", name="Channel 10"),
+        dict(id="20", login="ch20", name="Channel 20"),
+    ])
+
+    tab._spawn_avatar_fetch(tab.results_model.channels, for_results=True)
+
+    # Even if sv_gen changes (e.g. user selected a channel), avatars should still populate
+    tab.sv_gen += 1
+
+    qtbot.waitUntil(lambda: tab.results_model.has_avatar("10") and tab.results_model.has_avatar("20"), timeout=3000)
+    assert not tab.results_model.index(0, 0).data(search_models.AVATAR_ROLE).isNull()
+    assert not tab.results_model.index(1, 0).data(search_models.AVATAR_ROLE).isNull()
+    assert ("users", {"id": ["10", "20"]}) in client.calls
+

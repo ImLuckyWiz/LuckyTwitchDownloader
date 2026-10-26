@@ -1,12 +1,17 @@
 ## v2.0.0
 
-LuckyTwitch Downloader now runs on **Qt 6 (PySide6)** instead of tkinter. Every feature, setting, file format, and workflow is unchanged, and your existing settings, Twitch login, recent streamers, and downloaded tools carry over automatically.
+LuckyTwitch Downloader now runs on **Qt 6 (PySide6)** with a completely reimagined, modern dark interface, crisp High-DPI vector iconography, and professional-grade workflow enhancements while preserving 100% backward compatibility with your settings, Twitch login, recent streamers, and Premiere Pro plugins.
 
-### What changed in 2.0
-- **New Qt 6 interface, same workflow:** all four tabs (**Search**, **Plan**, **Options**, **Queue & log**), the interactive **Timeline** with storyboard thumbnails and muted-audio stretches, **Twitch sign-in**, **chat overlay rendering**, **`luckytwitch://` links**, and both **Premiere Pro plugins** work the same way as in v1.16.0.
-- **Seamless upgrade from 1.x:** the installer upgrades in place and reads the same `luckytwitch_settings.json`, `config.json`, `luckytwitch_recent.json`, and `tools` folder—no need to sign in again or reconfigure templates.
-- **Smoother layout and High-DPI rendering:** crisp text and icons on High-DPI displays on Windows and macOS, native smooth scrolling that never accidentally changes a spin box or drop-down under the mouse wheel, and responsive `QPainter` timeline rendering.
-- **Tested parity:** 354 new automated Qt and core tests run alongside the existing engine and Premiere plugin suites in CI on Windows and macOS.
+### What's new in 2.0:
+- **Reimagined Modern Dark Interface:** Designed from the ground up on Qt 6 with a full-height collapsible left navigation rail, unified command bar, quick VOD strip, and modern card layouts.
+- **Custom Vector Iconography:** 33 bespoke vector icons rendered pin-sharp at any display resolution or High-DPI scaling factor.
+- **Streamer Discovery & Rich VOD Views:** Instant streamer list with real Twitch profile avatars and bold red `LIVE` badges. Toggle between compact Table view and visual 16:9 Card Grid view with skeleton loading states, instant client-side title filter, and automatic infinite scrolling. Smart URL input automatically detects streamer handles and routes to Search.
+- **Two-Column Responsive Plan Workspace:** Cut points and Clips view arrange side-by-side on wide screens. Interactive visual Part cards with game-colour stripes and smooth auto-looping marquee text for long titles. Instant strategy segmented control (`Auto`, `Full VOD + split`, `Only the parts`) and visual VOD coverage meter. Proportional view bars and one-click quick selection on clips.
+- **Advanced Interactive Timeline:** Visual part pills with diagonal hatching for skipped sections, full-VOD overview minimap with draggable lens, interactive game legend chips with duration totals and isolate/highlight modes, green clip flags with hover metadata and auto-clustering, keyboard editing (`S` to split, `Delete`, arrow nudging, `Ctrl+Y` redo), non-blocking right-click context menu, and animated loading shimmer.
+- **Rich Queue & Smart Collapsible Log Drawer:** Queue rows feature 16:9 storyboard thumbnails, bold titles, coloured status chips, in-row progress bars, and one-click `Open` buttons. Real-time summary header with grouped actions. Log drawer collapses to a 1-line colour-coded preview, auto-expands on errors, and adds severity filters (`All`, `Warnings`, `Errors`), log search, autoscroll pause, and log export. Thread-safe retry and live drag-and-drop / button reordering.
+- **Searchable Options & Live Disk Space Preview:** Instant settings search filtering across all 7 sections with match counter and auto-expanding cards. Visual changed-from-default markers (`●`) with per-row Reset buttons and sidebar change count badges. Live output file path preview and real-time disk space gauge. Dedicated status rows for `yt-dlp` and `ffmpeg` with direct update actions.
+- **Themed Modal Dialogs & Screen Reader Accessibility:** Replaced native OS message boxes with sleek dark themed dialogs featuring vector status icons, clean titles, user-friendly summaries, and expandable technical error folds with a one-click `Copy details` button. Full accessibility names and descriptions across all icon controls.
+- **Seamless Upgrade from 1.x:** 100% drop-in replacement. Reads your existing `luckytwitch_settings.json`, `config.json`, and `tools/` folder. Backed by 731 automated Qt tests.
 
 ## v1.16.0
 

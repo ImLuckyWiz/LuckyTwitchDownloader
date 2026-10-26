@@ -94,6 +94,7 @@ class TwitchDialog(QDialog):
         from PySide6.QtWidgets import QToolButton
         self.copy_code_btn = QToolButton()
         self.copy_code_btn.setText("Copy code")
+        self.copy_code_btn.setAccessibleName("Copy activation code to clipboard")
         self.copy_code_btn.setIcon(icon("copy", 14))
         self.copy_code_btn.setProperty("variant", "ghost")
         self.copy_code_btn.setVisible(False)

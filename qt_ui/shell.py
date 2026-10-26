@@ -62,6 +62,8 @@ class _RailButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.setMinimumHeight(40)
+        self.setAccessibleName(RAIL_ITEMS.get(index, ("", "", "", ""))[2] or key.capitalize())
+        self.setAccessibleDescription(f"Navigate to {self.accessibleName()} tab")
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         if event.key() == Qt.Key.Key_Down:
@@ -76,13 +78,13 @@ class _RailButton(QPushButton):
 
 
 class NavRail(QFrame):
-    """Left vertical navigation rail (56 px collapsed, 176 px expanded; Phase 9b, B1)."""
+    """Left vertical navigation rail (46 px collapsed, 134 px expanded; Phase 9b, B1)."""
 
     currentChanged = Signal(int)
     expandedChanged = Signal(bool)
 
-    COLLAPSED_WIDTH = 56
-    EXPANDED_WIDTH = 176
+    COLLAPSED_WIDTH = 46
+    EXPANDED_WIDTH = 134
 
     def __init__(self, expanded: bool = False, parent: QWidget | None = None):
         super().__init__(parent)
@@ -119,6 +121,8 @@ class NavRail(QFrame):
         self.toggle_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.toggle_btn.setMinimumHeight(36)
         self.toggle_btn.setToolTip("Expand or collapse navigation rail")
+        self.toggle_btn.setAccessibleName("Toggle navigation sidebar")
+        self.toggle_btn.setAccessibleDescription("Expand or collapse the sidebar navigation rail")
         self.toggle_btn.clicked.connect(self.toggle_expanded)
         lay.addWidget(self.toggle_btn)
 
@@ -321,6 +325,7 @@ class CommandBar(QFrame):
         self.vod_action_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.vod_action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.vod_action_btn.setToolTip("Paste from clipboard")
+        self.vod_action_btn.setAccessibleName("Paste VOD URL or clear input")
         self.vod_action_btn.clicked.connect(self._on_vod_action)
         row.addWidget(self.vod_action_btn)
 
@@ -436,6 +441,7 @@ class VodStrip(QFrame):
         self.open_btn.setIcon(icon("external-link", 14))
         self.open_btn.setProperty("variant", "ghost")
         self.open_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.open_btn.setAccessibleName("Open VOD on Twitch in browser")
         self.open_btn.clicked.connect(self.open_on_twitch)
         lay.addWidget(self.open_btn)
 
@@ -443,6 +449,7 @@ class VodStrip(QFrame):
         self.clear_btn.setIcon(icon("x", 14))
         self.clear_btn.setProperty("variant", "ghost")
         self.clear_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.clear_btn.setAccessibleName("Clear loaded VOD")
         self.clear_btn.clicked.connect(self.clear_requested.emit)
         lay.addWidget(self.clear_btn)
 

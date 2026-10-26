@@ -1,10 +1,22 @@
+## Phase 9h: Final Polish, Themed Dialogs & Release Readiness  (2026-10-26, version 1 delivered)
+**Done (9h v1, see VERSIONS.md):**
+- **H1 & H2 — Themed Dialogs (`ThemedDialog`, `info`, `warning`, `error`, `ask_yes_no`, `ask_ok_cancel` in `qt_ui/dialogs.py`, `qt_ui/theme.py`):** custom dark modal dialogs styled to palette design tokens (`BG2`, `BORDER_STRONG`, `R_CARD`), vector status icons (`info`, `alert`, `check`, `x`), separate title and user-friendly summary, expandable technical error fold (`QPlainTextEdit#dialogDetails`, monospace font, hidden by default), and a one-click `Copy details` button with clipboard copy and `Copied!` visual confirmation.
+- **I1 & I2 — Accessibility Attributes (`setAccessibleName`, `setAccessibleDescription` across `qt_ui/shell.py`, `qt_ui/timeline.py`, `qt_ui/tabs/search.py`, `qt_ui/twitch_dialog.py`):** descriptive screen-reader labels for all icon-only buttons (NavRail, CommandBar, VodStrip, Timeline zoom/fit/undo/redo controls, and Search List/Grid switcher).
+- **Navigation Rail Full-Height Restructure (`qt_ui/main_window.py`):** restructured central layout (`root_lay = QHBoxLayout(central)`) so the left navigation rail spans the full window height, keeping the command bar, tab views, and status bar organized in the right pane.
+- **Smart Streamer Input Detection (`extract_channel_input` in `qt_ui/main_window.py`):** entering a streamer handle or channel URL into the top VOD bar automatically transitions to the Search tab, populates the query, and triggers search.
+- **Terminal Ctrl+C Clean Exit (`luckytwitch_qt.py`):** installed `signal.SIGINT` handler, 200 ms non-blocking timer for Python signal dispatch, and `sys.excepthook` override for silent clean exit.
+- **New tests (`tests/test_qt_dialogs.py`):** 5 new tests covering dialog rendering, summary/detail splitting, clipboard copy, modal accept/reject, and accessibility labels (**5 passed** in `test_qt_dialogs.py`; **731 passed** in full Qt suite).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 28.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** full Qt test suite `python -m pytest tests/ -k "qt" -q` -> **731 passed** in 98.24s.
+**Still open:** none (Phase 9 complete!).
+
 ## Phase 9g: The Search Page & Twitch Sign-In  (2026-10-26, version 1 delivered)
 **Done (9g v1, see VERSIONS.md):**
-- **C1 & C5 — Streamer Avatars & Red LIVE Badge (`ChannelDelegate`, `channel_avatar_colour` in `qt_ui/search_models.py`, `qt_ui/tabs/search.py`):** 24 px circular avatar with deterministic hue and initial letter, streamer name, and bold red `LIVE` badge (`#eb0400`) on live channels.
+- **C1 & C5 — Streamer Avatars & Red LIVE Badge (`ChannelDelegate`, `load_avatar`, `channel_avatar_colour` in `qt_ui/search_models.py`, `qt_ui/tabs/search.py`):** 24 px circular avatar with real Twitch profile picture fetched via Helix `/users` (and deterministic hue + initial letter fallback while loading or offline), streamer name, and bold red `LIVE` badge (`#eb0400`) on live channels.
 - **C2 & C3 — List / Grid View Switcher & Skeleton Tiles (`VodGridView`, `VodGridDelegate`, `ThumbDelegate` in `qt_ui/search_models.py`, `qt_ui/tabs/search.py`):** `list_mode_btn` and `grid_mode_btn` switch `vod_stack` between `VodTable` and `VodGridView` (shared `VodModel` and `selectionModel`, 220x192 cards with 16:9 thumbnail, duration badge, 2-line title, `date · views`, hover lift, and `BG3` skeleton tiles).
 - **C4 — Client-Side Title Filter & Infinite Scroll (`vod_filter_edit`, `_on_vod_scroll` in `qt_ui/tabs/search.py`):** instant substring filtering across title/date in both table and grid views, plus automatic next-page loading when scrolled to the bottom.
 - **H1 — Twitch Sign-In Copy Code Button (`copy_code_btn` in `qt_ui/twitch_dialog.py`):** one-click `Copy code` button next to `#loginCode` with clipboard copy and `Copied!` state.
-- **New tests (`tests/test_qt_search_tab.py`, `tests/test_qt_twitch_dialog.py`):** 5 new Phase 9g tests (112 total across both files, all passing).
+- **New tests (`tests/test_qt_search_tab.py`, `tests/test_qt_twitch_dialog.py`):** 5 new Phase 9g tests (114 total across both files, all passing).
 **Divergences from the tkinter app:** MIGRATION_LOG.md no. 27.
 **What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `test_qt_search_tab.py` + `test_qt_twitch_dialog.py` -> **112 passed** in 9.88s.
 **Still open:** Phase 9h (final polish, accessibility & DPI check, screenshots, release notes).

@@ -170,3 +170,32 @@ def test_main_builds_the_window_from_the_saved_settings_and_saves_them_on_close(
     assert not paths.SETTINGS_PATH.exists()  # nothing is written until the window closes
     window.close()
     assert paths.SETTINGS_PATH.exists()  # Phase 3: saved on close, same file and keys as the tkinter app
+
+def test_extract_channel_input_and_get_info_auto_search(win, monkeypatch):
+    searches = []
+    monkeypatch.setattr(win.tab_search, "on_search", lambda: searches.append(win.tab_search.search_edit.text()))
+
+    # Switch to Plan tab first
+    win.show_plan_tab()
+    assert win.tabs.currentIndex() == 1
+
+    # Enter a streamer name into VOD bar and click Get info
+    win.vod_entry.setText("illojuan")
+    win.on_get_info()
+
+    # Automatically switches to Search tab, populates search input, and starts search
+    assert win.tabs.currentIndex() == 0
+    assert win.tab_search.search_edit.text() == "illojuan"
+    assert searches == ["illojuan"]
+
+
+def test_extract_channel_input_handles_urls_and_handles():
+    from qt_ui.main_window import extract_channel_input
+    assert extract_channel_input("illojuan") == "illojuan"
+    assert extract_channel_input("@illojuan") == "illojuan"
+    assert extract_channel_input("https://www.twitch.tv/illojuan") == "illojuan"
+    assert extract_channel_input("twitch.tv/illojuan") == "illojuan"
+    assert extract_channel_input("https://twitch.tv/illojuan?test=1") == "illojuan"
+    assert extract_channel_input("2281234567") is None
+    assert extract_channel_input("https://www.twitch.tv/videos/2281234567") is None
+

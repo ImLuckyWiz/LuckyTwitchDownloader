@@ -215,6 +215,15 @@ QPushButton[variant="pill"]:hover { background-color: ${ACCENT}; }
 QFrame#toastCard { background-color: ${BG3}; border: 1px solid ${BORDER_STRONG}; border-radius: ${R_CARD}px; }
 QFrame#onboardingCard { background-color: ${BG2}; border: 1px dashed ${BORDER_STRONG}; border-radius: ${R_CARD}px; }
 
+/* ---- themed dialogs (Phase 9h, H1, H2) ---- */
+QDialog#themedDialog { background-color: ${BG2}; border: 1px solid ${BORDER_STRONG}; border-radius: ${R_CARD}px; }
+QPlainTextEdit#dialogDetails { background-color: ${BG}; border: 1px solid ${BORDER}; border-radius: ${R_INPUT}px; padding: 6px; }
+QPushButton[variant="destructive"] {
+    background-color: #dc2626; color: ${WHITE}; border: 1px solid #b91c1c; font-weight: bold; border-radius: ${R_BTN}px;
+}
+QPushButton[variant="destructive"]:hover { background-color: #ef4444; }
+QPushButton[variant="destructive"]:pressed { background-color: #991b1b; }
+
 /* ---- progress bar ---- */
 QProgressBar { background-color: ${BG2}; border: none; min-height: 18px; max-height: 18px; text-align: center; }
 QProgressBar::chunk { background-color: ${ACCENT}; }

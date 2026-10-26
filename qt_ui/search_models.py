@@ -56,6 +56,16 @@ def load_thumb(path: str) -> QPixmap | None:
     return None if pix.isNull() else pix
 
 
+def load_avatar(path: str, size: int = 48) -> QPixmap | None:
+    """The file as an avatar pixmap (square, high-DPI ready), or None when unreadable. GUI thread only."""
+    image = QImage(path)
+    if image.isNull():
+        return None
+    pix = QPixmap.fromImage(image.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                         Qt.TransformationMode.SmoothTransformation))
+    return None if pix.isNull() else pix
+
+
 class ThumbCache:
     """Row id -> QPixmap, at most ``limit`` of them; the least recently used is dropped first."""
 
@@ -114,6 +124,9 @@ class ChannelModel(QAbstractListModel):
         self.beginResetModel()
         self.channels = list(channels)
         self.endResetModel()
+
+    def has_avatar(self, channel_id: str) -> bool:
+        return str(channel_id) in self._avatars
 
     def set_avatar(self, channel_id: str, pix: QPixmap) -> None:
         cid = str(channel_id)

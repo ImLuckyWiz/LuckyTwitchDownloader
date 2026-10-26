@@ -55,6 +55,29 @@ def extract_vod_input(text: str) -> str | None:
     return None
 
 
+_CHANNEL_URL_RE = re.compile(r"^(?:https?://)?(?:www\.|m\.)?twitch\.tv/([a-zA-Z0-9_]{3,30})(?:[/?#].*)?$", re.I)
+_CHANNEL_HANDLE_RE = re.compile(r"^@?([a-zA-Z0-9_]{3,30})$")
+RESERVED_TWITCH = {"videos", "video", "directory", "p", "settings", "inventory", "downloads", "subscriptions", "wallet"}
+
+
+def extract_channel_input(text: str) -> str | None:
+    """Return a Twitch channel/streamer name if text looks like a handle or channel URL, else None."""
+    s = (text or "").strip()
+    if not s or extract_vod_input(s):
+        return None
+    m_url = _CHANNEL_URL_RE.match(s)
+    if m_url:
+        user = m_url.group(1).lower()
+        if user not in RESERVED_TWITCH:
+            return user
+    m_handle = _CHANNEL_HANDLE_RE.match(s)
+    if m_handle:
+        user = m_handle.group(1).lower()
+        if not user.isdigit():
+            return user
+    return None
+
+
 def _weak(method):
     """A function that calls ``method`` while its object lives, and does nothing (returns None) afterwards."""
     ref = weakref.WeakMethod(method)
@@ -118,13 +141,19 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
         central = QWidget(self)
-        outer = QVBoxLayout(central)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
+        root_lay = QHBoxLayout(central)
+        root_lay.setContentsMargins(0, 0, 0, 0)
+        root_lay.setSpacing(0)
         self.setCentralWidget(central)
 
+        # Right: Main content pane (constructed first to preserve top-to-bottom tab order)
+        main_pane = QWidget(central)
+        main_lay = QVBoxLayout(main_pane)
+        main_lay.setContentsMargins(0, 0, 0, 0)
+        main_lay.setSpacing(0)
+
         # Top command bar + loaded-VOD strip (Phase 9b, B2, B3, B4)
-        top_wrap = QWidget(central)
+        top_wrap = QWidget(main_pane)
         top_lay = QVBoxLayout(top_wrap)
         top_lay.setContentsMargins(10, 8, 10, 4)
         top_lay.setSpacing(6)
@@ -145,16 +174,16 @@ class MainWindow(QMainWindow):
         self.vod_strip.clicked.connect(self.show_plan_tab)
         self.vod_strip.clear_requested.connect(self.clear_vod)
         top_lay.addWidget(self.vod_strip)
-        outer.addWidget(top_wrap)
+        main_lay.addWidget(top_wrap)
 
-        # Middle shell: Left Navigation Rail + PageStack (Phase 9b, B1)
-        tabs_box = QWidget(central)
-        tabs_lay = QHBoxLayout(tabs_box)
-        tabs_lay.setContentsMargins(0, 0, 10, 4)
-        tabs_lay.setSpacing(8)
+        # Left: Navigation Rail (spans full window height)
+        self.rail = NavRail(expanded=False, parent=central)
 
-        self.rail = NavRail(expanded=False, parent=tabs_box)
-        tabs_lay.addWidget(self.rail)
+        # Middle shell: PageStack
+        tabs_box = QWidget(main_pane)
+        tabs_lay = QVBoxLayout(tabs_box)
+        tabs_lay.setContentsMargins(10, 0, 10, 4)
+        tabs_lay.setSpacing(0)
 
         self.tabs = PageStack(self.rail, parent=tabs_box)
         self.tab_search, self.tab_plan, self.tab_options, self.tab_queue = (
@@ -162,11 +191,12 @@ class MainWindow(QMainWindow):
         )
         for widget, name in zip((self.tab_search, self.tab_plan, self.tab_options, self.tab_queue), TAB_NAMES):
             self.tabs.addTab(widget, _tab_text(name))
-        tabs_lay.addWidget(self.tabs, 1)
-        outer.addWidget(tabs_box, 1)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        tabs_lay.addWidget(self.tabs)
+        main_lay.addWidget(tabs_box, 1)
 
         # Bottom compact status bar: 3 px progress bar along top edge + status line + activity pill (Phase 9b, B7)
-        bottom = QFrame(central)
+        bottom = QFrame(main_pane)
         bottom.setObjectName("statusBar")
         bot = QVBoxLayout(bottom)
         bot.setContentsMargins(0, 0, 0, 0)
@@ -193,7 +223,11 @@ class MainWindow(QMainWindow):
         self.activity_pill.clicked.connect(self.show_queue_tab)
         status_row.addWidget(self.activity_pill)
         bot.addLayout(status_row)
-        outer.addWidget(bottom)
+        main_lay.addWidget(bottom)
+
+        # Layout placements: NavRail on the far left, main pane on the right
+        root_lay.addWidget(self.rail)
+        root_lay.addWidget(main_pane, 1)
 
         # Keyboard order of the top bar, then the tabs/rail
         self.setTabOrder(self.vod_entry, self.info_btn)
@@ -405,8 +439,16 @@ class MainWindow(QMainWindow):
     def output_dir(self) -> str:
         return self.settings.get("out_dir", "")
 
+    def _on_tab_changed(self, index: int) -> None:
+        if index == 0 and hasattr(self, "tab_search"):
+            self.tab_search.search_edit.setFocus()
+            self.tab_search.search_edit.selectAll()
+
     def show_search_tab(self) -> None:
         self.tabs.setCurrentWidget(self.tab_search)
+        if hasattr(self, "tab_search"):
+            self.tab_search.search_edit.setFocus()
+            self.tab_search.search_edit.selectAll()
 
     def show_plan_tab(self) -> None:
         self.tabs.setCurrentWidget(self.tab_plan)
@@ -675,6 +717,14 @@ class MainWindow(QMainWindow):
     def on_get_info(self) -> None:
         text = self.vod_entry.text().strip()
         if not text:
+            return
+        channel = extract_channel_input(text)
+        if channel:
+            self.show_search_tab()
+            self.tab_search.search_edit.setText(channel)
+            self.tab_search.search_edit.setFocus()
+            self.tab_search.search_edit.selectAll()
+            self.tab_search.on_search()
             return
         if self.tools_busy:
             self.set_status("Still preparing yt-dlp / ffmpeg, one moment…")
