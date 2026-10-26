@@ -459,30 +459,28 @@ class PlanTab(ScrollPage):
         frow.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         fgrid = QGridLayout(frow)
         fgrid.setContentsMargins(0, 0, 0, 8)
-        fgrid.setHorizontalSpacing(14)
+        fgrid.setHorizontalSpacing(8)
         fgrid.setVerticalSpacing(6)
+        fgrid.setColumnMinimumWidth(2, 20)
+        fgrid.setColumnStretch(5, 1)
         self.filter_spins: dict[str, SpinBox] = {}
 
         def add_filter_field(row: int, col: int, label: str, name: str, width: int = 5) -> None:
-            cell = QWidget()
-            clay = QHBoxLayout(cell)
-            clay.setContentsMargins(0, 0, 0, 0)
-            clay.setSpacing(6)
             lbl = QLabel(label)
             lbl.setProperty("role", "muted")
-            clay.addWidget(lbl)
             sp = SpinBox(0, 1_000_000, width)
             self.binder.bind(name, sp)
             sp.valueChanged.connect(self._on_filter_spin)
-            clay.addWidget(sp)
-            clay.addStretch(1)
-            fgrid.addWidget(cell, row, col)
+            c_label = 0 if col == 0 else 3
+            c_spin = 1 if col == 0 else 4
+            fgrid.addWidget(lbl, row, c_label, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            fgrid.addWidget(sp, row, c_spin, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.filter_spins[name] = sp
 
-        add_filter_field(0, 0, "Min views", "min_views", 6)
+        add_filter_field(0, 0, "Min views", "min_views", 5)
         add_filter_field(0, 1, "Min duration (s)", "min_duration", 5)
         add_filter_field(1, 0, "Top N (0 = all)", "top_n", 5)
-        add_filter_field(1, 1, "Lead-in (s)", "pad_before", 4)
+        add_filter_field(1, 1, "Lead-in (s)", "pad_before", 5)
         self.clips_card.add_widget(frow)
 
         # D4: Multi-select toolbar above the clips table
