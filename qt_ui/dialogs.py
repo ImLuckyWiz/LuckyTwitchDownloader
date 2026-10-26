@@ -46,3 +46,9 @@ def open_file(parent: QWidget | None, title: str, start: str = "", name_filter: 
     ``""`` when the person cancels."""
     path, _chosen = QFileDialog.getOpenFileName(parent, title, start, name_filter)
     return path
+
+
+def save_file(parent: QWidget | None, title: str, start: str = "", name_filter: str = "Text files (*.txt);;All files (*.*)") -> str:
+    """The system's save-file picker (Phase 9c, F3 «Save log…»). ``""`` when the person cancels."""
+    path, _chosen = QFileDialog.getSaveFileName(parent, title, start, name_filter)
+    return path

@@ -1,5 +1,31 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9c v1 (includes 9a A5 icons)  (2026-10-26)  The Queue page: rich rows delegate, real-time header counters, collapsible log drawer with filters/search/export, retry & live reorder, plus A5 vector icon layer
+
+**Done (new or changed files):**
+- qt_ui/icons.py (new, from phase-9a-icons-v1.zip), 	ests/test_qt_icons.py (new, 144 tests), 	ools/widget_gallery.py: A5 vector QPainterPath icon layer on a 24x24 grid (icon(), pixmap(), _VectorIconEngine, HiDPI-aware caching) wired into qt_ui/shell.py (NavRail, CommandBar, VodStrip) and qt_ui/tabs/queue.py.
+- qt_ui/queue_model.py: added ITEM_ROLE and PROGRESS_ROLE, progress/progress_text/	humb fields on QueueItem, 	hreading.RLock() (self._lock), set_progress, set_running_progress, set_thumbnail, move_row, move_item, 
+etry_item, 
+ext_queued, counts, and header_summary (N done · N running · N waiting · N failed).
+- qt_ui/queue_runner.py: updated QueueRunner.start(items, model=None) to pull the next queued item dynamically from model in current row order under model._lock while tracking seen row IDs on the worker thread.
+- qt_ui/tabs/queue.py & qt_ui/dialogs.py: F1 QueueRowDelegate (16:9 thumbnail preview, bold title + 
+ parts · strategy subtitle, coloured status chip, in-row progress bar when running, inline Open button on finished rows); F2 counter_label + queue_progress + grouped primary (Start queue, Cancel current) vs secondary (Retry, ↑, ↓, Remove selected, Clear finished, Open folder) buttons; F3 log_preview_label + log_drawer (Collapsible, collapsed by default, auto-opens on err) + severity filter chips (All, Warnings, Errors) + log_search_entry + utoscroll_btn + save_log_btn (dialogs.save_file); F4 
+etry_failed_or_selected, 
+etry_item, move_selected.
+- qt_ui/main_window.py: passes the current VOD storyboard thumbnail (_current_vod_thumb()) into 	ab_queue.enqueue and updates queued items when storyboard frames finish loading (_on_frames_for_strip).
+- 	ests/test_qt_queue_tab.py: added 5 Phase 9c tests (75 total in 	est_qt_queue_tab.py) covering counter_label, QueueRowDelegate painting & inline Open button click, log_drawer collapse & auto-open on error, severity filter chips/search/autoscroll/save log, and 
+etry_failed_or_selected + live waiting-row reordering during QueueRunner execution.
+- Docs updated: MIGRATION_LOG.md (no. 23), PHASE_NOTES.md, VERSIONS.md, HANDOFF.md.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- python -m pytest tests/test_qt_queue_tab.py -q -> 75 passed in 5.63s.
+- python -m pytest tests/test_qt_icons.py -q -> 144 passed in 6.51s.
+- python -m pytest tests -q (full repository suite) -> **1526 passed, 31 skipped, 0 failed** in 286.91s.
+
+**NOT done:** Phases 9d–9h (Options polish, Plan layout, Timeline, Search & Twitch sign-in, final polish).
+
+**NOT run:** live interactive window inspection on Windows (python luckytwitch_qt.py).
+
 ### 9b v1 (includes 9a v2)  (2026-10-26)  QSS token refactor, motion & button hover spike (9a v2), and The Shell: NavRail, PageStack, CommandBar, VodStrip, Toasts, Activity Pill, Shortcuts, UI State, and Plan Onboarding (9b v1)
 
 **Done (new or changed files):**

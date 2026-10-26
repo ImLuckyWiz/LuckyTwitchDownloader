@@ -13,7 +13,7 @@ from __future__ import annotations
 import webbrowser
 from typing import Callable
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QProgressBar, QPushButton, QSizePolicy,
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from core.palette import ACCENT, MUTED, OK
 from luckytwitch_engine import fmt_hms
+from qt_ui.icons import icon
 from qt_ui.motion import Motion, animate_width
 
 # Logical tab order stays identical to Phases 1-8 so all 28 ``win.tabs`` call sites work unchanged:
@@ -31,10 +32,10 @@ RAIL_VISUAL_ORDER = (0, 1, 3, 2)
 
 RAIL_ITEMS: dict[int, tuple[str, str, str, str]] = {
     # index: (key, glyph, label, icon_name)
-    0: ("search", "\u2315", "Search", "search"),       # ICON NEEDED: search
-    1: ("plan", "\u2702", "Plan", "scissors"),         # ICON NEEDED: scissors
-    2: ("options", "\u2699", "Options", "sliders"),    # ICON NEEDED: sliders
-    3: ("queue", "\u2630", "Queue & log", "list"),     # ICON NEEDED: list
+    0: ("search", "\u2315", "Search", "search"),
+    1: ("plan", "\u2702", "Plan", "scissors"),
+    2: ("options", "\u2699", "Options", "sliders"),
+    3: ("queue", "\u2630", "Queue & log", "list"),
 }
 
 
@@ -53,7 +54,9 @@ class _RailButton(QPushButton):
         self._rail = rail
         self.page_index = index
         self.key = key
-        self.icon_name = icon_name  # ICON NEEDED: attached when qt_ui/icons.py is available
+        self.icon_name = icon_name
+        self.setIcon(icon(icon_name, 18))
+        self.setIconSize(QSize(18, 18))
         self.setProperty("variant", "rail")
         self.setProperty("selected", False)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -186,7 +189,8 @@ class NavRail(QFrame):
 
     def _refresh_labels(self) -> None:
         for idx, btn in self.buttons.items():
-            _key, glyph, label, _icon = RAIL_ITEMS[idx]
+            _key, _glyph, label, _icon = RAIL_ITEMS[idx]
+            display_label = label.replace("&", "&&")
             badge = ""
             if idx == 1 and self.vod_loaded:
                 badge = " \u25cf"
@@ -194,10 +198,11 @@ class NavRail(QFrame):
                 badge = f" ({self.queue_count})" if self._expanded else f" {self.queue_count}"
 
             if self._expanded:
-                btn.setText(f"{glyph}   {label}{badge}")
+                btn.setText(f"{display_label}{badge}")
             else:
-                btn.setText(f"{glyph}{badge}")
-        self.toggle_btn.setText("\u00ab   Collapse" if self._expanded else "\u00bb")
+                btn.setText(badge.strip())
+        self.toggle_btn.setIcon(icon("chevron-left" if self._expanded else "chevron-right", 16))
+        self.toggle_btn.setText("Collapse" if self._expanded else "")
 
 
 class PageStack(QWidget):
@@ -332,6 +337,7 @@ class CommandBar(QFrame):
 
         self.api_btn = QPushButton("Twitch API\u2026", self)
         self.api_btn.setObjectName("apiBtn")
+        self.api_btn.setIcon(icon("user", 14))
         row.addWidget(self.api_btn)
 
         outer.addLayout(row)
@@ -426,15 +432,15 @@ class VodStrip(QFrame):
         text_col.addWidget(self.meta_label)
         lay.addLayout(text_col, 1)
 
-        # ICON NEEDED: external-link
         self.open_btn = QPushButton("Open on Twitch", self)
+        self.open_btn.setIcon(icon("external-link", 14))
         self.open_btn.setProperty("variant", "ghost")
         self.open_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.open_btn.clicked.connect(self.open_on_twitch)
         lay.addWidget(self.open_btn)
 
-        # ICON NEEDED: x
         self.clear_btn = QPushButton("Clear", self)
+        self.clear_btn.setIcon(icon("x", 14))
         self.clear_btn.setProperty("variant", "ghost")
         self.clear_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.clear_btn.clicked.connect(self.clear_requested.emit)

@@ -1,3 +1,18 @@
+## Phase 9c: The Queue Page (+ 9a A5 Vector Icons)  (2026-10-26, version 1 delivered)
+**Done (9c v1 + 9a A5, see VERSIONS.md):**
+- **A5 — Vector Icon Layer (qt_ui/icons.py, 	ests/test_qt_icons.py, 	ools/widget_gallery.py):** unpacked from phase-9a-icons-v1.zip (144 tests passing) and wired into NavRail, CommandBar, VodStrip, and QueueTab.
+- **F1 — Rich Rows Delegate (QueueRowDelegate in qt_ui/tabs/queue.py, qt_ui/queue_model.py, qt_ui/main_window.py):** custom QStyledItemDelegate rendering a 16:9 thumbnail preview (populated from the loaded VOD's storyboard thumbnail), bold title + muted 
+ parts · strategy subtitle, coloured rounded status chip (queued, 
+unning, done, ailed, cancelled), in-row progress bar for the running job, and an inline clickable Open button on finished rows (status == 'done' with files), while keeping the 5-column QueueModel API intact so all 70 original 	est_qt_queue_tab.py checks pass unchanged.
+- **F2 — Header Summary & Action Grouping (qt_ui/tabs/queue.py, qt_ui/queue_model.py):** real-time counter_label (N done · N running · N waiting · N failed), in-header queue_progress bar, and grouped primary execution (Start queue, Cancel current) vs secondary management (Retry, ↑, ↓, Remove selected, Clear finished, Open folder).
+- **F3 — Collapsible Log Drawer (LogView & QueueTab in qt_ui/tabs/queue.py, qt_ui/dialogs.py):** log_drawer (Collapsible, collapsed by default) paired with an always-visible 1-line colour-coded preview (log_preview_label) of the latest message; automatically opens on the first error (kind == 'err'); adds severity filter chips (All, Warnings, Errors), search box (log_search_entry), Pause autoscroll toggle (utoscroll_btn), Copy log, Clear log, and Save log… (save_log_btn, via dialogs.save_file).
+- **F4 — Reorder & Retry (qt_ui/queue_model.py, qt_ui/queue_runner.py, qt_ui/tabs/queue.py):** Retry resets failed/cancelled jobs to queued at the end of the queue; thread-safe waiting-row reordering (move_row, move_item, 
+ext_queued under QueueModel._lock), with QueueRunner dynamically pulling the next waiting item from model in live row order.
+- **New tests (	ests/test_qt_queue_tab.py, 	ests/test_qt_icons.py):** 5 new Phase 9c tests in 	est_qt_queue_tab.py (75 total) + 144 icon tests in 	est_qt_icons.py.
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 23.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** full test suite python -m pytest tests -q -> **1526 passed, 31 skipped, 0 failed** in 286.91s.
+**Still open:** Phases 9d (Options), 9e (Plan), 9f (Timeline), 9g (Search & Twitch Sign-In), and 9h (final polish & docs).
+
 ## Phase 9b: The Shell  (2026-10-26, in progress, version 1 delivered)
 **Done (9a v2 + 9b v1, see VERSIONS.md):**
 - **9a v2 — Token-driven QSS, surfaces, focus rings, and motion (`qt_ui/theme.py`, `qt_ui/motion.py`, `qt_ui/widgets.py`, `tests/conftest.py`):**

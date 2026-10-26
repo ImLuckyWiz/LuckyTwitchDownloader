@@ -16,19 +16,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from PySide6.QtCore import Qt, QStringListModel  # noqa: E402
+from PySide6.QtCore import QSize, Qt, QStringListModel  # noqa: E402
 from PySide6.QtGui import QStandardItemModel  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
-    QApplication, QHBoxLayout, QLabel, QLineEdit, QListView, QPushButton, QTableView, QVBoxLayout, QWidget,
+    QApplication, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListView, QPushButton, QTableView, QVBoxLayout, QWidget,
 )
 
+from core.palette import ACCENT_TEXT, FG, MUTED  # noqa: E402
+from qt_ui import icons as qicons  # noqa: E402
 from qt_ui.theme import apply_theme  # noqa: E402
 from qt_ui.widgets import (  # noqa: E402
     Card, Collapsible, EmptyState, InfoIcon, ScrollPage, SideNav, Toggle, TokenChips,
 )
 
 SECTIONS = (("toggle", "Toggle"), ("rows", "Setting rows"), ("collapsible", "Collapsible"), ("chips", "Token chips"),
-            ("empty", "Empty states"), ("info", "Info icon"), ("footer", "Footer"))
+            ("empty", "Empty states"), ("info", "Info icon"), ("icons", "Icons"),
+            ("footer", "Footer"))
 
 
 def _caption(text: str) -> QLabel:
@@ -70,6 +73,7 @@ class Gallery(QWidget):
         self._build_chips()
         self._build_empty_states()
         self._build_info()
+        self._build_icons()
         self._build_footer()
         self.page.body_layout.addStretch(1)
         self.nav.selected.connect(self._go)
@@ -193,6 +197,35 @@ class Gallery(QWidget):
             row.addWidget(_with_caption(icon, caption))
         row.addStretch(1)
         card.body_layout.addLayout(row)
+
+    # ---- icons ---- #
+    def _build_icons(self) -> None:
+        card = self._card("icons", "Icons", "Drawn in code (qt_ui/icons.py): 32 px text colour, 24 px accent, "
+                                            "16 px muted, then in a live and a disabled button.")
+        grid = QGridLayout()
+        grid.setSpacing(4)
+        names = qicons.available_icons()
+        columns = 6
+        for i, name in enumerate(names):
+            tile = QWidget()
+            lay = QVBoxLayout(tile)
+            lay.setContentsMargins(6, 6, 6, 6)
+            lay.setSpacing(4)
+            for size, colour in ((32, FG), (24, ACCENT_TEXT), (16, MUTED)):
+                lbl = QLabel()
+                lbl.setPixmap(qicons.pixmap(name, size, colour, self.devicePixelRatioF()))
+                lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+                lay.addWidget(lbl)
+            for text, enabled in (("Button", True), ("Off", False)):
+                btn = QPushButton(text)
+                btn.setIcon(qicons.icon(name, 16, FG))
+                btn.setIconSize(QSize(16, 16))
+                btn.setEnabled(enabled)
+                lay.addWidget(btn)
+            lay.addWidget(_caption(name))
+            grid.addWidget(tile, i // columns, i % columns)
+        self.icon_names = names
+        card.body_layout.addLayout(grid)
 
     # ---- footer ---- #
     def _build_footer(self) -> None:

@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 9a v2 + Phase 9b v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, and Phase 9c v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -156,11 +156,10 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 9a (v1–v2) and Phase 9b (The Shell, v1) are built and their Qt test suites pass on Windows (`test_qt_notify.py`, `test_qt_shell.py`, `test_qt_main_window.py`, `test_qt_plan_tab.py`, `test_qt_search_tab.py`, `test_qt_options_tab.py`, `test_qt_queue_tab.py`, `test_qt_theme.py`, `test_qt_widgets.py`, `test_qt_contrast.py` -> 402 passed).
+Phase 9a (v1-v2 + A5 qt_ui/icons.py), Phase 9b (The Shell, v1), and Phase 9c (The Queue Page, v1) are built and the full test suite passes on Windows (python -m pytest tests -q -> **1526 passed, 31 skipped, 0 failed**).
 Next:
-1. **User check on Windows:** launch `python luckytwitch_qt.py` to inspect the new Left Navigation Rail (expand/collapse), Command Bar (`Paste`/`✕`, Twitch account dot), Loaded-VOD Strip (with 16:9 storyboard thumbnail), non-modal bottom-right Toasts, 3 px progress bar + Activity Pill, `F1` Keyboard Shortcuts sheet, and Plan onboarding card; commit Phase 9b v1.
-2. **Claude (when switched in):** build `qt_ui/icons.py` (A5) and attach the icons to the `# ICON NEEDED: <name>` seams in `qt_ui/shell.py` and `qt_ui/tabs/plan.py`.
-3. **Phase 9c (Search & Twitch Sign-In):** VOD filter box + infinite scroll (C4), LIVE indicator badge (C5), and Twitch sign-in polish (C1, H1).
+1. **User check on Windows:** launch python luckytwitch_qt.py (and python tools/widget_gallery.py) to inspect the vector icons, Left Navigation Rail, Command Bar, Loaded-VOD Strip, rich Queue rows (QueueRowDelegate), real-time header counters, collapsible Log drawer (with severity chips, search, pause autoscroll, and Save log...), and Retry / Up / Down reordering; commit Phase 9c v1.
+2. **Phase 9d (The Options Page):** search settings box (G1), changed-from-default indicator dot + per-section reset (G2), presets bar (G3), live naming preview token pills (G4), and tool rows with individual Check / Update / Open folder buttons (G5).
 
 ## 8. Update checklist (end of every phase)
 

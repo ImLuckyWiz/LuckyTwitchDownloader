@@ -131,4 +131,17 @@ No entries for Phase 0 (it changed no behaviour).
 - **Plan Empty-State Onboarding Card (B10):** 3-step teaching banner with `Search streamers` and `Paste from clipboard` buttons above the timeline when no VOD is loaded; hides automatically once a VOD is loaded.
 **Why:** Phase 9b shell redesign (`PHASE_9_PLAN.md` B1–B10, D8–D13). Approved by the user.
 
+## 23. Vector icon layer and redesigned Queue & Log page  (Phase 9a A5 + Phase 9c v1)
+**tkinter:** no icon system; the Queue tab had plain text cells (#, Video, Parts, Strategy, Status), a single summary sentence, an always-expanded log box with only Copy log and Clear log, and no way to retry a failed/cancelled item or reorder waiting items.
+**Qt:**
+- **A5 Vector Icon Layer (qt_ui/icons.py, 	ests/test_qt_icons.py, 	ools/widget_gallery.py):** 32 custom QPainterPath vector icons on a 24x24 grid (search, queue, ilm, gear, play, pause, stop, scissors, it, undo, 
+edo, plus, minus, older, older-open, copy, 	rash, download, 
+efresh, external-link, link, check, x, lert, info, clock, eye, lag, chevron-right, chevron-down, grid, list-view, ilter, sliders, user) rendered crisp at any HiDPI scale via _VectorIconEngine, wired into NavRail, CommandBar, VodStrip, and QueueTab.
+- **F1 Rich Queue Rows (QueueRowDelegate in qt_ui/tabs/queue.py, qt_ui/queue_model.py):** custom delegate painting a 16:9 thumbnail preview (populated from the loaded VOD's storyboard thumbnail when queued or when frames arrive), bold title + 
+ parts · strategy subtitle, coloured rounded status chip (queued, 
+unning, done, ailed, cancelled), in-row progress bar for the active job, and an inline clickable Open button on finished rows (status == 'done' with files), while preserving the 5-column QueueModel data roles (DisplayRole, ForegroundRole, STATUS_ROLE, IID_ROLE).
+- **F2 Header Summary & Action Grouping (qt_ui/tabs/queue.py, qt_ui/queue_model.py):** real-time counter banner (N done · N running · N waiting · N failed), in-header progress bar (queue_progress), and grouped primary execution buttons (Start queue, Cancel current) separated by a divider from secondary management (Retry, ↑, ↓, Remove selected, Clear finished, Open folder).
+- **F3 Collapsible Log Drawer (LogView & QueueTab in qt_ui/tabs/queue.py, qt_ui/dialogs.py):** collapsed by default (log_drawer) to a 1-line colour-coded preview (log_preview_label) of the newest message; automatically expands on the first err line; adds severity filter chips (All, Warnings, Errors), substring search box (log_search_entry), Pause autoscroll toggle (utoscroll_btn), and Save log… (save_log_btn, via dialogs.save_file).
+- **F4 Retry & Thread-Safe Reordering (qt_ui/queue_model.py, qt_ui/queue_runner.py, qt_ui/tabs/queue.py):** Retry resets failed or cancelled items back to queued at the end of the queue; ↑ / ↓ (move_selected / move_item / move_row) reorders waiting (queued) items under QueueModel._lock (RLock), and QueueRunner pulls the next waiting item dynamically from model in current row order so live reordering while a job is running takes effect immediately.
+**Why:** Phase 9a A5 + Phase 9c Queue redesign (PHASE_9_PLAN.md Section 4 F and Section 6). Approved by the user.
 

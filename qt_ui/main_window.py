@@ -525,6 +525,11 @@ class MainWindow(QMainWindow):
     def _on_frames_for_strip(self, src, frames) -> None:
         if src is self.source and frames:
             self.vod_strip.set_thumbnail_from_pil(frames[0])
+            pm = self.vod_strip.thumb_label.pixmap()
+            if pm is not None and not pm.isNull():
+                for it in self.tab_queue.items:
+                    if getattr(it.job, "source", None) is src and it.thumb is None:
+                        self.tab_queue.model.set_thumbnail(it.iid, pm)
 
     def cut_text(self) -> str:
         """The text of the Plan tab's cut points box."""
@@ -732,6 +737,13 @@ class MainWindow(QMainWindow):
         dialogs.error(self, "Error", msg)
 
     # ---------------------------- adding to the queue ---------------------------- #
+    def _current_vod_thumb(self):
+        if hasattr(self, "vod_strip"):
+            pm = self.vod_strip.thumb_label.pixmap()
+            if pm is not None and not pm.isNull():
+                return pm
+        return None
+
     def add_to_queue(self, start: bool = False) -> None:
         if not self.source:
             dialogs.info(self, "No VOD", "Paste a VOD and press «Get info» first.")
@@ -745,7 +757,7 @@ class MainWindow(QMainWindow):
         job = Job(self.source, opts, clips=self.clips if self.clips_loaded else None, client=self.client)
         label = f"{self.source.uploader} \u00b7 {self.source.title}"[:70]
         strat = {"full": "full VOD + split", "sections": "only the parts"}[plan.strategy]
-        self.tab_queue.enqueue(job, label, len(plan.parts), strat)
+        self.tab_queue.enqueue(job, label, len(plan.parts), strat, thumb=self._current_vod_thumb())
         self._sync_queue_badge()
         if self.settings:
             save_settings(self.settings)
@@ -769,6 +781,7 @@ class MainWindow(QMainWindow):
         before = num(self.settings, "clip_pad_before", float, 3)
         after = num(self.settings, "clip_pad_after", float, 3)
         added = 0
+        thumb = self._current_vod_thumb()
         for row in sel:
             clip = self.clips[row]
             title = clip.get("title") or "Clip"
@@ -785,7 +798,7 @@ class MainWindow(QMainWindow):
                 continue
             job = Job(self.source, opts, single_clip=clip)
             label = f"{self.source.uploader} \u00b7 Clip: {title}"[:70]
-            self.tab_queue.enqueue(job, label, 1, "only the clip")
+            self.tab_queue.enqueue(job, label, 1, "only the clip", thumb=thumb)
             added += 1
         if added:
             self._sync_queue_badge()

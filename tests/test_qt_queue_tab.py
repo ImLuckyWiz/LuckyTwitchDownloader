@@ -655,3 +655,161 @@ def test_the_tab_order_has_nothing_decorative(tab):
     assert focusable
     for x in focusable:
         assert isinstance(x, (QPushButton, QAbstractScrollArea)) and x is not tab.scroll, x
+
+
+# ------------------------------------------------------------------ Phase 9c: Rich rows, header summary, log drawer, reorder & retry
+def test_header_counter_tracks_done_running_waiting_and_failed(tab):
+    assert tab.counter_label.text() == "0 done · 0 running · 0 waiting · 0 failed"
+    a, b, c, d = add(tab, 4)
+    assert tab.counter_label.text() == "0 done · 0 running · 4 waiting · 0 failed"
+
+    tab.set_item_status(a, "done (1 file)")
+    tab.set_item_status(b, "running…")
+    tab.set_item_status(c, "failed")
+    assert tab.counter_label.text() == "1 done · 1 running · 1 waiting · 1 failed"
+    assert tab.retry_btn.isEnabled()
+
+
+def test_delegate_paints_rich_row_progress_and_inline_open_button(tab, qtbot, monkeypatch, tmp_path):
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QMouseEvent, QPixmap
+    from PySide6.QtWidgets import QStyleOptionViewItem
+
+    thumb = QPixmap(64, 36)
+    thumb.fill(QColor(palette.ACCENT))
+    it = tab.enqueue(object(), "Streamer · Great Stream", 3, "full VOD + split", thumb=thumb)
+    assert it.thumb is not None
+
+    # Running state with progress bar
+    tab.set_item_status(it.iid, "running…")
+    tab.set_running_progress(0.45, "Downloading part 2/3")
+    assert tab.queue_progress.isVisible()
+    assert tab.queue_progress.value() == 45
+    assert it.progress == pytest.approx(0.45)
+
+    img = tab.table.viewport().grab().toImage()
+    assert not img.isNull()
+
+    # Done state exposes inline Open button on column 4
+    out_file = tmp_path / "part1.mp4"
+    out_file.write_bytes(b"ok")
+    it.files = [str(out_file)]
+    tab.set_item_status(it.iid, "done (1 file)")
+    tab.set_running_progress(0.0, "")
+    assert not tab.queue_progress.isVisible()
+
+    idx = tab.model.index(0, 4)
+    rect = tab.table.visualRect(idx)
+    btn_rect = tab.delegate.open_button_rect(rect)
+    opened = []
+    monkeypatch.setattr(queue_tab, "open_in_file_manager", lambda p, select=False: opened.append((p, select)))
+
+    ev = QMouseEvent(
+        QEvent.Type.MouseButtonRelease,
+        QPointF(btn_rect.center()),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    opt = QStyleOptionViewItem()
+    opt.rect = rect
+    assert tab.delegate.editorEvent(ev, tab.model, opt, idx)
+    assert opened == [(out_file, True)]
+
+
+def test_log_drawer_starts_collapsed_and_auto_opens_on_error(tab):
+    assert not tab.log_drawer.opened
+    tab.log("Fetching manifest")
+    assert "Fetching manifest" in tab.log_preview_label.text()
+    assert not tab.log_drawer.opened
+
+    tab.log("Warning: slow segment")
+    assert not tab.log_drawer.opened
+
+    tab.log("ERROR: ffmpeg exited with code 1")
+    assert tab.log_drawer.opened
+    assert "ERROR: ffmpeg exited with code 1" in tab.log_preview_label.text()
+
+
+def test_log_severity_chips_search_autoscroll_and_save_log(tab, monkeypatch, tmp_path):
+    tab.log("Normal line one")
+    tab.log("Warning: check disk space")
+    tab.log("ERROR: download failed")
+    assert len(log_lines(tab)) == 3
+
+    tab.set_log_filter("warn")
+    lines = [text for text, _, _ in log_lines(tab)]
+    assert len(lines) == 1 and "Warning: check disk space" in lines[0]
+
+    tab.set_log_filter("err")
+    lines = [text for text, _, _ in log_lines(tab)]
+    assert len(lines) == 1 and "ERROR: download failed" in lines[0]
+
+    tab.set_log_filter("all")
+    tab.log_search_entry.setText("disk")
+    lines = [text for text, _, _ in log_lines(tab)]
+    assert len(lines) == 1 and "Warning: check disk space" in lines[0]
+
+    tab.log_search_entry.setText("")
+    assert len(log_lines(tab)) == 3
+
+    # Autoscroll toggle
+    assert not tab.log_view.pause_autoscroll
+    tab.autoscroll_btn.click()
+    assert tab.log_view.pause_autoscroll
+    tab.autoscroll_btn.click()
+    assert not tab.log_view.pause_autoscroll
+
+    # Save log exports the filtered/full text to disk
+    dest = tmp_path / "saved_queue.log"
+    monkeypatch.setattr(dialogs, "save_file", lambda *a, **kw: str(dest))
+    tab.save_log()
+    saved = dest.read_text(encoding="utf-8")
+    assert "Normal line one" in saved
+    assert "Warning: check disk space" in saved
+    assert "ERROR: download failed" in saved
+
+
+def test_retry_and_reorder_waiting_jobs(tab, qtbot, monkeypatch):
+    from qt_ui import queue_runner
+
+    a, b, c = add(tab, 3)
+    tab.set_item_status(a, "failed")
+    tab.set_item_status(b, "cancelled")
+
+    # Retry failed/cancelled resets them to queued
+    tab.retry_failed_or_selected()
+    assert [it.status for it in tab.items] == ["queued", "queued", "queued"]
+    # c was already queued at index 0 after a and b moved to the end
+    assert [it.iid for it in tab.items] == [c, a, b]
+
+    # Select 'b' (row 2) and move it up twice to row 0
+    tab.table.selectRow(2)
+    tab.move_selected(-1)
+    assert [it.iid for it in tab.items] == [c, b, a]
+    tab.move_selected(-1)
+    assert [it.iid for it in tab.items] == [b, c, a]
+
+    # Live reordering while job 1 is running affects which job runs next
+    order = []
+    first_started = threading.Event()
+    allow_finish = threading.Event()
+
+    def fake_run(job, ctx):
+        order.append(job)
+        if len(order) == 1:
+            first_started.set()
+            allow_finish.wait(timeout=3.0)
+        return ["out.mp4"]
+
+    monkeypatch.setattr(queue_runner, "run_job", fake_run)
+    for it in tab.items:
+        it.job = f"job-{it.iid}"
+
+    tab.start_queue()
+    assert first_started.wait(timeout=2.0)
+    # While 'b' is running, swap waiting 'c' and 'a' so 'a' goes before 'c'
+    assert tab.model.move_item(a, -1)
+    allow_finish.set()
+    qtbot.waitUntil(lambda: not tab.runner.is_running(), timeout=3000)
+    assert order == [f"job-{b}", f"job-{a}", f"job-{c}"]
