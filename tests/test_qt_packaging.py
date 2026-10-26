@@ -143,4 +143,5 @@ def test_ci_workflow_runs_pytest_offscreen_and_passes_version_to_both_builders()
 
 def test_release_notes_have_top_entries_for_v2():
     main_notes = (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").splitlines()
-    assert main_notes[0].strip() == "## v2.0.0"
+    assert main_notes[0].strip().startswith("## v2.")
+    assert any(line.strip() == "## v2.0.0" for line in main_notes)
