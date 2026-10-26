@@ -109,3 +109,8 @@ No entries for Phase 0 (it changed no behaviour).
 **Qt:** `build_windows.bat` and `build_mac.sh` now package `luckytwitch_qt.py`, exclude unused `PySide6.Qt*` modules and `tkinter`, and write the build version into `build/version.txt` (bundled at the root of the frozen app). When the build version contains a hyphen (a pre-release such as `v0.8.0-beta.1`), `installer.iss`, `build_mac.sh`, `core/paths.py`, and `qt_ui/theme.py` use a separate Windows `AppId`, install folder (`LuckyTwitch-Beta`), app name (`LuckyTwitch (Beta)`), macOS bundle ID (`com.luckytwitch.app.beta`), taskbar ID (`LuckyTwitch.Downloader.Beta`), and data folder (`LuckyTwitch-beta`). When the build version has no hyphen (stable release such as `v2.0.0`), the standard `LuckyTwitch` identity and data folder are used so upgrading from 1.x preserves the user's Twitch login, settings, recent channels, and downloaded tools.
 **Why:** requested by the user in Phase 8 so pre-releases can be installed side-by-side without touching a stable 1.x install, while the `v2.0.0` cutover upgrades 1.x seamlessly in place. Approved by the user.
 
+## 20. WCAG AA contrast repair on text tokens  (Phase 9a)
+**tkinter:** `MUTED` was `#9a9da4` (4.06:1 on `BG3`, failing WCAG AA 4.5:1 text threshold); accent-colored text on `BG2` was `#9146ff` (2.97:1).
+**Qt:** `MUTED` is raised to `#a3a6ad` (4.52:1 on `BG3`, 5.66:1 on `BG2`), and `ACCENT_TEXT` `#b380ff` (4.89:1 on `BG2`) is introduced for light accent text on dark surfaces. `BORDER_STRONG` (`#484b52`, 1.58:1 on `BG2`) provides visible container boundaries. Tested by `tests/test_qt_contrast.py`.
+**Why:** accessibility fix from PHASE_9_PLAN.md (A4). Approved by the user.
+

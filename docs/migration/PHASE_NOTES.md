@@ -1,3 +1,14 @@
+## Phase 9a: Design foundation  (2026-10-26, in progress, version 1 delivered)
+**Done (version 1, see VERSIONS.md):**
+- **Tokens (`qt_ui/tokens.py`):** Spacing scale (4, 8, 12, 16, 24, 32 px), corner radius scale (4, 6, 8, 999 px), typography scale (9, 10, 11, 13, 16 pt), `DESIGN_TOKENS` dictionary for QSS substitution.
+- **Contrast repair (`core/palette.py`, `ui/common.py`):** `MUTED` raised to `#a3a6ad` (4.52:1 on `BG3`, 5.66:1 on `BG2`, 6.76:1 on `BG` — meets WCAG AA 4.5:1), `ACCENT_TEXT` `#b380ff` (4.89:1 on `BG2`), `BORDER_STRONG` `#484b52` (1.58:1 on `BG2`), `FIELD_BORDER` `#5a5e67`.
+- **Contrast tests (`tests/test_qt_contrast.py`):** 6 tests verifying WCAG 2.1 relative luminance and contrast ratios.
+- **UI state persistence (`core/ui_state.py`, `core/paths.py`, `tests/test_qt_ui_state.py`):** `luckytwitch_ui.json` stores window geometry and layout state cleanly separated from `luckytwitch_settings.json`. 4 unit tests passing.
+- **Baseline screenshot tool (`tools/qt_screenshots.py`):** captures 1020x910 and 900x560 offscreen renders of all tabs into `docs/migration/phase9/baseline/`.
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 20.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** 91 passed in 48.50s across `test_qt_contrast.py`, `test_qt_ui_state.py`, `test_qt_theme.py`, `test_core_helpers.py`, `test_core_matches_tkinter.py`. `python tools/qt_screenshots.py` saved 8 PNGs.
+**Still open:** A5 icon layer (assigned to Claude), A6 button hover animation spike (assigned to Argon).
+
 # Phase notes
 
 Internal notes, one entry per phase, newest first. Written by the agent at the end of a phase, reviewed by the user. Public release notes for the phases that get a pre-release are in RELEASE_NOTES_QT.md.

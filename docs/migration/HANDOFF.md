@@ -30,7 +30,7 @@ Last updated: 2026-10-26 (Phase 9 PLAN written, no code: see `PHASE_9_PLAN.md` a
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
 | 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
 | 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
-| 9 | Redesign beyond parity | planning (plan written in `PHASE_9_PLAN.md`, waiting for the user's decisions D8 to D15, no code) | | |
+| 9 | Redesign beyond parity | in progress (9a version 1 delivered: tokens, contrast tests, UI state, screenshots) | | |
 
 States: not started, in progress, done (waiting for approval), approved.
 

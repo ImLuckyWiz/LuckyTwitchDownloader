@@ -18,13 +18,16 @@ BG = "#1e1f22"
 BG2 = "#2b2d31"
 BG3 = "#3a3c42"
 FG = "#e6e6e6"
-MUTED = "#9a9da4"
+MUTED = "#a3a6ad"  # Phase 9: raised to pass WCAG AA
 ERR = "#ff6b6b"
 OK = "#6bd49a"
 WARN = "#e5b567"   # cancelled jobs, warnings in the log
 ACCENT = "#9146ff"
+ACCENT_TEXT = "#b380ff"  # Phase 9: lighter accent tint for text
 # extra tokens used by the refined theme (same family as the colours above)
 BORDER = "#35373c"        # hairlines around cards and fields
+BORDER_STRONG = "#484b52" # Phase 9: visible card border
+FIELD_BORDER = "#5a5e67"  # Phase 9: distinct input border
 HOVER = "#44474f"         # hovered neutral button / row
 PRESSED = "#50535c"
 ACCENT_HOVER = "#a46bff"

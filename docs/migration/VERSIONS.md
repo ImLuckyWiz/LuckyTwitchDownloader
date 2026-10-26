@@ -1,3 +1,24 @@
+## Phase 9: UI redesign beyond parity
+
+### 9a v1  (2026-10-26)  Design foundation: tokens, WCAG contrast repair, UI-state manager, and screenshot baseline
+
+**Done (new or changed files):**
+- `qt_ui/tokens.py`: A1 spacing scale (4 to 32 px), corner radius scale (4, 6, 8, 999 px), typography scale (9 to 16 pt), and QSS template dictionary `DESIGN_TOKENS`.
+- `core/palette.py` & `ui/common.py`: A4 WCAG AA contrast repair (`MUTED` `#a3a6ad` passing 4.5:1 on `BG3`, `ACCENT_TEXT` `#b380ff` passing 4.89:1 on `BG2`, `BORDER_STRONG` `#484b52` for crisp card boundaries).
+- `tests/test_qt_contrast.py`: 6 WCAG 2.1 relative luminance and contrast ratio tests.
+- `core/ui_state.py` & `core/paths.py`: B9 UI state manager (`load_ui_state`, `save_ui_state`, `UIState` dataclass) persisting window geometry and drawer states into `luckytwitch_ui.json` without modifying `luckytwitch_settings.json`.
+- `tests/test_qt_ui_state.py`: 4 tests covering defaults, JSON round-trip, corruption recovery, and OS error resilience.
+- `tools/qt_screenshots.py`: automated script capturing offscreen snapshots of all 4 tabs at 1020x910 and 900x560 into `docs/migration/phase9/baseline/`.
+- Docs updated: `MIGRATION_LOG.md` (no. 20), `VERSIONS.md`, `PHASE_NOTES.md`, `HANDOFF.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_contrast.py tests/test_qt_ui_state.py tests/test_qt_theme.py tests/test_core_helpers.py tests/test_core_matches_tkinter.py -q` -> 91 passed in 48.50s.
+- `python tools/qt_screenshots.py` -> 8 baseline screenshots generated in `docs/migration/phase9/baseline/`.
+
+**NOT done:** A5 icons (assigned to Claude), A6 button hover animation spike (assigned to Argon).
+
+**NOT run:** live hands-on inspection of the new tokens on Windows.
+
 # Versions
 
 The user asked for **released versions while a phase is in progress, even half-made ones**. So every meaningful chunk of work ends in a numbered release: a zip of the whole repo (`lt-repo_phase<N>_v<K>.zip`) plus an entry below. An entry always says what is done, what is NOT done, and what was NOT run, so a half-made version is never mistaken for a finished one. A phase is only "done" when HANDOFF.md says so and the user approves it; versions are the steps on the way.
