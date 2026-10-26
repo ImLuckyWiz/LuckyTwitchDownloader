@@ -2,7 +2,9 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 4 done, waiting for approval). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
+Last updated: 2026-10-26 (Phase 4 done, waiting for approval; Phase 5 in progress, see VERSIONS.md: v2 released). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
+
+**Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
 ## 1. Status
 
@@ -13,7 +15,7 @@ Last updated: 2026-10-26 (Phase 4 done, waiting for approval). Last completed ph
 | 2 | Widget kit | approved | migration-phase-2 | |
 | 3 | Queue and log tab | approved | migration-phase-3 | |
 | 4 | Search tab and Twitch sign-in | done (waiting for approval; Windows tests clean, hands-on check open) | | |
-| 5 | Options tab | not started | | |
+| 5 | Options tab | in progress (version 2 delivered: tests written, Linux run clean, Windows run and golden test pending) | | |
 | 6 | Plan tab (no timeline), Get info, links | not started | | |
 | 7 | Timeline (7a to 7e) | not started | | |
 | 8 | Packaging, CI, cutover | not started | | |
@@ -140,7 +142,7 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 4 is built and its tests are clean on Windows (Python 3.14, 2026-10-26: Search tab 70 passed, Twitch dialog 37, queue and main window 82, full suite 1108 passed, 31 skipped; no teardown errors). It waits for the user's hands-on check of the Search tab and the sign-in dialog (PHASE_NOTES.md, Phase 4) and approval. After approval the user tags `migration-phase-4`. Then the user says when to start Phase 5 (Options tab, PLAN.md section 6); do not start it before that.
+Phase 5 is in progress (VERSIONS.md: v2 delivered). The user runs the Windows checks listed with v2 (new test files first, the golden test, then the full suite once) and pastes the results; the next session fixes what fails and delivers v3, then fills in the Definition of Done in PHASE_NOTES.md. Phase 4 still waits for the user's hands-on check and approval (tag `migration-phase-4`). Do not start Phase 6 before Phase 5 is approved.
 
 ## 8. Update checklist (end of every phase)
 

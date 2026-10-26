@@ -11,6 +11,8 @@
   ``EmptyState``   a message laid over an empty list or table, optionally with a button
   ``ScrollFrame`` / ``ScrollPage``   a vertically scrolling page; the page has a footer bar that never scrolls
   ``ComboBox``     drop-down list (Phase 4): the stylesheet draws the field, the widget draws the little arrow
+  ``SpinBox``      whole-number field with up/down arrows (Phase 5); like ``ComboBox`` it ignores the mouse wheel
+                   until it has the keyboard focus, so scrolling a page never changes a value by accident
 
 Colours come from ``core.palette``; the looks that need a stylesheet (card, divider, sidebar, chip, ...) are in
 ``qt_ui/theme.py`` and are chosen with object names and the dynamic properties ``variant`` / ``role`` /
@@ -30,7 +32,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractButton, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy,
-    QVBoxLayout, QWidget,
+    QSpinBox, QVBoxLayout, QWidget,
 )
 
 from core.palette import ACCENT, ACCENT_HOVER, BG3, BORDER, DISABLED, FG, MUTED, WHITE
@@ -793,6 +795,17 @@ class ComboBox(QComboBox):
 
     ARROW_AREA = 22  # width of the drop-down area (the same number as in theme.py)
 
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # the wheel alone never gives it the focus (see wheelEvent)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802 (Qt name)
+        """Only a box that has the keyboard focus reacts to the wheel; otherwise the page under it scrolls."""
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt name)
         super().paintEvent(event)
         lit = self.isEnabled() and (self.underMouse() or self.view().isVisible())
@@ -803,4 +816,46 @@ class ComboBox(QComboBox):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(colour)
         p.drawPolygon(QPolygonF([QPointF(cx - 4, cy - 2), QPointF(cx + 4, cy - 2), QPointF(cx, cy + 2.5)]))
+        p.end()
+
+
+# --------------------------------------------------------------------------- #
+# Whole-number field
+# --------------------------------------------------------------------------- #
+class SpinBox(QSpinBox):
+    """A whole-number field with two small arrows (the tkinter ``Spinbox``). Up / Down keys and the arrows step by 1.
+
+    The stylesheet draws the field and reserves the arrow area on the right (``QSpinBox::up-button`` and
+    ``down-button`` have no image); the arrows are painted here, grey, white while the pointer is over the box.
+    The wheel only works while the box has the keyboard focus (see ``ComboBox``).
+    """
+
+    ARROW_AREA = 18  # width of the arrow area (the same number as in theme.py)
+
+    def __init__(self, low: int = 0, high: int = 100, width_chars: int = 6, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setRange(low, high)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setKeyboardTracking(True)  # a value typed in becomes the setting at once, like tkinter's StringVar
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.setMinimumWidth(round(self.fontMetrics().horizontalAdvance("0") * width_chars) + self.ARROW_AREA + 20)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802 (Qt name)
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt name)
+        super().paintEvent(event)
+        lit = self.isEnabled() and self.underMouse()
+        colour = QColor(FG if lit else (MUTED if self.isEnabled() else DISABLED))
+        cx = self.width() - self.ARROW_AREA / 2 - 1
+        mid = self.height() / 2
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(colour)
+        p.drawPolygon(QPolygonF([QPointF(cx - 3.5, mid - 2.5), QPointF(cx + 3.5, mid - 2.5), QPointF(cx, mid - 6.5)]))
+        p.drawPolygon(QPolygonF([QPointF(cx - 3.5, mid + 2.5), QPointF(cx + 3.5, mid + 2.5), QPointF(cx, mid + 6.5)]))
         p.end()

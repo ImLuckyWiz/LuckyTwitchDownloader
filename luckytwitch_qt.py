@@ -1,9 +1,10 @@
-"""LuckyTwitch Downloader, PySide6 version (migration branch). Phase 1: the empty window with its theme.
+"""LuckyTwitch Downloader, PySide6 version (migration branch). The Search, Options and Queue tabs are built; Plan comes next.
 
     python luckytwitch_qt.py
 
 The tkinter app (luckytwitch_downloader.py) stays the shipped one until the cutover. Both use the same data
-folder; the settings are saved when the window closes (Phase 3); the Twitch login is only read for now.
+folder; the settings are saved when the window closes. The tools (yt-dlp, ffmpeg) are prepared in the background
+right after the window opens, like the tkinter app does.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     set_app_icon(app)
     window = MainWindow(settings=load_settings(), client=make_client())
     window.show()
+    window.start_tools_setup()
     return app.exec()
 
 

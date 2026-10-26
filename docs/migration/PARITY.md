@@ -382,80 +382,117 @@ Extra Qt tests beyond the 18 (all in `test_qt_search_tab.py` unless noted): a se
 
 #### `test_gui_options_tab.py` (40 tests)
 
-- [ ] app uses the options tab mixin and the sidebar  
-  `test_gui_options_tab.py::test_app_uses_the_options_tab_mixin_and_the_sidebar`
-- [ ] only one section is visible at a time  
-  `test_gui_options_tab.py::test_only_one_section_is_visible_at_a_time`
-- [ ] switching sections scrolls back to the top  
-  `test_gui_options_tab.py::test_switching_sections_scrolls_back_to_the_top`
-- [ ] arrow keys move through the sidebar  
-  `test_gui_options_tab.py::test_arrow_keys_move_through_the_sidebar`
-- [ ] every old setting still has its variable and a control  
-  `test_gui_options_tab.py::test_every_old_setting_still_has_its_variable_and_a_control`
-- [ ] booleans are switches not checkboxes  
-  `test_gui_options_tab.py::test_booleans_are_switches_not_checkboxes`
-- [ ] the chapters switch stays in the plan tab  
-  `test_gui_options_tab.py::test_the_chapters_switch_stays_in_the_plan_tab`
-- [ ] up front and advanced settings are split as agreed  
-  `test_gui_options_tab.py::test_up_front_and_advanced_settings_are_split_as_agreed`
-- [ ] chapters clips and tools have no advanced area  
-  `test_gui_options_tab.py::test_chapters_clips_and_tools_have_no_advanced_area`
-- [ ] advanced starts collapsed and opens on click  
-  `test_gui_options_tab.py::test_advanced_starts_collapsed_and_opens_on_click`
-- [ ] a value inside a collapsed advanced area is still used  
-  `test_gui_options_tab.py::test_a_value_inside_a_collapsed_advanced_area_is_still_used`
-- [ ] the chat overlay settings reach the options  
-  `test_gui_options_tab.py::test_the_chat_overlay_settings_reach_the_options`
-- [ ] the default overlay type is animation  
-  `test_gui_options_tab.py::test_the_default_overlay_type_is_animation`
-- [ ] a switch changes the setting and saves  
-  `test_gui_options_tab.py::test_a_switch_changes_the_setting_and_saves`
-- [ ] the markers switches refresh the clips like the checkboxes did  
-  `test_gui_options_tab.py::test_the_markers_switches_refresh_the_clips_like_the_checkboxes_did`
-- [ ] clicking a chip inserts the token at the cursor  
-  `test_gui_options_tab.py::test_clicking_a_chip_inserts_the_token_at_the_cursor`
-- [ ] a chip replaces the selected text  
-  `test_gui_options_tab.py::test_a_chip_replaces_the_selected_text`
-- [ ] every template field has chips for its tokens  
-  `test_gui_options_tab.py::test_every_template_field_has_chips_for_its_tokens`
-- [ ] examples use a sample vod until one is loaded then the real one  
-  `test_gui_options_tab.py::test_examples_use_a_sample_vod_until_one_is_loaded_then_the_real_one`
-- [ ] the example line follows the template as you type  
-  `test_gui_options_tab.py::test_the_example_line_follows_the_template_as_you_type`
-- [ ] a half typed template never breaks the example  
-  `test_gui_options_tab.py::test_a_half_typed_template_never_breaks_the_example`
-- [ ] the example matches what the engine really names the file  
-  `test_gui_options_tab.py::test_the_example_matches_what_the_engine_really_names_the_file`
-- [ ] clip and chapter examples  
-  `test_gui_options_tab.py::test_clip_and_chapter_examples`
-- [ ] turning subfolders off greys out the stream folder field  
-  `test_gui_options_tab.py::test_turning_subfolders_off_greys_out_the_stream_folder_field`
-- [ ] tools status is still driven by the apps message loop  
-  `test_gui_options_tab.py::test_tools_status_is_still_driven_by_the_apps_message_loop`
+- [x] app uses the options tab mixin and the sidebar  
+  `test_gui_options_tab.py::test_app_uses_the_options_tab_mixin_and_the_sidebar`  
+  Qt: `test_qt_options_tab.py::test_the_sidebar_has_the_seven_sections_and_starts_on_output`
+- [x] only one section is visible at a time  
+  `test_gui_options_tab.py::test_only_one_section_is_visible_at_a_time`  
+  Qt: `test_qt_options_tab.py::test_only_one_section_is_visible_at_a_time`
+- [x] switching sections scrolls back to the top  
+  `test_gui_options_tab.py::test_switching_sections_scrolls_back_to_the_top`  
+  Qt: `test_qt_options_tab.py::test_switching_sections_scrolls_back_to_the_top`
+- [x] arrow keys move through the sidebar  
+  `test_gui_options_tab.py::test_arrow_keys_move_through_the_sidebar`  
+  Qt: `test_qt_options_tab.py::test_arrow_keys_move_through_the_sidebar`
+- [x] every old setting still has its variable and a control  
+  `test_gui_options_tab.py::test_every_old_setting_still_has_its_variable_and_a_control`  
+  Qt: `test_qt_options_tab.py::test_every_old_setting_has_a_control_bound_to_it`
+- [x] booleans are switches not checkboxes  
+  `test_gui_options_tab.py::test_booleans_are_switches_not_checkboxes`  
+  Qt: `test_qt_options_tab.py::test_booleans_are_switches`, `test_qt_options_tab.py::test_numbers_are_spin_boxes_and_lists_are_combo_boxes`
+- [x] the chapters switch stays in the plan tab  
+  `test_gui_options_tab.py::test_the_chapters_switch_stays_in_the_plan_tab`  
+  Qt: `test_every_old_setting_has_a_control_bound_to_it` (no Options control for `chapters`)
+- [x] up front and advanced settings are split as agreed  
+  `test_gui_options_tab.py::test_up_front_and_advanced_settings_are_split_as_agreed`  
+  Qt: `test_qt_options_tab.py::test_up_front_and_advanced_settings_are_split_as_agreed`
+- [x] chapters clips and tools have no advanced area  
+  `test_gui_options_tab.py::test_chapters_clips_and_tools_have_no_advanced_area`  
+  Qt: `test_qt_options_tab.py::test_chapters_clips_and_tools_have_no_advanced_area`
+- [x] advanced starts collapsed and opens on click  
+  `test_gui_options_tab.py::test_advanced_starts_collapsed_and_opens_on_click`  
+  Qt: `test_qt_options_tab.py::test_advanced_starts_collapsed_and_opens_on_click`
+- [x] a value inside a collapsed advanced area is still used  
+  `test_gui_options_tab.py::test_a_value_inside_a_collapsed_advanced_area_is_still_used`  
+  Qt: `test_qt_options_tab.py::test_a_value_inside_a_collapsed_advanced_area_is_still_used`
+- [x] the chat overlay settings reach the options  
+  `test_gui_options_tab.py::test_the_chat_overlay_settings_reach_the_options`  
+  Qt: `test_qt_options_tab.py::test_the_chat_overlay_settings_reach_the_options`
+- [x] the default overlay type is animation  
+  `test_gui_options_tab.py::test_the_default_overlay_type_is_animation`  
+  Qt: `test_qt_options_tab.py::test_the_default_overlay_type_is_animation`
+- [x] a switch changes the setting and saves  
+  `test_gui_options_tab.py::test_a_switch_changes_the_setting_and_saves`  
+  Qt: `test_qt_options_tab.py::test_a_switch_writes_a_real_boolean_and_a_number_field_writes_a_string`, `test_qt_options_tab.py::test_the_settings_the_options_tab_edits_are_saved_when_the_window_closes`
+- [x] the markers switches refresh the clips like the checkboxes did  
+  `test_gui_options_tab.py::test_the_markers_switches_refresh_the_clips_like_the_checkboxes_did`  
+  Qt: `test_qt_options_tab.py::test_the_premiere_switches_ask_for_a_clip_refresh_only_when_clicked`
+- [x] clicking a chip inserts the token at the cursor  
+  `test_gui_options_tab.py::test_clicking_a_chip_inserts_the_token_at_the_cursor`  
+  Qt: `test_qt_options_tab.py::test_clicking_a_chip_inserts_the_token_at_the_cursor`
+- [x] a chip replaces the selected text  
+  `test_gui_options_tab.py::test_a_chip_replaces_the_selected_text`  
+  Qt: `test_qt_options_tab.py::test_a_chip_replaces_the_selected_text`
+- [x] every template field has chips for its tokens  
+  `test_gui_options_tab.py::test_every_template_field_has_chips_for_its_tokens`  
+  Qt: `test_qt_options_tab.py::test_every_template_field_has_chips_for_its_tokens`
+- [x] examples use a sample vod until one is loaded then the real one  
+  `test_gui_options_tab.py::test_examples_use_a_sample_vod_until_one_is_loaded_then_the_real_one`  
+  Qt: `test_qt_options_tab.py::test_examples_use_a_sample_vod_until_one_is_loaded_then_the_real_one`
+- [x] the example line follows the template as you type  
+  `test_gui_options_tab.py::test_the_example_line_follows_the_template_as_you_type`  
+  Qt: `test_qt_options_tab.py::test_the_example_line_follows_the_template_and_the_format_as_you_type`
+- [x] a half typed template never breaks the example  
+  `test_gui_options_tab.py::test_a_half_typed_template_never_breaks_the_example`  
+  Qt: `test_qt_options_tab.py::test_a_half_typed_template_never_breaks_the_example`, `test_core_options.py::test_a_half_typed_template_never_raises`
+- [x] the example matches what the engine really names the file  
+  `test_gui_options_tab.py::test_the_example_matches_what_the_engine_really_names_the_file`  
+  Qt: `test_qt_options_tab.py::test_the_example_matches_what_the_engine_really_names_the_file`
+- [x] clip and chapter examples  
+  `test_gui_options_tab.py::test_clip_and_chapter_examples`  
+  Qt: `test_qt_options_tab.py::test_clip_and_chapter_examples`
+- [x] turning subfolders off greys out the stream folder field  
+  `test_gui_options_tab.py::test_turning_subfolders_off_greys_out_the_stream_folder_field`  
+  Qt: `test_qt_options_tab.py::test_turning_subfolders_off_greys_out_the_stream_folder_field`, `test_qt_options_tab.py::test_a_saved_file_with_subfolders_off_starts_with_the_field_greyed_out`
+- [x] tools status is still driven by the apps message loop  
+  `test_gui_options_tab.py::test_tools_status_is_still_driven_by_the_apps_message_loop`  
+  Qt: `test_qt_options_tab.py::test_the_tools_text_comes_from_the_window_and_the_button_follows_the_busy_state`, `test_qt_options_tab.py::test_the_tools_setup_runs_in_the_background_and_gives_the_controls_back`
 - [ ] the scroll frame is still importable from the main module  
-  `test_gui_options_tab.py::test_the_scroll_frame_is_still_importable_from_the_main_module`
-- [ ] opening advanced makes the page scroll to the new content  
-  `test_gui_options_tab.py::test_opening_advanced_makes_the_page_scroll_to_the_new_content`
-- [ ] the saved chat button is in the chat section up front  
-  `test_gui_options_tab.py::test_the_saved_chat_button_is_in_the_chat_section_up_front`
-- [ ] choosing a chat asks for confirmation with what it will do  
-  `test_gui_options_tab.py::test_choosing_a_chat_asks_for_confirmation_with_what_it_will_do`
-- [ ] cancelling the file dialog does nothing  
-  `test_gui_options_tab.py::test_cancelling_the_file_dialog_does_nothing`
-- [ ] a file that is not a chat shows why and starts nothing  
-  `test_gui_options_tab.py::test_a_file_that_is_not_a_chat_shows_why_and_starts_nothing`
-- [ ] the file dialog opens in the output folder  
-  `test_gui_options_tab.py::test_the_file_dialog_opens_in_the_output_folder`
-- [ ] drawing a saved chat runs in the background and gives the controls back  
-  `test_gui_options_tab.py::test_drawing_a_saved_chat_runs_in_the_background_and_gives_the_controls_back`
-- [ ] a failed render shows the reason and frees the controls  
-  `test_gui_options_tab.py::test_a_failed_render_shows_the_reason_and_frees_the_controls`
-- [ ] cancelling a saved chat render is quiet  
-  `test_gui_options_tab.py::test_cancelling_a_saved_chat_render_is_quiet`
-- [ ] only one thing runs at a time  
-  `test_gui_options_tab.py::test_only_one_thing_runs_at_a_time`
-- [ ] the queue does not start while an overlay is being drawn  
-  `test_gui_options_tab.py::test_the_queue_does_not_start_while_an_overlay_is_being_drawn`
+  `test_gui_options_tab.py::test_the_scroll_frame_is_still_importable_from_the_main_module`  
+  Qt: no counterpart (a tkinter import detail of the old main module); stays open, drop it at cutover.
+- [x] opening advanced makes the page scroll to the new content  
+  `test_gui_options_tab.py::test_opening_advanced_makes_the_page_scroll_to_the_new_content`  
+  Qt: `test_qt_widgets.py::test_opening_advanced_makes_the_page_scroll_to_the_new_content` (Phase 2)
+- [x] the saved chat button is in the chat section up front  
+  `test_gui_options_tab.py::test_the_saved_chat_button_is_in_the_chat_section_up_front`  
+  Qt: `test_qt_options_tab.py::test_the_saved_chat_button_is_in_the_chat_section_up_front`
+- [x] choosing a chat asks for confirmation with what it will do  
+  `test_gui_options_tab.py::test_choosing_a_chat_asks_for_confirmation_with_what_it_will_do`  
+  Qt: `test_qt_options_tab.py::test_choosing_a_chat_asks_for_confirmation_with_what_it_will_do`
+- [x] cancelling the file dialog does nothing  
+  `test_gui_options_tab.py::test_cancelling_the_file_dialog_does_nothing`  
+  Qt: `test_qt_options_tab.py::test_cancelling_the_file_dialog_does_nothing`
+- [x] a file that is not a chat shows why and starts nothing  
+  `test_gui_options_tab.py::test_a_file_that_is_not_a_chat_shows_why_and_starts_nothing`  
+  Qt: `test_qt_options_tab.py::test_a_file_that_is_not_a_chat_shows_why_and_starts_nothing`
+- [x] the file dialog opens in the output folder  
+  `test_gui_options_tab.py::test_the_file_dialog_opens_in_the_output_folder`  
+  Qt: `test_qt_options_tab.py::test_the_file_dialog_opens_in_the_output_folder`
+- [x] drawing a saved chat runs in the background and gives the controls back  
+  `test_gui_options_tab.py::test_drawing_a_saved_chat_runs_in_the_background_and_gives_the_controls_back`  
+  Qt: `test_qt_options_tab.py::test_drawing_a_saved_chat_runs_in_the_background_and_gives_the_controls_back`
+- [x] a failed render shows the reason and frees the controls  
+  `test_gui_options_tab.py::test_a_failed_render_shows_the_reason_and_frees_the_controls`  
+  Qt: `test_qt_options_tab.py::test_a_failed_render_shows_the_reason_and_frees_the_controls`
+- [x] cancelling a saved chat render is quiet  
+  `test_gui_options_tab.py::test_cancelling_a_saved_chat_render_is_quiet`  
+  Qt: `test_qt_options_tab.py::test_cancelling_a_saved_chat_render_is_quiet`, `test_qt_options_tab.py::test_cancel_current_stops_a_chat_overlay`
+- [x] only one thing runs at a time  
+  `test_gui_options_tab.py::test_only_one_thing_runs_at_a_time`  
+  Qt: `test_qt_options_tab.py::test_only_one_thing_runs_at_a_time`
+- [x] the queue does not start while an overlay is being drawn  
+  `test_gui_options_tab.py::test_the_queue_does_not_start_while_an_overlay_is_being_drawn`  
+  Qt: `test_drawing_a_saved_chat_runs_in_the_background_and_gives_the_controls_back` (Start disabled), `test_qt_queue_tab.py::test_the_window_gives_the_two_busy_reasons`
 
 ## Theme, icon and widgets  (Phases 1 and 2)
 
@@ -508,7 +545,7 @@ Widget behaviours that the tkinter tests check in other files (the screens that 
 - [x] scroll page with a fixed footer (`test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls`, `test_the_plan_tab_is_a_scroll_page_with_a_footer`) -> `test_the_footer_stays_visible_when_the_page_scrolls`, `test_a_scroll_page_has_a_body_and_a_footer`
 - [x] the footer is the last Tab stop and Shift+Tab is the reverse (widget part of `test_gui_final_pass.py::test_plan_tab_footer_buttons_are_the_last_stops_left_to_right`, `test_plan_tab_shift_tab_is_the_exact_reverse`) -> `test_the_footer_is_the_last_tab_stop_even_though_it_was_built_first`, `test_tab_and_shift_tab_walk_the_page_in_that_order`
 - [x] switching a sidebar section scrolls back to the top (widget part of `test_switching_sections_scrolls_back_to_the_top`) -> `test_the_sidebar_and_a_scroll_frame_work_together_like_the_options_tab`
-- [ ] not ported yet: the mouse wheel over a combo box or spin box must not scroll the page (tkinter `ScrollFrame._on_wheel`); there are no combo boxes yet, Phase 5 decides (see PHASE_NOTES Phase 2)
+- [x] the mouse wheel over a combo box or spin box changes nothing until the box has the focus (MIGRATION_LOG no. 14) -> `test_qt_options_tab.py::test_the_wheel_over_a_drop_down_or_number_field_changes_nothing_without_focus` (the page-scrolls-instead half: `test_qt_widgets.py::test_the_mouse_wheel_scrolls_the_page`)
 
 ## Window, focus and tab order  (Phase 1 (window), all phases (tab order))
 
@@ -525,7 +562,7 @@ Phase 1 covers the frame of this screen in `test_qt_main_window.py`: title, size
 - [ ] plan tab footer is still packed at the bottom  
   `test_gui_final_pass.py::test_plan_tab_footer_is_still_packed_at_the_bottom`
 - [ ] tab order of search queue and options has nothing decorative  
-  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative` -> Search: `test_qt_search_tab.py::test_keyboard_order_has_nothing_decorative`; Queue: `test_qt_queue_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 4); Options: Phase 5, so the box stays open
+  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative` -> Search: `test_qt_search_tab.py::test_keyboard_order_has_nothing_decorative`; Queue: `test_qt_queue_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 4); Options: `test_qt_options_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 5, v2); the box stays open until the Windows run passes
 - [ ] timeline hint wraps to the width of the strip  
   `test_gui_final_pass.py::test_timeline_hint_wraps_to_the_width_of_the_strip`
 - [x] search type list is never squeezed by a long title  

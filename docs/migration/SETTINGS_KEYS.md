@@ -53,6 +53,8 @@ How the tkinter app handles them (behaviour to keep):
 
 38 keys: 14 boolean, 24 string.
 
+How the Qt app handles them (Phase 5, `qt_ui/binder.py` and `core/options.py`): the same rules. `SettingsBinder` binds each Options control to one key of the settings dictionary: a switch writes a real boolean, every other control writes a string (`"12"`, `"mkv"`), so the saved file keeps the old types. Loading a value into a control never writes it back: a saved value the control cannot show (`"7.5"`, an old drop-down word) stays in the dictionary until the person changes that control. `core.options.build_options()` reads numbers tolerantly like `App.num` and gives the same `JobOptions` as the tkinter app for every settings file (golden test in `tests/test_core_matches_tkinter.py`). The Options tab edits 33 keys; the other 5 (`chapters`, `min_views`, `min_duration`, `top_n`, `pad_before`) belong to the Plan tab (Phase 6).
+
 Other files in the data folder that the Qt app must keep reading and writing the same way (not part of `DEFAULTS`):
 
 - `config.json` (`CONFIG_PATH`): Twitch credentials and sign-in tokens (`client_id`, `client_secret`, `access_token`, `refresh_token`).

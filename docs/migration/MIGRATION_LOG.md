@@ -73,3 +73,18 @@ No entries for Phase 0 (it changed no behaviour).
 **tkinter:** puts the link in the entry, selects the Plan tab and runs «Get info».
 **Qt:** puts the link in the entry and selects the Plan tab; «Get info» is still the Phase 1 stub (`MainWindow.on_get_info`), so nothing is loaded until Phase 6 builds it. The Search tab sends the link through its `vod_chosen` signal; `MainWindow.use_vod` calls `on_get_info()`, so Phase 6 only has to fill that method.
 **Why:** the Get info flow belongs to Phase 6 (PLAN.md). Temporary.
+
+## 13. Number fields only take whole numbers inside their range  (Phase 5)
+**tkinter:** the `Spinbox` fields were plain text boxes: anything could be typed (`abc`, `7.5`, `999999`), it was stored as typed and only read tolerantly when used (`App.num`).
+**Qt:** the numeric fields are `QSpinBox`es (`qt_ui.widgets.SpinBox`): whole numbers within the old `from_`/`to` range. A saved value the box cannot show (like `"7.5"`) stays in the settings dictionary untouched until the person changes that box, so an old settings file is never rewritten behind their back. `core.options.num` still reads any text tolerantly (and also survives `TypeError` and `OverflowError`), so `build_options()` gives the same result as tkinter for every settings file.
+**Why:** the standard Qt control for a bounded integer. Not asked for; the user can veto it.
+
+## 14. The mouse wheel does nothing on a drop-down or number field until it has the keyboard focus  (Phase 5)
+**tkinter:** the wheel over a combobox could change its value while scrolling the page.
+**Qt:** `ComboBox` and `SpinBox` ignore the wheel unless they have the focus, so scrolling the Options page never changes a setting by accident.
+**Why:** a long scrolling page full of such controls. Decided by the agent; the user can veto it.
+
+## 15. Closing the window also cancels a chat overlay that is being drawn  (Phase 5)
+**tkinter:** `on_close` only cancelled the tools setup and the queue; a saved-chat overlay thread was left to die with the process (it could leave TwitchDownloaderCLI or ffmpeg running).
+**Qt:** `closeEvent` cancels it too.
+**Why:** no orphan processes. Decided by the agent; the user can veto it.

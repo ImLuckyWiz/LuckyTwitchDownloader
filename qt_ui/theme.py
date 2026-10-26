@@ -103,6 +103,19 @@ QComboBox QAbstractItemView {
     background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; outline: none;
     selection-background-color: ${ACCENT}; selection-color: ${WHITE};
 }
+QSpinBox {
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; padding: 5px 6px; min-height: 18px;
+    selection-background-color: ${ACCENT}; selection-color: ${WHITE};
+}
+QSpinBox:hover { border-color: ${HOVER}; }
+QSpinBox:focus { border-color: ${ACCENT}; }
+QSpinBox:disabled { background-color: ${BG}; color: ${DISABLED}; }
+QSpinBox::up-button { subcontrol-origin: border; subcontrol-position: top right; width: 18px; border: none; }
+QSpinBox::down-button { subcontrol-origin: border; subcontrol-position: bottom right; width: 18px; border: none; }
+QSpinBox::up-arrow, QSpinBox::down-arrow { image: none; width: 0; height: 0; }
+/* fields on a card are darker than the card (BG on BG2), like the tkinter «Card.TEntry»; a disabled one melts into it */
+QFrame#card QLineEdit, QFrame#card QSpinBox, QFrame#card QComboBox { background-color: ${BG}; }
+QFrame#card QLineEdit:disabled, QFrame#card QSpinBox:disabled, QFrame#card QComboBox:disabled { background-color: ${BG2}; }
 QGroupBox { border: 1px solid ${BORDER}; margin-top: 8px; padding-top: 8px; }
 QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 10px; padding: 0 4px; color: ${ACCENT}; font-weight: bold; }
 

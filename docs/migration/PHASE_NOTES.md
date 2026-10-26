@@ -14,6 +14,21 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
+## Phase 5: Options tab  (2026-10-26, IN PROGRESS: version 2 delivered, no tag yet)
+**Done (version 1, see VERSIONS.md):** `qt_ui/tabs/options.py`, `qt_ui/binder.py` (SettingsBinder), `core/options.py`, `core/examples.py`, `qt_ui/background_jobs.py` (tools setup and saved-chat overlay threads), `SpinBox`/`ComboBox` wheel policy, folder and file pickers, MainWindow wiring. MIGRATION_LOG.md no. 13 to 15.
+**Windows result for v1 (user, 2026-10-26):** 296 Qt tests passed; one warning: the tools-setup thread kept going after its window (and Bridge) was deleted and crashed on `emit`.
+**Done (version 2):**
+- Fix: `background_jobs._emit()` swallows the `RuntimeError` of a deleted Bridge (the thread then just ends); used for log, progress, `tools_info`, `tools_done`, `saved_chat_done`. Test: `test_a_worker_that_outlives_its_window_ends_quietly`.
+- `tests/test_qt_main_window.py`: the `main()` test no longer runs the real tools setup (it replaces `start_tools_setup` and checks it was asked for once, with `force=False`). This was the test that started the stray thread.
+- New `tests/test_core_options.py` (13, no Qt, no tkinter): numbers, clamps, switches, drop-down words, empty texts, the live examples, half-typed templates.
+- New `tests/test_qt_options_tab.py` (57 functions, 60 cases): the 37 tkinter Options tests ported plus the binder, the signals to the window, the tools setup, the saved-chat overlay, the wheel policy and the tab order.
+- Golden test appended to `tests/test_core_matches_tkinter.py`: 12 settings fixtures x 2 cut texts; the real tkinter `App.build_options()` / `build_filter()` must EQUAL `core.options` on the same values. Needs tkinter: **not run here (no tkinter in the sandbox)**; the Qt-free half (every fixture names only real keys and builds in core) was run.
+- PARITY.md: 36 Options boxes ticked (+ the wheel box); SETTINGS_KEYS.md note on how the binder stores values.
+**What I ran (Linux, Python 3.12, offscreen, PySide6 6.12.0):** `test_core_options.py` + `test_qt_options_tab.py` 73 passed; `test_qt_main_window.py` + `test_qt_queue_tab.py` 82 passed. Everything compiles. NOT run: the full suite, the golden test (tkinter), anything on Windows.
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 13 (whole-number fields), 14 (wheel needs focus), 15 (closing cancels a chat overlay).
+**Known issues / left for later:** the golden test has not run yet. `tests/test_core_matches_tkinter.py` fixtures leave out text like `1e999` on purpose (tkinter lets an `OverflowError` escape there; core gives the fallback, see log no. 13). The Options hands-on check on Windows is open.
+**Next:** the user runs the Windows checks of version 2 (VERSIONS.md) and pastes the results; fix what fails in v3; then the phase notes get the Definition of Done table and the user approves.
+
 ## Phase 4: Search tab and Twitch sign-in  (2026-10-26, tag migration-phase-4, done, waiting for approval)
 **Done (version 1):** `qt_ui/tabs/search.py` (banner, results and recent lists, kind combo, VOD table, Load more, Use this VOD, generation counter), `qt_ui/search_models.py` (models, size-capped `ThumbCache`, `ThumbDelegate`), `qt_ui/thumbs.py` (4 lazy worker threads), `qt_ui/twitch_dialog.py` (device-code sign-in in a thread, sign out, own app, cancel on close), `core/search.py`, `ComboBox` in `qt_ui/widgets.py`, QSS for combo, group box, banner, list items; `MainWindow` owns the client and opens the dialog. Tests: `tests/test_qt_search_tab.py` (70), `tests/test_qt_twitch_dialog.py` (37), one more in `test_qt_queue_tab.py`. PARITY.md: 18 Search boxes and the search type-list box ticked. MIGRATION_LOG.md no. 8 to 12.
 **What I ran (Linux, Python 3.12, offscreen/xvfb):** the new files and the existing Qt files, in several combinations: all passed. The baseline full suite at the start: 1031 passed. I broke the code on purpose in 17 places (stale answers, closing, own app, trimming, Enter in a field...) and each time a test failed. NOT run after the last change: the full suite (see below).

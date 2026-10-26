@@ -6,7 +6,7 @@ GUI thread only (a worker thread reports through a Bridge signal and the slot op
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 
 def info(parent: QWidget | None, title: str, text: str) -> None:
@@ -34,3 +34,15 @@ def ask_ok_cancel(parent: QWidget | None, title: str, text: str) -> bool:
                                   QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
                                   QMessageBox.StandardButton.Ok)
     return answer == QMessageBox.StandardButton.Ok
+
+
+def choose_folder(parent: QWidget | None, title: str, start: str = "") -> str:
+    """The system's folder picker (tkinter ``askdirectory``). ``""`` when the person cancels."""
+    return QFileDialog.getExistingDirectory(parent, title, start)
+
+
+def open_file(parent: QWidget | None, title: str, start: str = "", name_filter: str = "All files (*.*)") -> str:
+    """The system's file picker (tkinter ``askopenfilename``). ``name_filter`` like «Chat files (*.json);;All files (*.*)».
+    ``""`` when the person cancels."""
+    path, _chosen = QFileDialog.getOpenFileName(parent, title, start, name_filter)
+    return path

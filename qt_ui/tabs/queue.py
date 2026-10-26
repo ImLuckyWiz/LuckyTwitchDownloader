@@ -86,6 +86,7 @@ class QueueTab(QWidget):
         self.runner = QueueRunner(self.bridge, self)
         self.blocked_reason = lambda: ""
         self.output_dir = lambda: DEFAULTS["out_dir"]
+        self.cancel_other = lambda: False  # the window cancels what it runs itself (a chat overlay); True if it did
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -257,7 +258,7 @@ class QueueTab(QWidget):
         self.runner.start(todo)
 
     def cancel_current(self) -> None:
-        if self.runner.cancel():
+        if self.runner.cancel() or self.cancel_other():
             self.status_message.emit("Cancelling…")
 
     def on_queue_done(self) -> None:

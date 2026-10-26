@@ -4,12 +4,15 @@ Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, s
 handler of «Get info» is a stub (Phase 6). Phase 3 filled the Queue & log tab and added what belongs to the whole
 window: the progress bar and status line (``set_progress``), the «Job n/m» prefix, and closing (cancel a running
 job, save the settings, remove the heartbeat file). Phase 4 filled the Search tab and the Twitch API dialog; the
-window owns the Twitch ``client`` (setting it refreshes the Search tab).
+window owns the Twitch ``client`` (setting it refreshes the Search tab). Phase 5 filled the Options tab: the window
+owns the two background jobs it starts (the tools setup and the overlay of a saved chat), builds the engine's
+``JobOptions`` from the settings (``build_options``) and passes the settings dictionary to the tab, which edits it.
 """
 
 from __future__ import annotations
 
 import weakref
+from pathlib import Path
 
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -18,8 +21,11 @@ from PySide6.QtWidgets import (
 
 from core import paths
 from core.config import make_client
+from core.options import build_filter, build_options, flag
 from core.settings import save_settings
+from luckytwitch_engine import EngineError, describe_chat_overlay
 from qt_ui import dialogs
+from qt_ui.background_jobs import SavedChatRunner, ToolsRunner
 from qt_ui.bridge import Bridge
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
 from qt_ui.theme import dark_titlebar
@@ -59,10 +65,13 @@ class MainWindow(QMainWindow):
         self.settings = settings if settings is not None else {}
         self._client = client
         self._login_dialog: TwitchDialog | None = None
-        # state the later phases fill in: the tools setup (Phase 5) and the saved-chat overlay (Phase 5)
+        # the two background jobs of the Options tab: the tools setup and the overlay of a saved chat
         self.tools_busy = False
         self.tools_ctx = None
         self.saved_chat_busy = False
+        self.saved_chat_ctx = None
+        self.tools_runner = ToolsRunner(self.bridge)
+        self.saved_chat_runner = SavedChatRunner(self.bridge)
         self._progress_mode = "determinate"
         self._job_prefix = ""
 
@@ -109,7 +118,7 @@ class MainWindow(QMainWindow):
         self.tabs.tabBar().setExpanding(False)
         self.tabs.tabBar().setDrawBase(False)
         self.tab_search, self.tab_plan, self.tab_options, self.tab_queue = (
-            SearchTab(self.bridge), PlanTab(), OptionsTab(), QueueTab(self.bridge))
+            SearchTab(self.bridge), PlanTab(), OptionsTab(self.settings), QueueTab(self.bridge))
         for widget, name in zip((self.tab_search, self.tab_plan, self.tab_options, self.tab_queue), TAB_NAMES):
             self.tabs.addTab(widget, _tab_text(name))
         tabs_lay.addWidget(self.tabs)
@@ -151,6 +160,17 @@ class MainWindow(QMainWindow):
         search.signin_requested.connect(self.ask_credentials)
         search.vod_chosen.connect(self.use_vod)
         search.update_search_state()  # the client is known only now
+        queue.cancel_other = _weak(self.cancel_saved_chat)  # «Cancel current» also stops a chat overlay
+        options = self.tab_options
+        options.status_message.connect(self.set_status)
+        options.refresh_clips_requested.connect(self.refresh_clips)
+        options.preview_requested.connect(self.update_preview)
+        options.output_folder_requested.connect(queue.open_output_folder)
+        options.update_tools_requested.connect(self.update_tools_now)
+        options.saved_chat_requested.connect(self.render_saved_chat)
+        self.bridge.tools_info.connect(options.set_tools_info)
+        self.bridge.tools_done.connect(self.on_tools_done)
+        self.bridge.saved_chat_done.connect(self.on_saved_chat_done)
         self.bridge.progress.connect(self.set_progress)
         self.bridge.job.connect(self.on_job)
         self.bridge.queue_done.connect(self.on_queue_done)
@@ -228,9 +248,112 @@ class MainWindow(QMainWindow):
             return "A chat overlay is being drawn, start the queue when it finishes."
         return ""
 
+    # ---------------------------- options ---------------------------- #
+    def cut_text(self) -> str:
+        """The text of the Plan tab's cut points box. Empty until the Plan tab exists (Phase 6 fills this in)."""
+        return ""
+
+    def build_options(self):
+        """The engine's ``JobOptions`` from the settings and the cut points (``App.build_options``)."""
+        return build_options(self.settings, self.cut_text())
+
+    def build_filter(self):
+        return build_filter(self.settings)
+
+    def refresh_clips(self) -> None:
+        """A setting the clip list depends on changed. Stub: the Plan tab's clips come in Phase 6."""
+
+    def update_preview(self) -> None:
+        """The strategy or threshold changed. Stub: the Plan tab's preview comes in Phase 6."""
+
+    # ---------------------------- tools (yt-dlp / ffmpeg) ---------------------------- #
+    def start_tools_setup(self, force: bool = False) -> None:
+        """Download missing tools / update yt-dlp in the background (``luckytwitch_qt.main`` calls this at start)."""
+        if self.tools_busy:
+            return
+        self.tools_busy = True
+        self.info_btn.setEnabled(False)
+        self.tab_options.set_tools_running(True)
+        self.set_status("Preparing tools (yt-dlp, ffmpeg)…")
+        update = force or flag(self.settings, "auto_update")
+        self.tools_ctx = self.tools_runner.start(update, force)
+
+    def update_tools_now(self) -> None:
+        if self.tab_queue.runner.is_running():
+            dialogs.info(self, "Running", "Wait for the running job to finish (or cancel it) first.")
+            return
+        self.start_tools_setup(force=True)
+
+    def on_tools_done(self, error: str) -> None:
+        self.tools_busy = False
+        self.tools_ctx = None
+        self.info_btn.setEnabled(True)
+        self.tab_options.set_tools_running(False)
+        self.set_progress(0, "")
+        if error:
+            self.log(f"Tools: {error}")
+            self.set_status("Some tools are missing. See the log.")
+            dialogs.warning(self, "Tools", error)
+        else:
+            self.set_status(READY_TEXT)
+
+    # ---------------------------- the overlay of a saved chat ---------------------------- #
+    def render_saved_chat(self) -> None:
+        """Options → Chat → «Draw the overlay from a saved chat»: pick a «.chat.json», confirm, draw it (no download)."""
+        if self.tab_queue.runner.is_running() or self.tools_busy or self.saved_chat_busy:
+            dialogs.info(self, "Busy", "Wait for the running job (or the tools setup) to finish first.")
+            return
+        opts = self.build_options()
+        folder = Path(opts.out_dir)
+        path = dialogs.open_file(self, "Choose a saved chat (.chat.json)", str(folder) if folder.is_dir() else "",
+                                 "Chat files (*.json);;All files (*.*)")
+        if not path:
+            return
+        chat = Path(path)
+        try:
+            summary = describe_chat_overlay(chat, opts)
+        except EngineError as e:
+            dialogs.error(self, "Chat overlay", str(e))
+            return
+        if not dialogs.ask_ok_cancel(self, "Draw the chat overlay?", summary + "\n\nIt can take a while for a long chat."):
+            return
+        self.start_saved_chat_render(chat, opts)
+
+    def start_saved_chat_render(self, chat: Path, opts) -> None:
+        self.saved_chat_busy = True
+        self.tab_queue.set_running(True)  # «Start queue» off, «Cancel current» on (the log and the button live there)
+        self.tab_options.set_saved_chat_running(True)
+        self.show_queue_tab()
+        self.set_status("Chat overlay…")
+        self.saved_chat_ctx = self.saved_chat_runner.start(chat, opts)
+
+    def cancel_saved_chat(self) -> bool:
+        """«Cancel current» while an overlay is being drawn. False when there is none."""
+        if self.saved_chat_ctx is None:
+            return False
+        self.saved_chat_ctx.cancel()
+        return True
+
+    def on_saved_chat_done(self, out: str, error: str) -> None:
+        self.saved_chat_busy = False
+        self.saved_chat_ctx = None
+        self.tab_queue.set_running(False)
+        self.tab_options.set_saved_chat_running(False)
+        self.set_progress(0, "")
+        if error:
+            cancelled = error == "Cancelled."
+            self.log("Cancelled." if cancelled else f"Chat overlay: {error}")
+            self.set_status("Chat overlay cancelled." if cancelled else "Chat overlay failed. See the log.")
+            if not cancelled:
+                dialogs.error(self, "Chat overlay", error)
+        else:
+            self.set_status(f"Chat overlay ready: {Path(out).name}")
+
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt name)
         if self.tools_ctx:
             self.tools_ctx.cancel()
+        if self.saved_chat_ctx:
+            self.saved_chat_ctx.cancel()  # no orphan ffmpeg / TwitchDownloaderCLI after the window is gone
         runner = self.tab_queue.runner
         if runner.is_running():
             if not dialogs.ask_yes_no(self, "Quit", "A job is running. Cancel it and quit?"):

@@ -52,7 +52,7 @@ def test_the_four_tabs_have_the_same_names_in_the_same_order(win):
 
 
 def test_the_tabs_that_are_not_built_yet_are_empty(win):
-    for i in (1, 2):  # Plan, Options (Queue & log was built in Phase 3, Search in Phase 4)
+    for i in (1,):  # Plan (Queue & log was built in Phase 3, Search in Phase 4, Options in Phase 5)
         assert win.tabs.widget(i).findChildren(QLabel) == []
         assert win.tabs.widget(i).children() == []
 
@@ -160,9 +160,12 @@ def test_main_builds_the_window_from_the_saved_settings_and_saves_them_on_close(
     monkeypatch.setattr(luckytwitch_qt, "QApplication", FakeApp)
     monkeypatch.setattr(type(app), "exec", lambda self: 0)
     monkeypatch.setattr(mw.MainWindow, "__init__", spy)
+    tools = []
+    monkeypatch.setattr(mw.MainWindow, "start_tools_setup", lambda self, force=False: tools.append(force))  # nothing real runs
     assert luckytwitch_qt.main(["luckytwitch_qt.py"]) == 0
     window, kwargs = made[0]
     qtbot.addWidget(window)
+    assert tools == [False]  # Phase 5: the tools are prepared in the background right after the window opens
     assert kwargs["settings"] == DEFAULTS and kwargs["client"] is None
     assert (tmp_path / "data").is_dir()  # the data folder is created
     assert not paths.SETTINGS_PATH.exists()  # nothing is written until the window closes

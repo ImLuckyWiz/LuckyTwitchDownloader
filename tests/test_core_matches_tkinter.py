@@ -103,3 +103,64 @@ def test_the_real_tkinter_app_writes_a_settings_file_that_core_reads(gui, monkey
     assert loaded == dl.load_settings()
     assert all(loaded[k] == v for k, v in changed.items())
     assert set(loaded) == set(settings.DEFAULTS)
+
+
+# --------------------------------------------------------------------------- Phase 5: the golden test
+# The strongest parity check of the project: for each settings fixture the real tkinter App builds its JobOptions
+# from its variables, core.options builds them from the same values in a plain dict, and the two must be EQUAL.
+# (Not covered, on purpose: text like "1e999". tkinter's App.num lets the OverflowError of int(inf) escape, core.options
+# gives the fallback instead; see MIGRATION_LOG no. 13.)
+ALL_ON = {k: True for k, v in settings.DEFAULTS.items() if isinstance(v, bool)}
+GOLDEN = {
+    "defaults": {},
+    "everything_on": {**ALL_ON, "subfolders": True},
+    "everything_off": {k: False for k in ALL_ON},
+    "changed_values": {
+        "out_dir": "D:/Videos/Out", "container": "mkv", "strategy": "Download full VOD, then split",
+        "threshold": "75", "threads": "12", "name_template": "{streamer}_{n}of{total}", "exact": True,
+        "chapters": True, "min_views": "10", "min_duration": "5.5", "top_n": "3", "pad_before": "4", "pad_after": "2",
+        "title_tpl": "{title} by {creator}", "gap_title": "Charla ñandú", "chat": True, "chat_format": "html",
+        "chat_embed": True, "chat_render": True, "chat_render_mode": "Transparent · ProRes 4444 (.mov, very big)",
+        "chat_render_look": "Dark see-through panel", "chat_render_width": "500", "chat_render_height": "1080",
+        "chat_render_font_size": "24", "chat_render_fps": "60", "chat_render_smooth": True,
+        "folder_template": "{streamer}-{id}", "clip_name_template": "{clip_title}-{creator}"},
+    "only_parts": {"strategy": "Download only the parts", "chat_render_mode": "Black background · H.264 (.mp4, smallest)",
+                   "chat_render_fps": "30"},
+    "numbers_that_are_not_numbers": {k: "abc" for k in (
+        "threshold", "threads", "min_views", "min_duration", "top_n", "pad_before", "pad_after", "chat_render_width",
+        "chat_render_height", "chat_render_font_size")},
+    "empty_numbers": {k: "" for k in (
+        "threshold", "threads", "min_views", "min_duration", "top_n", "pad_before", "pad_after", "chat_render_width",
+        "chat_render_height", "chat_render_font_size")},
+    "odd_numbers": {"threshold": "0", "threads": "0", "min_views": "-3", "pad_before": "-1", "top_n": "2.9",
+                    "chat_render_width": "7.5", "chat_render_font_size": " 20 ", "chat_render_height": "nan"},
+    "huge_and_tiny": {"threshold": "500", "threads": "-4", "pad_after": "99999", "chat_render_width": "100000"},
+    "empty_texts": {"out_dir": "   ", "name_template": "  ", "folder_template": "", "clip_name_template": " ",
+                    "title_tpl": "", "gap_title": "   "},
+    "words_the_lists_do_not_have": {"strategy": "???", "chat_format": "docx", "chat_render_mode": "???",
+                                    "chat_render_look": "???", "chat_render_fps": "45", "container": "avi"},
+    "padded_texts": {"out_dir": "  C:/x  ", "name_template": "  {n}  ", "gap_title": "  Gap  ", "title_tpl": "  {title}  "},
+}
+
+
+@pytest.mark.parametrize("name", list(GOLDEN))
+@pytest.mark.parametrize("cut_text", ["", "  0:00 - 0:10\n1:00:00 - 1:10:00  \n"])
+def test_the_qt_build_options_equal_the_tkinter_ones(gui, name, cut_text):  # noqa: F811
+    from core import options
+
+    app = gui.app
+    values = {**settings.DEFAULTS, **GOLDEN[name]}
+    for key, value in values.items():
+        app.vars[key].set(value)
+    app.cuts.delete("1.0", "end")
+    app.cuts.insert("1.0", cut_text)
+    old = app.build_options()
+    new = options.build_options(dict(values), cut_text)
+    assert new == old, name
+    assert options.build_filter(dict(values)) == app.build_filter(), name
+
+
+def test_every_golden_fixture_names_only_real_settings():
+    for name, changes in GOLDEN.items():
+        assert set(changes) <= set(settings.DEFAULTS), name
+
