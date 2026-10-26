@@ -650,3 +650,82 @@ def test_a_second_launch_hands_its_link_to_the_open_window(qtbot, reads, monkeyp
     assert done == [0] and created == []
     qtbot.waitUntil(lambda: reads.cut_text() == "0:00 - 5:00", timeout=3000)
     assert reads.cut_text() == "0:00 - 5:00"
+
+
+# --------------------------------------------------------------------------- Phase 9e: Plan page polish (D1-D5)
+def test_responsive_two_column_vs_stacked_layout(win):
+    page = win.tab_plan
+    win.tabs.setCurrentWidget(page)
+    win.resize(1100, 750)
+    QApplication.processEvents()
+    assert page.is_two_column()
+    assert page.cuts_card.x() < page.clips_card.x()
+
+    win.resize(900, 700)
+    QApplication.processEvents()
+    assert not page.is_two_column()
+    assert page.cuts_card.y() < page.clips_card.y()
+
+
+def test_part_cards_and_coverage_bar_follow_plan_and_support_skip(win):
+    segments = [
+        eng.GameSegment(0.0, 1800.0, "Just Chatting"),
+        eng.GameSegment(1800.0, 7200.0, "Elden Ring"),
+    ]
+    load_vod(win, segments=segments, muted=[(60.0, 180.0)])
+    page = win.tab_plan
+    page.set_cut_text("0:00:00 - 0:30:00 - 1:30:00 - end")
+    win.update_preview()
+
+    assert len(page.part_cards) == 3
+    assert page.part_cards[0].badge_lbl.text() == "P1"
+    assert page.part_cards[0].game_name == "Just Chatting"
+    assert page.part_cards[0].muted_lbl is not None
+    assert page.part_cards[1].game_name == "Elden Ring"
+    assert page.coverage_bar.value() == 100
+    assert page.coverage_badge.text() == "100% of VOD"
+
+    # Clicking skip on Part 2 removes that middle stretch
+    page.part_cards[1].skip_btn.click()
+    assert len(page.part_cards) == 2
+    assert page.coverage_bar.value() == 50
+    assert page.coverage_badge.text() == "50% of VOD"
+
+
+def test_strategy_segmented_control_syncs_settings_and_preview(win):
+    load_vod(win)
+    page = win.tab_plan
+    page.set_cut_text("0:00:00 - 0:30:00 - end")
+    win.update_preview()
+
+    page.strategy_buttons["sections"].click()
+    assert win.settings["strategy"] == "Download only the parts"
+    assert page.strategy_buttons["sections"].isChecked()
+    assert "download only these parts" in preview_of(win)[0]
+
+    page.strategy_buttons["full"].click()
+    assert win.settings["strategy"] == "Download full VOD, then split"
+    assert page.strategy_buttons["full"].isChecked()
+    assert "download the full VOD once" in preview_of(win)[0]
+
+
+def test_clip_multi_select_toolbar_and_download_n_clips_label(win):
+    load_clips(win)
+    page = win.tab_plan
+    assert page.download_clips_btn.text() == "Download only selected clip"
+
+    page.select_all_clips_btn.click()
+    assert page.selected_clip_rows() == [0, 1, 2]
+    assert page.download_clips_btn.text() == "Download 3 clips"
+
+    page.select_clips(0)
+    assert page.download_clips_btn.text() == "Download 1 clip"
+
+    page.invert_clips_btn.click()
+    assert page.selected_clip_rows() == [1, 2]
+    assert page.download_clips_btn.text() == "Download 2 clips"
+
+    page.clear_clips_btn.click()
+    assert page.selected_clip_rows() == []
+    assert page.download_clips_btn.text() == "Download only selected clip"
+

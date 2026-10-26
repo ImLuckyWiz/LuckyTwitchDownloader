@@ -231,6 +231,7 @@ class MainWindow(QMainWindow):
         plan.clip_download_requested.connect(self.download_clips)
         plan.search_requested.connect(self.show_search_tab)
         plan.paste_requested.connect(self.paste_vod_from_clipboard)
+        plan.strategy_changed.connect(self._on_plan_strategy_changed)
         self.bridge.info_ok.connect(self.on_info_ok)
         self.bridge.error.connect(self.on_info_error)
         self.bridge.frames.connect(self._on_frames_for_strip)
@@ -549,6 +550,10 @@ class MainWindow(QMainWindow):
     def update_preview(self) -> None:
         """The strategy or threshold changed."""
         self.tab_plan.update_preview()
+
+    def _on_plan_strategy_changed(self, _value: str) -> None:
+        self.tab_options.binder.reload()
+        self.tab_options.refresh_changed_markers()
 
     # ---------------------------- tools (yt-dlp / ffmpeg) ---------------------------- #
     def start_tools_setup(self, force: bool = False) -> None:

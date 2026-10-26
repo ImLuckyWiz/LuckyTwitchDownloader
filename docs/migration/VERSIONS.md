@@ -1,49 +1,55 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9e v1  (2026-10-26)  The Plan page: wide 2-column responsive workspace, visual part cards with game stripes & skip action, strategy segmented control, coverage bar, clip multi-select toolbar, and view-count bar delegate
+
+**Done (new or changed files):**
+- `qt_ui/tabs/plan.py`: D1 responsive 2-column layout (`lower_layout` switching between `LeftToRight` at `>= 1000 px` and `TopToBottom` at `< 1000 px`, preserving `cuts_card.parent() is body` and `clips_card.parent() is body`); D2 `PartCard` visual chips (`P1 · start → end · (duration)`, game colour stripe from `game_colour`, dominant game label, muted audio note, and `✕` `skip_part` button); D3 `strategy_buttons` segmented control (`Auto`, `Full VOD + split`, `Only the parts`) synced with `settings["strategy"]` + `coverage_bar` and `coverage_badge`; D4 clip multi-select toolbar (`select_all_clips_btn`, `invert_clips_btn`, `clear_clips_btn`) + dynamic `Download N clip(s)` button label; D5 `ClipViewsDelegate` proportional view bar on column 1 and vector icons on Plan buttons.
+- `qt_ui/main_window.py`: connected `tab_plan.strategy_changed` to `tab_options.binder.reload()` and `tab_options.refresh_changed_markers()`.
+- `tests/test_qt_plan_tab.py`: added 4 new Phase 9e tests (59 test functions / 63 test cases total in `test_qt_plan_tab.py`) covering responsive 2-column vs stacked layout, part cards & coverage bar + skip button, strategy segmented control synchronization, and clip multi-select toolbar + `Download N clips`.
+- Docs updated: `MIGRATION_LOG.md` (no. 25), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_plan_tab.py tests/test_qt_main_window.py -q` -> **75 passed** in 20.38s.
+
+**NOT done:** Phases 9f (Timeline polish), 9g (Search & Twitch sign-in), and 9h (final polish & docs).
+
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`).
+
 ### 9d v1  (2026-10-26)  The Options page: settings search, changed-from-default markers & reset, live output preview card with disk space, and dedicated tool status rows
 
 **Done (new or changed files):**
-- qt_ui/widgets.py: added changed_dot, 
-eset_btn, and set_changed() on SettingRow; added set_badge() on SideNav to display modified setting count badges per section.
-- qt_ui/tabs/options.py: G1 settings search bar (search_entry) with live match counter (match_counter); G2 
-efresh_changed_markers() updating changed_dot, 
-eset_btn, and SideNav section badges; G3 save_preview_card displaying full live path and drive free space (shutil.disk_usage); G5 dedicated ytdlp_row and fmpeg_row status rows.
-- 	ests/test_qt_options_tab.py: added 4 new Phase 9d tests (64 total) verifying settings search filtering, changed markers & reset button click, save preview card with disk space, and tool status parsing.
-- Docs updated: MIGRATION_LOG.md (no. 24), PHASE_NOTES.md, VERSIONS.md, HANDOFF.md.
+- `qt_ui/widgets.py`: added `changed_dot`, `reset_btn`, and `set_changed()` on `SettingRow`; added `set_badge()` on `SideNav` to display modified setting count badges per section.
+- `qt_ui/tabs/options.py`: G1 settings search bar (`search_entry`) with live match counter (`match_counter`); G2 `refresh_changed_markers()` updating `changed_dot`, `reset_btn`, and `SideNav` section badges; G3 `save_preview_card` displaying full live path and drive free space (`shutil.disk_usage`); G5 dedicated `ytdlp_row` and `ffmpeg_row` status rows.
+- `tests/test_qt_options_tab.py`: added 4 new Phase 9d tests (64 total) verifying settings search filtering, changed markers & reset button click, save preview card with disk space, and tool status parsing.
+- Docs updated: `MIGRATION_LOG.md` (no. 24), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
 
 **Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
-- python -m pytest tests/test_qt_options_tab.py -q -> 64 passed in 10.20s.
-- python -m pytest tests/test_qt_widgets.py tests/test_qt_main_window.py tests/test_core_matches_tkinter.py -q -> 136 passed in 28.19s.
+- `python -m pytest tests/test_qt_options_tab.py -q` -> 64 passed in 10.20s.
+- `python -m pytest tests/test_qt_widgets.py tests/test_qt_main_window.py tests/test_core_matches_tkinter.py -q` -> 136 passed in 28.19s.
 
 **NOT done:** Phases 9e (Plan layout), 9f (Timeline), 9g (Search & Twitch sign-in), and 9h (final polish & docs).
 
-**NOT run:** live interactive window inspection on Windows (python luckytwitch_qt.py).
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`).
 
 ### 9c v1 (includes 9a A5 icons)  (2026-10-26)  The Queue page: rich rows delegate, real-time header counters, collapsible log drawer with filters/search/export, retry & live reorder, plus A5 vector icon layer
 
 **Done (new or changed files):**
-- qt_ui/icons.py (new, from phase-9a-icons-v1.zip), 	ests/test_qt_icons.py (new, 144 tests), 	ools/widget_gallery.py: A5 vector QPainterPath icon layer on a 24x24 grid (icon(), pixmap(), _VectorIconEngine, HiDPI-aware caching) wired into qt_ui/shell.py (NavRail, CommandBar, VodStrip) and qt_ui/tabs/queue.py.
-- qt_ui/queue_model.py: added ITEM_ROLE and PROGRESS_ROLE, progress/progress_text/	humb fields on QueueItem, 	hreading.RLock() (self._lock), set_progress, set_running_progress, set_thumbnail, move_row, move_item, 
-etry_item, 
-ext_queued, counts, and header_summary (N done · N running · N waiting · N failed).
-- qt_ui/queue_runner.py: updated QueueRunner.start(items, model=None) to pull the next queued item dynamically from model in current row order under model._lock while tracking seen row IDs on the worker thread.
-- qt_ui/tabs/queue.py & qt_ui/dialogs.py: F1 QueueRowDelegate (16:9 thumbnail preview, bold title + 
- parts · strategy subtitle, coloured status chip, in-row progress bar when running, inline Open button on finished rows); F2 counter_label + queue_progress + grouped primary (Start queue, Cancel current) vs secondary (Retry, ↑, ↓, Remove selected, Clear finished, Open folder) buttons; F3 log_preview_label + log_drawer (Collapsible, collapsed by default, auto-opens on err) + severity filter chips (All, Warnings, Errors) + log_search_entry + utoscroll_btn + save_log_btn (dialogs.save_file); F4 
-etry_failed_or_selected, 
-etry_item, move_selected.
-- qt_ui/main_window.py: passes the current VOD storyboard thumbnail (_current_vod_thumb()) into 	ab_queue.enqueue and updates queued items when storyboard frames finish loading (_on_frames_for_strip).
-- 	ests/test_qt_queue_tab.py: added 5 Phase 9c tests (75 total in 	est_qt_queue_tab.py) covering counter_label, QueueRowDelegate painting & inline Open button click, log_drawer collapse & auto-open on error, severity filter chips/search/autoscroll/save log, and 
-etry_failed_or_selected + live waiting-row reordering during QueueRunner execution.
-- Docs updated: MIGRATION_LOG.md (no. 23), PHASE_NOTES.md, VERSIONS.md, HANDOFF.md.
+- `qt_ui/icons.py` (new, from `phase-9a-icons-v1.zip`), `tests/test_qt_icons.py` (new, 144 tests), `tools/widget_gallery.py`: A5 vector `QPainterPath` icon layer on a 24x24 grid (`icon()`, `pixmap()`, `_VectorIconEngine`, HiDPI-aware caching) wired into `qt_ui/shell.py` (`NavRail`, `CommandBar`, `VodStrip`) and `qt_ui/tabs/queue.py`.
+- `qt_ui/queue_model.py`: added `ITEM_ROLE` and `PROGRESS_ROLE`, `progress`/`progress_text`/`thumb` fields on `QueueItem`, `threading.RLock()` (`self._lock`), `set_progress`, `set_running_progress`, `set_thumbnail`, `move_row`, `move_item`, `retry_item`, `next_queued`, `counts`, and `header_summary` (`N done · N running · N waiting · N failed`).
+- `qt_ui/queue_runner.py`: updated `QueueRunner.start(items, model=None)` to pull the next queued item dynamically from `model` in current row order under `model._lock` while tracking seen row IDs on the worker thread.
+- `qt_ui/tabs/queue.py` & `qt_ui/dialogs.py`: F1 `QueueRowDelegate` (16:9 thumbnail preview, bold title + `n parts · strategy` subtitle, coloured status chip, in-row progress bar when running, inline `Open` button on finished rows); F2 `counter_label` + `queue_progress` + grouped primary (`Start queue`, `Cancel current`) vs secondary (`Retry`, `↑`, `↓`, `Remove selected`, `Clear finished`, `Open folder`) buttons; F3 `log_preview_label` + `log_drawer` (`Collapsible`, collapsed by default, auto-opens on `err`) + severity filter chips (`All`, `Warnings`, `Errors`) + `log_search_entry` + `autoscroll_btn` + `save_log_btn` (`dialogs.save_file`); F4 `retry_failed_or_selected`, `retry_item`, `move_selected`.
+- `qt_ui/main_window.py`: passes the current VOD storyboard thumbnail (`_current_vod_thumb()`) into `tab_queue.enqueue` and updates queued items when storyboard frames finish loading (`_on_frames_for_strip`).
+- `tests/test_qt_queue_tab.py`: added 5 Phase 9c tests (75 total in `test_qt_queue_tab.py`) covering `counter_label`, `QueueRowDelegate` painting & inline `Open` button click, `log_drawer` collapse & auto-open on error, severity filter chips/search/autoscroll/save log, and `retry_failed_or_selected` + live waiting-row reordering during `QueueRunner` execution.
+- Docs updated: `MIGRATION_LOG.md` (no. 23), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
 
 **Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
-- python -m pytest tests/test_qt_queue_tab.py -q -> 75 passed in 5.63s.
-- python -m pytest tests/test_qt_icons.py -q -> 144 passed in 6.51s.
-- python -m pytest tests -q (full repository suite) -> **1526 passed, 31 skipped, 0 failed** in 286.91s.
+- `python -m pytest tests/test_qt_queue_tab.py -q` -> 75 passed in 5.63s.
+- `python -m pytest tests/test_qt_icons.py -q` -> 144 passed in 6.51s.
+- `python -m pytest tests -q` (full repository suite) -> **1526 passed, 31 skipped, 0 failed** in 286.91s.
 
 **NOT done:** Phases 9d–9h (Options polish, Plan layout, Timeline, Search & Twitch sign-in, final polish).
 
-**NOT run:** live interactive window inspection on Windows (python luckytwitch_qt.py).
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`).
 
 ### 9b v1 (includes 9a v2)  (2026-10-26)  QSS token refactor, motion & button hover spike (9a v2), and The Shell: NavRail, PageStack, CommandBar, VodStrip, Toasts, Activity Pill, Shortcuts, UI State, and Plan Onboarding (9b v1)
 

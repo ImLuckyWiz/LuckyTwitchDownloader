@@ -14,34 +14,48 @@ from __future__ import annotations
 import webbrowser
 from typing import Callable, Sequence
 
-from PySide6.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, Qt, Signal
-from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor, QTextOption
+from PySide6.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QTextCharFormat, QTextCursor, QTextOption
 from PySide6.QtWidgets import (
-    QAbstractItemView, QFrame, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QPushButton, QScrollBar, QSizePolicy,
-    QTableView, QVBoxLayout, QWidget,
+    QAbstractItemView, QBoxLayout, QFrame, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QProgressBar,
+    QPushButton, QScrollBar, QSizePolicy, QStyledItemDelegate, QTableView, QVBoxLayout, QWidget,
 )
 
-from core.options import build_filter, build_options, flag
-from core.palette import ERR, MUTED, OK
+from core.options import STRATEGIES, build_filter, build_options, flag
+from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, ERR, FG, MUTED, OK, WARN
 from core.settings import DEFAULTS
+from core.timeline import game_colour
 from luckytwitch_engine import (
     EngineError, GameSegment, Range, Storyboard, clip_start, fmt_hms, insert_cut_point, make_chapters, make_plan,
-    muted_overlap, ranges_of, ranges_to_text,
+    muted_overlap, ranges_of, ranges_to_text, toggle_part,
 )
 from qt_ui import dialogs
 from qt_ui import timeline as timeline_module
 from qt_ui.background_jobs import FramesRunner
 from qt_ui.binder import SettingsBinder
 from qt_ui.bridge import Bridge
+from qt_ui.icons import icon
 from qt_ui.theme import mono_font
 from qt_ui.timeline import IDLE_HINT, Timeline
 from qt_ui.widgets import Card, ScrollPage, SpinBox, Toggle, WrapLabel
 
 HEADER_HEIGHT = 34
 ROW_HEIGHT = 28
+WIDE_BREAKPOINT = 1000
 PREVIEW_COLOURS = {"ok": OK, "err": ERR, "muted": MUTED}
 CUT_HINT = ("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
             "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end")
+
+STRATEGY_CHOICES = (
+    ("auto", "Auto", "Auto"),
+    ("full", "Full VOD + split", "Download full VOD, then split"),
+    ("sections", "Only the parts", "Download only the parts"),
+)
+_STRATEGY_BY_SETTING = {setting: key for key, _label, setting in STRATEGY_CHOICES}
+_SETTING_BY_STRATEGY = {key: setting for key, _label, setting in STRATEGY_CHOICES}
+for _key, _label, _setting in STRATEGY_CHOICES:
+    _SETTING_BY_STRATEGY[_label.lower()] = _setting
+    _SETTING_BY_STRATEGY[_setting.lower()] = _setting
 
 CLIP_COLUMNS = (  # key, heading, width, alignment, stretches
     ("at", "At", 80, "center", False),
@@ -65,12 +79,120 @@ def _polish(widget: QWidget) -> None:
         style.polish(widget)
 
 
+class ClipViewsDelegate(QStyledItemDelegate):
+    """Paints a subtle proportional view-count bar behind the Views column (Phase 9e, D5)."""
+
+    def __init__(self, model: ClipModel, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._model = model
+
+    def paint(self, painter: QPainter, option, index: QModelIndex) -> None:
+        max_v = self._model.max_views
+        val = self._model.view_value(index.row())
+        if max_v > 0 and val > 0:
+            ratio = min(max(val / max_v, 0.05), 1.0)
+            r = option.rect.adjusted(4, 5, -4, -5)
+            bar_w = max(4.0, r.width() * ratio)
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(Qt.PenStyle.NoPen)
+            c = QColor(ACCENT)
+            c.setAlpha(55)
+            painter.setBrush(c)
+            painter.drawRoundedRect(QRectF(r.right() - bar_w, r.top(), bar_w, r.height()), 3.0, 3.0)
+            painter.restore()
+        super().paint(painter, option, index)
+
+
+class PartCard(QFrame):
+    """Visual part chip/card (Phase 9e, D2): ``P1 · 0:00:00 → 0:30:00 · 0:30:00`` with game-colour stripe and skip button."""
+
+    skip_requested = Signal(int)
+
+    def __init__(
+        self,
+        part_index: int,
+        start: float,
+        end: float,
+        duration: float,
+        muted_seconds: float = 0.0,
+        game_name: str = "",
+        color: str = ACCENT,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self.part_index = part_index
+        self.start = start
+        self.end = end
+        self.duration = duration
+        self.muted_seconds = muted_seconds
+        self.game_name = game_name
+        self.color = color
+        self.setObjectName("partCard")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(
+            f"QFrame#partCard {{ background-color: {BG}; border: 1px solid {BORDER}; border-radius: 6px; }}"
+        )
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 8, 0)
+        lay.setSpacing(8)
+
+        self.stripe = QFrame(self)
+        self.stripe.setFixedWidth(4)
+        self.stripe.setStyleSheet(
+            f"background-color: {color}; border-top-left-radius: 5px; border-bottom-left-radius: 5px;"
+        )
+        lay.addWidget(self.stripe)
+
+        self.badge_lbl = QLabel(f"P{part_index}", self)
+        self.badge_lbl.setStyleSheet(
+            f"background-color: {ACCENT_DIM}; color: {ACCENT_TEXT}; font-weight: bold; "
+            f"padding: 1px 6px; border-radius: 4px;"
+        )
+        lay.addWidget(self.badge_lbl)
+
+        self.span_lbl = QLabel(f"{fmt_hms(start)} \u2192 {fmt_hms(end)}", self)
+        self.span_lbl.setFont(mono_font())
+        lay.addWidget(self.span_lbl)
+
+        self.dur_lbl = QLabel(f"({fmt_hms(duration)})", self)
+        self.dur_lbl.setProperty("role", "muted")
+        lay.addWidget(self.dur_lbl)
+
+        if game_name:
+            self.game_lbl = QLabel(game_name, self)
+            self.game_lbl.setProperty("role", "muted")
+            lay.addWidget(self.game_lbl)
+        else:
+            self.game_lbl = None
+
+        if muted_seconds >= 1:
+            self.muted_lbl = QLabel(f"\u00b7 {fmt_hms(muted_seconds)} muted", self)
+            self.muted_lbl.setStyleSheet(f"color: {WARN}; font-weight: bold;")
+            lay.addWidget(self.muted_lbl)
+        else:
+            self.muted_lbl = None
+
+        lay.addStretch(1)
+
+        self.skip_btn = QPushButton(self)
+        self.skip_btn.setIcon(icon("x", 12, MUTED))
+        self.skip_btn.setProperty("variant", "ghost")
+        self.skip_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.skip_btn.setFixedSize(22, 22)
+        self.skip_btn.setToolTip(f"Skip Part {part_index}")
+        self.skip_btn.clicked.connect(lambda: self.skip_requested.emit(self.part_index))
+        lay.addWidget(self.skip_btn)
+
+
 class ClipModel(QAbstractTableModel):
     """The clips table of the Plan tab (decision D5): At, Views, Dur, Title, Creator, Chapter."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rows: list[tuple[str, str, str, str, str, str]] = []
+        self.max_views: int = 0
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self.rows)
@@ -96,9 +218,24 @@ class ClipModel(QAbstractTableModel):
             return int(_alignment(CLIP_COLUMNS[index.column()][3]))
         return None
 
+    def view_value(self, row: int) -> int:
+        if not 0 <= row < len(self.rows):
+            return 0
+        try:
+            return int(self.rows[row][1])
+        except (ValueError, TypeError):
+            return 0
+
     def set_rows(self, rows: list[tuple[str, str, str, str, str, str]]) -> None:
         self.beginResetModel()
         self.rows = list(rows)
+        views = []
+        for r in self.rows:
+            try:
+                views.append(int(r[1]))
+            except (ValueError, TypeError):
+                pass
+        self.max_views = max(views, default=0)
         self.endResetModel()
 
 
@@ -109,6 +246,7 @@ class PlanTab(ScrollPage):
     add_requested = Signal(bool)  # False = «Add to queue», True = «Add & start»
     search_requested = Signal()
     paste_requested = Signal()
+    strategy_changed = Signal(str)
 
     def __init__(self, settings: dict | None = None, bridge: Bridge | None = None, parent: QWidget | None = None):
         super().__init__(8, parent)
@@ -125,16 +263,47 @@ class PlanTab(ScrollPage):
         self.clips_loaded = False
         self._timeline_src = None
         self.preview_kind = "muted"
+        self.part_cards: list[PartCard] = []
+        self.last_plan = None
 
         self._build_onboarding_card()
         self._build_timeline_card()
+        self.lower_layout = QBoxLayout(QBoxLayout.Direction.LeftToRight)
+        self.lower_layout.setContentsMargins(0, 0, 0, 0)
+        self.lower_layout.setSpacing(10)
+        self.body_layout.addLayout(self.lower_layout, 1)
         self._build_cuts_card()
         self._build_clips_card()
         self._build_footer()
+        self.update_responsive_layout()
 
         self.bridge.frames.connect(self.on_frames)
         self.update_preview()
         self.refresh_clips()
+
+    # ---------------------------- responsive 2-column layout (D1) ---------------------------- #
+    def _effective_width(self) -> int:
+        win = self.window()
+        if win is not None and win is not self and win.width() > 0:
+            return win.width()
+        return self.width()
+
+    def is_two_column(self) -> bool:
+        return self.lower_layout.direction() == QBoxLayout.Direction.LeftToRight
+
+    def update_responsive_layout(self) -> None:
+        wide = self._effective_width() >= WIDE_BREAKPOINT
+        target = QBoxLayout.Direction.LeftToRight if wide else QBoxLayout.Direction.TopToBottom
+        if self.lower_layout.direction() != target:
+            self.lower_layout.setDirection(target)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self.update_responsive_layout()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self.update_responsive_layout()
 
     # ---------------------------- building ---------------------------- #
     def _build_onboarding_card(self) -> None:
@@ -153,21 +322,22 @@ class PlanTab(ScrollPage):
         steps.setProperty("role", "muted")
         olay.addWidget(steps, 1)
 
-        # ICON NEEDED: search
         self.onboard_search_btn = QPushButton("Search streamers", self.onboarding_card)
+        self.onboard_search_btn.setIcon(icon("search", 16))
         self.onboard_search_btn.setProperty("variant", "ghost")
         self.onboard_search_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.onboard_search_btn.clicked.connect(self.search_requested.emit)
         olay.addWidget(self.onboard_search_btn)
 
-        # ICON NEEDED: clipboard
         self.onboard_paste_btn = QPushButton("Paste from clipboard", self.onboarding_card)
+        self.onboard_paste_btn.setIcon(icon("copy", 16))
         self.onboard_paste_btn.setProperty("variant", "ghost")
         self.onboard_paste_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.onboard_paste_btn.clicked.connect(self.paste_requested.emit)
         olay.addWidget(self.onboard_paste_btn)
 
         self.body_layout.addWidget(self.onboarding_card)
+
     def _build_timeline_card(self) -> None:
         self.timeline_card = Card("Timeline")
         self.body_layout.addWidget(self.timeline_card)
@@ -182,7 +352,8 @@ class PlanTab(ScrollPage):
 
     def _build_cuts_card(self) -> None:
         self.cuts_card = Card("Cut points")
-        self.body_layout.addWidget(self.cuts_card)
+        self.cuts_card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lower_layout.addWidget(self.cuts_card, 1)
         self.cuts = QPlainTextEdit()
         self.cuts.setObjectName("cutPoints")
         font = mono_font()
@@ -202,6 +373,57 @@ class PlanTab(ScrollPage):
         self.cuts_hint.setContentsMargins(0, 6, 0, 8)
         self.cuts_card.add_widget(self.cuts_hint)
 
+        # D3: Strategy segmented control + coverage bar
+        self.strategy_row = QWidget()
+        self.strategy_row.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        srlay = QHBoxLayout(self.strategy_row)
+        srlay.setContentsMargins(0, 0, 0, 6)
+        srlay.setSpacing(6)
+        strat_lbl = QLabel("Strategy:")
+        strat_lbl.setProperty("role", "muted")
+        srlay.addWidget(strat_lbl)
+
+        self.strategy_bar = QFrame(self.strategy_row)
+        self.strategy_bar.setObjectName("strategySegmented")
+        sblay = QHBoxLayout(self.strategy_bar)
+        sblay.setContentsMargins(0, 0, 0, 0)
+        sblay.setSpacing(4)
+        self.strategy_buttons: dict[str, QPushButton] = {}
+        for key, label, _setting in STRATEGY_CHOICES:
+            btn = QPushButton(label, self.strategy_bar)
+            btn.setProperty("variant", "chip")
+            btn.setCheckable(True)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda _checked=False, k=key: self.set_strategy(k))
+            sblay.addWidget(btn)
+            self.strategy_buttons[key] = btn
+        srlay.addWidget(self.strategy_bar)
+        srlay.addStretch(1)
+
+        self.coverage_badge = QLabel("")
+        self.coverage_badge.setProperty("role", "muted")
+        srlay.addWidget(self.coverage_badge)
+        self.cuts_card.add_widget(self.strategy_row)
+
+        self.coverage_bar = QProgressBar()
+        self.coverage_bar.setObjectName("coverageBar")
+        self.coverage_bar.setRange(0, 100)
+        self.coverage_bar.setValue(0)
+        self.coverage_bar.setTextVisible(False)
+        self.coverage_bar.setFixedHeight(6)
+        self.coverage_bar.setVisible(False)
+        self.cuts_card.add_widget(self.coverage_bar)
+
+        # D2: Visual part cards container
+        self.part_cards_box = QWidget()
+        self.part_cards_box.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.part_cards_layout = QVBoxLayout(self.part_cards_box)
+        self.part_cards_layout.setContentsMargins(0, 6, 0, 6)
+        self.part_cards_layout.setSpacing(4)
+        self.part_cards_box.setVisible(False)
+        self.cuts_card.add_widget(self.part_cards_box)
+
         self.preview = QPlainTextEdit()
         self.preview.setObjectName("planPreview")
         self.preview.setReadOnly(True)
@@ -219,7 +441,8 @@ class PlanTab(ScrollPage):
 
     def _build_clips_card(self) -> None:
         self.clips_card = Card("Clips \u2192 chapters", "Optional: put the VOD's clips in the files as chapters.")
-        self.body_layout.addWidget(self.clips_card, 1)
+        self.clips_card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lower_layout.addWidget(self.clips_card, 1)
 
         row = self.clips_card.add_row(
             "Add clips as chapters", "Each clip that passes the filter becomes a chapter.",
@@ -256,10 +479,42 @@ class PlanTab(ScrollPage):
         flay.addStretch(1)
         self.clips_card.add_widget(frow)
 
+        # D4: Multi-select toolbar above the clips table
+        sel_bar = QWidget()
+        sel_bar.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        sblay = QHBoxLayout(sel_bar)
+        sblay.setContentsMargins(0, 0, 0, 4)
+        sblay.setSpacing(6)
+        sel_lbl = QLabel("Selection:")
+        sel_lbl.setProperty("role", "muted")
+        sblay.addWidget(sel_lbl)
+
+        self.select_all_clips_btn = QPushButton("Select all")
+        self.select_all_clips_btn.setProperty("variant", "chip")
+        self.select_all_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.select_all_clips_btn.clicked.connect(self.select_all_clips)
+        sblay.addWidget(self.select_all_clips_btn)
+
+        self.invert_clips_btn = QPushButton("Invert")
+        self.invert_clips_btn.setProperty("variant", "chip")
+        self.invert_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.invert_clips_btn.clicked.connect(self.invert_clip_selection)
+        sblay.addWidget(self.invert_clips_btn)
+
+        self.clear_clips_btn = QPushButton("Clear")
+        self.clear_clips_btn.setProperty("variant", "chip")
+        self.clear_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.clear_clips_btn.clicked.connect(self.clear_clip_selection)
+        sblay.addWidget(self.clear_clips_btn)
+        sblay.addStretch(1)
+        self.clips_card.add_widget(sel_bar)
+
         self.clip_model = ClipModel(self)
         self.tree = QTableView()
         self.tree.setObjectName("clipsTable")
         self.tree.setModel(self.clip_model)
+        self.views_delegate = ClipViewsDelegate(self.clip_model, self.tree)
+        self.tree.setItemDelegateForColumn(1, self.views_delegate)
         self.tree.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tree.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -277,6 +532,7 @@ class PlanTab(ScrollPage):
                 head.resizeSection(col, width)
         self.tree.setMinimumHeight(HEADER_HEIGHT + 6 * ROW_HEIGHT + 2)  # tkinter: height=6 rows
         self.tree.doubleClicked.connect(self.open_clip)
+        self.tree.selectionModel().selectionChanged.connect(self._on_clip_selection_changed)
         self.clips_card.add_widget(self.tree)
         self.clips_card.body_layout.setStretchFactor(self.tree, 1)
 
@@ -287,12 +543,15 @@ class PlanTab(ScrollPage):
         self.clips_card.add_widget(self.clips_label)
 
         brow = QWidget()
+        brow.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         blay = QHBoxLayout(brow)
         blay.setContentsMargins(0, 8, 0, 0)
         blay.setSpacing(6)
         self.split_btn = QPushButton("Split at selected clip")
+        self.split_btn.setIcon(icon("scissors", 16))
         self.split_btn.clicked.connect(self.split_at_clip)
         self.download_clips_btn = QPushButton("Download only selected clip")
+        self.download_clips_btn.setIcon(icon("download", 16))
         self.download_clips_btn.clicked.connect(self.download_clips)
         blay.addWidget(self.split_btn)
         blay.addWidget(self.download_clips_btn)
@@ -304,8 +563,10 @@ class PlanTab(ScrollPage):
         self.plan_summary_lbl.setProperty("role", "muted")
         self.footer_layout.addWidget(self.plan_summary_lbl, 1)
         self.queue_btn = QPushButton("Add to queue")
+        self.queue_btn.setIcon(icon("plus", 16))
         self.queue_btn.clicked.connect(self._on_add_to_queue)
         self.start_btn = QPushButton("Add && start")
+        self.start_btn.setIcon(icon("play", 16, "#ffffff"))
         self.start_btn.setProperty("variant", "accent")
         self.start_btn.clicked.connect(self._on_add_and_start)
         self.footer_layout.addWidget(self.queue_btn)
@@ -321,6 +582,121 @@ class PlanTab(ScrollPage):
     def _on_filter_spin(self, _value: int) -> None:
         if not self.binder._loading:
             self.refresh_clips()
+
+    # ---------------------------- strategy segmented control (D3) ---------------------------- #
+    def current_strategy_key(self) -> str:
+        raw = str(self.settings.get("strategy", DEFAULTS["strategy"]))
+        return _STRATEGY_BY_SETTING.get(raw, "auto")
+
+    def set_strategy(self, mode: str) -> None:
+        """Set strategy by key (``auto`` | ``full`` | ``sections``), label, or setting name."""
+        key_clean = mode.strip().lower()
+        setting_val = _SETTING_BY_STRATEGY.get(mode) or _SETTING_BY_STRATEGY.get(key_clean)
+        if setting_val is None:
+            return
+        self.settings["strategy"] = setting_val
+        self._sync_strategy_buttons()
+        self.update_preview()
+        self.strategy_changed.emit(setting_val)
+
+    def _sync_strategy_buttons(self, resolved_strategy: str | None = None) -> None:
+        active_key = self.current_strategy_key()
+        for key, btn in self.strategy_buttons.items():
+            selected = key == active_key
+            btn.setChecked(selected)
+            btn.setProperty("selected", "true" if selected else "false")
+            if selected:
+                btn.setStyleSheet(
+                    f"background-color: {ACCENT}; color: #ffffff; font-weight: bold; "
+                    f"padding: 3px 10px; border-radius: 10px;"
+                )
+            elif active_key == "auto" and resolved_strategy == key:
+                btn.setStyleSheet(
+                    f"background-color: {ACCENT_DIM}; color: {ACCENT_TEXT}; border: 1px solid {ACCENT}; "
+                    f"padding: 3px 10px; border-radius: 10px;"
+                )
+            else:
+                btn.setStyleSheet("")
+            _polish(btn)
+
+    # ---------------------------- part cards (D2) ---------------------------- #
+    def _dominant_game_for_span(self, start: float, end: float) -> tuple[str, str]:
+        segments = getattr(self.source, "segments", None) if self.source is not None else None
+        if not segments:
+            return "", ACCENT
+        best_title = ""
+        best_overlap = 0.0
+        for seg in segments:
+            ov = max(0.0, min(end, seg.end) - max(start, seg.start))
+            if ov > best_overlap and getattr(seg, "title", ""):
+                best_overlap = ov
+                best_title = seg.title
+        if best_title:
+            return best_title, game_colour(best_title)
+        return "", ACCENT
+
+    def _clear_part_cards(self) -> None:
+        for card in self.part_cards:
+            self.part_cards_layout.removeWidget(card)
+            card.deleteLater()
+        self.part_cards.clear()
+
+    def _rebuild_part_cards(self, plan) -> None:
+        self._clear_part_cards()
+        self.last_plan = plan
+        if plan is None or not plan.parts:
+            self.part_cards_box.setVisible(False)
+            self.coverage_bar.setVisible(False)
+            self.coverage_badge.setText("")
+            return
+
+        muted = self.source.muted if self.source else None
+        for p in plan.parts:
+            m_sec = muted_overlap(muted, p.start, p.end)
+            g_name, g_col = self._dominant_game_for_span(p.start, p.end)
+            card = PartCard(
+                part_index=p.index,
+                start=p.start,
+                end=p.end,
+                duration=p.duration,
+                muted_seconds=m_sec,
+                game_name=g_name,
+                color=g_col,
+                parent=self.part_cards_box,
+            )
+            card.skip_requested.connect(self.skip_part)
+            self.part_cards_layout.addWidget(card)
+            self.part_cards.append(card)
+
+        self.part_cards_box.setVisible(True)
+        if plan.duration:
+            pct = int(round(plan.coverage * 100))
+            self.coverage_bar.setValue(min(max(pct, 0), 100))
+            self.coverage_bar.setVisible(True)
+            full_cov = plan.coverage >= 0.995
+            self.coverage_badge.setText("100% of VOD" if full_cov else f"{pct}% of VOD")
+            self.coverage_badge.setStyleSheet(
+                f"color: {OK}; font-weight: bold;" if full_cov else f"color: {MUTED};"
+            )
+        else:
+            self.coverage_bar.setVisible(False)
+            self.coverage_badge.setText("")
+
+    def skip_part(self, part_index: int) -> None:
+        """Skip/remove a part card by index, updating the cut text and timeline."""
+        if self.last_plan is None:
+            return
+        target = next((p for p in self.last_plan.parts if p.index == part_index), None)
+        if target is None:
+            return
+        dur = self.source.duration if self.source else None
+        try:
+            current_ranges = ranges_of(self.cut_text(), dur)
+        except EngineError:
+            return
+        mid = (target.start + target.end) / 2.0
+        new_ranges = toggle_part(current_ranges, mid, dur or target.end)
+        self.on_timeline_edit(new_ranges)
 
     # ---------------------------- cut points & preview ---------------------------- #
     def cut_text(self) -> str:
@@ -362,15 +738,23 @@ class PlanTab(ScrollPage):
     def _render_preview(self) -> None:
         text = self.cut_text()
         if not text:
+            self._sync_strategy_buttons()
+            self._rebuild_part_cards(None)
             self.set_preview("Write the cut points above (press «Get info» first so «end» works).", "muted")
+            self.plan_summary_lbl.setToolTip("Paste a VOD and press «Get info» first.")
             return
         dur = self.source.duration if self.source else None
         opts = self.build_options()
         try:
             plan = make_plan(text, dur, opts.strategy, opts.full_threshold)
         except EngineError as e:
+            self._sync_strategy_buttons()
+            self._rebuild_part_cards(None)
             self.set_preview(f"\u26a0 {e}", "err", "Fix the cut points to add this VOD")
+            self.plan_summary_lbl.setToolTip(str(e))
             return
+        self._sync_strategy_buttons(resolved_strategy=plan.strategy)
+        self._rebuild_part_cards(plan)
         muted = self.source.muted if self.source else None
 
         def muted_note(a: float, b: float) -> str:
@@ -387,11 +771,18 @@ class PlanTab(ScrollPage):
             lines.append(f"\u2192 {how}   (parts cover {plan.coverage * 100:.0f}% of the VOD)")
         n = len(plan.parts)
         total_muted = sum(muted_overlap(muted, p.start, p.end) for p in plan.parts)
-        self.set_preview(
-            "\n".join(lines), "ok",
+        summary_str = (
             f"{n} part{'s' if n != 1 else ''} \u00b7 {fmt_hms(sum(p.duration for p in plan.parts))} in total"
-            + (f" \u00b7 {fmt_hms(total_muted)} muted" if total_muted >= 1 else ""),
+            + (f" \u00b7 {fmt_hms(total_muted)} muted" if total_muted >= 1 else "")
         )
+        self.set_preview("\n".join(lines), "ok", summary_str)
+        if plan.duration:
+            strat_desc = "Full VOD + split" if plan.strategy == "full" else "Only the parts"
+            self.plan_summary_lbl.setToolTip(
+                f"{summary_str} \u00b7 {strat_desc} ({plan.coverage * 100:.0f}% of VOD covered)"
+            )
+        else:
+            self.plan_summary_lbl.setToolTip(summary_str)
 
     # ---------------------------- clips table ---------------------------- #
     def refresh_clips(self) -> None:
@@ -407,6 +798,7 @@ class PlanTab(ScrollPage):
                 str(c.get("title", "")), str(c.get("creator_name", "")), mark,
             ))
         self.clip_model.set_rows(rows)
+        self._update_clip_action_buttons()
         if not self.clips:
             msg = ("No clips loaded (sign in with the Twitch API… button, optional)."
                    if not self.clips_loaded else "This VOD has no clips.")
@@ -421,6 +813,16 @@ class PlanTab(ScrollPage):
         self.clips_label.setText(msg)
         self.timeline.set_clip_marks(self._clip_times())
 
+    def _on_clip_selection_changed(self, *_args) -> None:
+        self._update_clip_action_buttons()
+
+    def _update_clip_action_buttons(self) -> None:
+        n = len(self.selected_clip_rows()) if hasattr(self, "tree") and self.tree.selectionModel() else 0
+        if n <= 0:
+            self.download_clips_btn.setText("Download only selected clip")
+        else:
+            self.download_clips_btn.setText(f"Download {n} clip{'s' if n != 1 else ''}")
+
     def selected_clip_rows(self) -> list[int]:
         return sorted(idx.row() for idx in self.tree.selectionModel().selectedRows())
 
@@ -431,6 +833,21 @@ class PlanTab(ScrollPage):
             if 0 <= r < self.clip_model.rowCount():
                 sel.select(self.clip_model.index(r, 0),
                            QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
+        self._update_clip_action_buttons()
+
+    def select_all_clips(self) -> None:
+        count = self.clip_model.rowCount()
+        if count > 0:
+            self.select_clips(*range(count))
+
+    def invert_clip_selection(self) -> None:
+        count = self.clip_model.rowCount()
+        current = set(self.selected_clip_rows())
+        inverted = [r for r in range(count) if r not in current]
+        self.select_clips(*inverted)
+
+    def clear_clip_selection(self) -> None:
+        self.select_clips()
 
     def open_clip(self, _index=None) -> None:
         sel = self.selected_clip_rows()
