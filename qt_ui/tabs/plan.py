@@ -676,7 +676,17 @@ class PlanTab(ScrollPage):
         self.part_cards_box.setVisible(True)
         if plan.duration:
             pct = int(round(plan.coverage * 100))
-            self.coverage_bar.setValue(min(max(pct, 0), 100))
+            from qt_ui.motion import DURATION_FAST, Motion, animate_value
+            if Motion.enabled() and self.isVisible():
+                animate_value(
+                    self.coverage_bar,
+                    start_val=float(self.coverage_bar.value()),
+                    end_val=float(pct),
+                    duration_ms=DURATION_FAST,
+                    on_update=lambda v: self.coverage_bar.setValue(int(round(v))),
+                )
+            else:
+                self.coverage_bar.setValue(min(max(pct, 0), 100))
             self.coverage_bar.setVisible(True)
             full_cov = plan.coverage >= 0.995
             self.coverage_badge.setText("100% of VOD" if full_cov else f"{pct}% of VOD")
@@ -911,7 +921,27 @@ class PlanTab(ScrollPage):
     def sync_timeline(self) -> None:
         """Show the current VOD and the parts the cut text describes (called after every change of either)."""
         src = self.source
-        self.onboarding_card.setVisible(src is None)
+        from qt_ui.motion import DURATION_NORMAL, Motion, animate_height, QWIDGETSIZE_MAX
+        want_onboard = (src is None)
+        if not Motion.enabled() or not self.isVisible():
+            self.onboarding_card.setMaximumHeight(QWIDGETSIZE_MAX if want_onboard else 0)
+            self.onboarding_card.setVisible(want_onboard)
+        else:
+            if self.onboarding_card.isVisible() != want_onboard:
+                if want_onboard:
+                    self.onboarding_card.setMaximumHeight(0)
+                    self.onboarding_card.setVisible(True)
+                    target = max(self.onboarding_card.sizeHint().height(), 40)
+                    animate_height(
+                        self.onboarding_card, 0, target, DURATION_NORMAL,
+                        on_finished=lambda: self.onboarding_card.setMaximumHeight(QWIDGETSIZE_MAX),
+                    )
+                else:
+                    start = max(self.onboarding_card.height(), 1)
+                    animate_height(
+                        self.onboarding_card, start, 0, DURATION_NORMAL,
+                        on_finished=lambda: (self.onboarding_card.setVisible(False), self.onboarding_card.setMaximumHeight(QWIDGETSIZE_MAX)),
+                    )
         if src is not self._timeline_src:
             self._timeline_src = src
             if src is None:

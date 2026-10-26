@@ -148,10 +148,16 @@ class NavRail(QFrame):
         if expanded == self._expanded and self.width() == target_w:
             return
         self._expanded = expanded
-        self._refresh_labels()
         if animate and Motion.enabled() and self.isVisible():
-            animate_width(self, self.width(), target_w, Motion.NORMAL_MS)
+            if expanded:
+                self._refresh_labels()
+                animate_width(self, self.width(), target_w, Motion.NORMAL_MS)
+            else:
+                def _after_collapse():
+                    self._refresh_labels()
+                animate_width(self, self.width(), target_w, Motion.NORMAL_MS, on_finished=_after_collapse)
         else:
+            self._refresh_labels()
             self.setFixedWidth(target_w)
         self.expandedChanged.emit(self._expanded)
 
@@ -209,6 +215,28 @@ class NavRail(QFrame):
         self.toggle_btn.setText("Collapse" if self._expanded else "")
 
 
+class AnimatedStackedWidget(QStackedWidget):
+    """QStackedWidget subclass that smoothly crossfades between pages when Motion is enabled."""
+
+    def setCurrentIndex(self, index: int) -> None:  # noqa: N802
+        if index == self.currentIndex() or not (0 <= index < self.count()):
+            return
+        from qt_ui.motion import DURATION_FAST, Motion, animate_opacity
+
+        if not Motion.enabled() or not self.isVisible():
+            super().setCurrentIndex(index)
+            return
+
+        super().setCurrentIndex(index)
+        new_w = self.currentWidget()
+        if new_w is not None:
+            def _cleanup():
+                if new_w is not None:
+                    new_w.setGraphicsEffect(None)
+
+            animate_opacity(new_w, 0.0, 1.0, DURATION_FAST, on_finished=_cleanup)
+
+
 class PageStack(QWidget):
     """QStackedWidget + synced QTabBar shim exposing the QTabWidget API used across ``MainWindow`` and tests (B1)."""
 
@@ -229,7 +257,7 @@ class PageStack(QWidget):
         self._tab_bar.currentChanged.connect(self._on_tabbar_changed)
         lay.addWidget(self._tab_bar)
 
-        self.stack = QStackedWidget(self)
+        self.stack = AnimatedStackedWidget(self)
         self.stack.currentChanged.connect(self._on_stack_changed)
         lay.addWidget(self.stack, 1)
 
@@ -478,7 +506,14 @@ class VodStrip(QFrame):
         self.meta_label.setText("  \u00b7  ".join(b for b in bits if b))
         self.thumb_label.setPixmap(QPixmap())
         self.thumb_label.setText("VOD")
-        self.setVisible(True)
+        from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
+        if Motion.enabled() and self.parentWidget() and self.parentWidget().isVisible():
+            self.setMaximumHeight(0)
+            self.setVisible(True)
+            animate_height(self, 0, self.HEIGHT, DURATION_NORMAL, on_finished=lambda: self.setFixedHeight(self.HEIGHT))
+        else:
+            self.setFixedHeight(self.HEIGHT)
+            self.setVisible(True)
 
     def set_thumbnail_from_pil(self, pil_img) -> None:
         """Convert a PIL image (e.g. first storyboard frame) into a 16:9 QPixmap on the strip."""
@@ -501,7 +536,15 @@ class VodStrip(QFrame):
         self.meta_label.setText("")
         self.thumb_label.setPixmap(QPixmap())
         self.thumb_label.setText("VOD")
-        self.setVisible(False)
+        from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
+        if Motion.enabled() and self.isVisible():
+            def _after_clear():
+                self.setVisible(False)
+                self.setFixedHeight(self.HEIGHT)
+            animate_height(self, self.height(), 0, DURATION_NORMAL, on_finished=_after_clear)
+        else:
+            self.setFixedHeight(self.HEIGHT)
+            self.setVisible(False)
 
     def open_on_twitch(self) -> None:
         if self.vod_url:

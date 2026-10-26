@@ -24,6 +24,7 @@ class UIState:
     rail_expanded: bool = False
     log_open: bool = False
     splitter_sizes: list[int] | None = None
+    has_completed_onboarding: bool = False
 
 
 DEFAULT_UI_STATE = UIState()
@@ -45,6 +46,7 @@ def load_ui_state(path: Path | None = None) -> UIState:
                     rail_expanded=bool(data.get("rail_expanded", False)),
                     log_open=bool(data.get("log_open", False)),
                     splitter_sizes=data.get("splitter_sizes"),
+                    has_completed_onboarding=bool(data.get("has_completed_onboarding", False)),
                 )
     except Exception:  # noqa: BLE001
         pass

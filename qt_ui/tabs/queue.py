@@ -52,6 +52,26 @@ class QueueRowDelegate(QStyledItemDelegate):
         super().__init__(table)
         self.table = table
         self.queue_tab = queue_tab
+        self._shimmer_phase = 0.0
+        self._shimmer_timer = None
+
+    def _ensure_shimmer(self) -> None:
+        from qt_ui.motion import Motion
+        if not Motion.enabled():
+            if self._shimmer_timer is not None and self._shimmer_timer.isActive():
+                self._shimmer_timer.stop()
+            return
+        if self._shimmer_timer is None:
+            from PySide6.QtCore import QTimer
+            self._shimmer_timer = QTimer(self.table)
+            self._shimmer_timer.setInterval(40)
+            def _tick():
+                self._shimmer_phase = (self._shimmer_phase + 0.03) % 1.0
+                if self.table.isVisible():
+                    self.table.viewport().update()
+            self._shimmer_timer.timeout.connect(_tick)
+        if not self._shimmer_timer.isActive():
+            self._shimmer_timer.start()
 
     def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:  # noqa: N802
         s = super().sizeHint(option, index)
@@ -164,6 +184,7 @@ class QueueRowDelegate(QStyledItemDelegate):
         painter.drawText(chip_rect, Qt.AlignmentFlag.AlignCenter, elided)
 
         if item.status == "running":
+            self._ensure_shimmer()
             bar_x = rect.left() + 6
             bar_y = rect.bottom() - 9
             bar_w = max(40, rect.width() - 14)
@@ -173,11 +194,19 @@ class QueueRowDelegate(QStyledItemDelegate):
             painter.setBrush(QColor(BG))
             painter.drawRoundedRect(track, 2.0, 2.0)
 
-            frac = 0.35 if item.progress < 0 else max(0.0, min(1.0, item.progress))
-            if frac > 0:
-                chunk = QRectF(bar_x, bar_y, max(4.0, bar_w * frac), bar_h)
+            from qt_ui.motion import Motion
+            if item.progress < 0 and Motion.enabled():
+                chunk_w = max(14.0, bar_w * 0.35)
+                slide_x = bar_x + (bar_w - chunk_w) * self._shimmer_phase
+                chunk = QRectF(slide_x, bar_y, chunk_w, bar_h)
                 painter.setBrush(QColor(ACCENT))
                 painter.drawRoundedRect(chunk, 2.0, 2.0)
+            else:
+                frac = 0.35 if item.progress < 0 else max(0.0, min(1.0, item.progress))
+                if frac > 0:
+                    chunk = QRectF(bar_x, bar_y, max(4.0, bar_w * frac), bar_h)
+                    painter.setBrush(QColor(ACCENT))
+                    painter.drawRoundedRect(chunk, 2.0, 2.0)
 
         if has_open:
             painter.setBrush(QColor(BG3))

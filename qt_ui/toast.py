@@ -137,9 +137,35 @@ class ToastCard(QFrame):
 
     def dismiss(self) -> None:
         self._timer.stop()
-        self.hide()
-        self.closed.emit(self)
-        self.deleteLater()
+        if getattr(self, "_dismissing", False):
+            return
+        self._dismissing = True
+
+        from qt_ui.motion import DURATION_FAST, EASING_IN, Motion, animate_slide_and_fade
+
+        if Motion.enabled() and self.isVisible():
+            cur_pos = self.pos()
+            target_pos = cur_pos + QPoint(40, 0)
+
+            def _done() -> None:
+                self.hide()
+                self.closed.emit(self)
+                self.deleteLater()
+
+            animate_slide_and_fade(
+                self,
+                start_pos=cur_pos,
+                end_pos=target_pos,
+                start_alpha=1.0,
+                end_alpha=0.0,
+                duration_ms=DURATION_FAST,
+                on_finished=_done,
+                easing=EASING_IN,
+            )
+        else:
+            self.hide()
+            self.closed.emit(self)
+            self.deleteLater()
 
 
 class ToastHost(QObject):
@@ -173,7 +199,7 @@ class ToastHost(QObject):
         card.adjustSize()
         card.show()
         card.raise_()
-        self.reposition()
+        self.reposition(new_card=card)
         return card
 
     def clear(self) -> None:
@@ -191,9 +217,10 @@ class ToastHost(QObject):
             self.reposition()
         return super().eventFilter(watched, event)
 
-    def reposition(self) -> None:
+    def reposition(self, new_card: ToastCard | None = None) -> None:
         if not self.toasts:
             return
+        from qt_ui.motion import DURATION_ENTER, DURATION_FAST, EASING_OUT, Motion, animate_slide_and_fade
         w = self.window.width()
         y = self.window.height() - self.MARGIN_BOTTOM
         for card in reversed(self.toasts):
@@ -202,6 +229,32 @@ class ToastHost(QObject):
             card.resize(card.WIDTH, ch)
             y -= ch
             x = max(8, w - card.WIDTH - self.MARGIN_RIGHT)
-            card.move(QPoint(x, max(8, y)))
+            target_pos = QPoint(x, max(8, y))
             card.raise_()
+
+            if card is new_card and Motion.enabled() and card.isVisible():
+                start_pos = QPoint(x + 40, max(8, y))
+                animate_slide_and_fade(
+                    card,
+                    start_pos=start_pos,
+                    end_pos=target_pos,
+                    start_alpha=0.0,
+                    end_alpha=1.0,
+                    duration_ms=DURATION_ENTER,
+                    easing=EASING_OUT,
+                )
+            elif card.isVisible() and Motion.enabled() and card.pos() != target_pos and not getattr(card, "_dismissing", False):
+                from PySide6.QtCore import QPropertyAnimation
+                prev_anim = getattr(card, "_pos_anim", None)
+                if isinstance(prev_anim, QPropertyAnimation):
+                    prev_anim.stop()
+                anim = QPropertyAnimation(card, b"pos", card)
+                anim.setDuration(DURATION_FAST)
+                anim.setStartValue(card.pos())
+                anim.setEndValue(target_pos)
+                anim.setEasingCurve(EASING_OUT)
+                card._pos_anim = anim
+                anim.start()
+            else:
+                card.move(target_pos)
             y -= self.GAP

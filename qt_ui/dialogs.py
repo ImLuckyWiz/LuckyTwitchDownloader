@@ -132,11 +132,45 @@ class ThemedDialog(QDialog):
     def _toggle_details(self) -> None:
         if self.details_edit is None or self.toggle_details_btn is None:
             return
+        from qt_ui.icons import icon
+        from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
+
         visible = not self.details_edit.isVisible()
-        self.details_edit.setVisible(visible)
-        self.toggle_details_btn.setText("Hide details" if visible else "Show details")
-        self.toggle_details_btn.setIcon(icon("chevron-down" if not visible else "x", 14))
-        self.adjustSize()
+        if not Motion.enabled():
+            self.details_edit.setMaximumHeight(120 if visible else 0)
+            self.details_edit.setVisible(visible)
+            self.toggle_details_btn.setText("Hide details" if visible else "Show details")
+            self.toggle_details_btn.setIcon(icon("chevron-down" if not visible else "x", 14))
+            self.adjustSize()
+            return
+
+        if visible:
+            self.details_edit.setMaximumHeight(0)
+            self.details_edit.setVisible(True)
+            self.toggle_details_btn.setText("Hide details")
+            self.toggle_details_btn.setIcon(icon("x", 14))
+            animate_height(
+                self.details_edit,
+                start_h=0,
+                end_h=120,
+                duration_ms=DURATION_NORMAL,
+                on_finished=self.adjustSize,
+            )
+        else:
+            self.toggle_details_btn.setText("Show details")
+            self.toggle_details_btn.setIcon(icon("chevron-down", 14))
+
+            def _after_collapse() -> None:
+                self.details_edit.setVisible(False)
+                self.adjustSize()
+
+            animate_height(
+                self.details_edit,
+                start_h=self.details_edit.height(),
+                end_h=0,
+                duration_ms=DURATION_NORMAL,
+                on_finished=_after_collapse,
+            )
 
     def _copy_details(self) -> None:
         if self.copy_details_btn is None:
@@ -145,10 +179,12 @@ class ThemedDialog(QDialog):
         if clip is not None:
             clip.setText(self._details_text or "")
             self.copy_details_btn.setText("Copied!")
+            self.copy_details_btn.setIcon(icon("check", 14))
             btn = self.copy_details_btn
             def _reset() -> None:
                 try:
                     btn.setText("Copy details")
+                    btn.setIcon(icon("copy", 14))
                 except (RuntimeError, ReferenceError):
                     pass
             QTimer.singleShot(1500, _reset)

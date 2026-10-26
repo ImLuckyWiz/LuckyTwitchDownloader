@@ -98,11 +98,14 @@ class MainWindow(QMainWindow):
     """``client`` is the Twitch client (or None when nobody is signed in): without one the app starts on the Plan
     tab, as the tkinter app does. ``settings`` is the dict from ``core.settings.load_settings()``."""
 
-    def __init__(self, bridge: Bridge | None = None, settings: dict | None = None, client=None):
+    def __init__(self, bridge: Bridge | None = None, settings: dict | None = None, client=None, show_welcome: bool | None = None):
         super().__init__()
         self.bridge = bridge if bridge is not None else Bridge(self)
         self.settings = settings if settings is not None else {}
         self._client = client
+        self._show_welcome = show_welcome
+        self.welcome_overlay = None
+        self._ui_state: UIState = UIState()
         self._login_dialog: TwitchDialog | None = None
         self._shortcuts_dialog: ShortcutsDialog | None = None
         self._last_clipboard_offer: str = ""
@@ -301,10 +304,50 @@ class MainWindow(QMainWindow):
         bind("Ctrl+Return", lambda: self._plan_shortcut_add(start=True))
         bind("Ctrl+Shift+Return", lambda: self._plan_shortcut_add(start=False))
         bind("F1", self.show_shortcuts)
+        bind("F2", self.show_welcome_overlay)
 
     def _plan_shortcut_add(self, start: bool) -> None:
         if self.tabs.currentWidget() is self.tab_plan:
             self.add_to_queue(start=start)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if getattr(self, "welcome_overlay", None) is not None:
+            self.welcome_overlay.setGeometry(0, 0, self.width(), self.height())
+
+    def show_welcome_overlay(self):
+        if getattr(self, "welcome_overlay", None) is not None:
+            self.welcome_overlay.raise_()
+            self.welcome_overlay.show()
+            return self.welcome_overlay
+
+        from core.settings import DEFAULTS
+        out_dir = self.settings.get("out_dir", DEFAULTS["out_dir"])
+        container = self.settings.get("container", DEFAULTS["container"])
+        from qt_ui.welcome.overlay import WelcomeOverlay
+        overlay = WelcomeOverlay(
+            initial_out_dir=out_dir,
+            initial_container=container,
+            is_signed_in=bool(self.client),
+            parent=self,
+        )
+        overlay.setGeometry(0, 0, self.width(), self.height())
+        overlay.finished.connect(self._on_welcome_finished)
+        overlay.signin_requested.connect(self.ask_credentials)
+        self.welcome_overlay = overlay
+        overlay.show()
+        overlay.raise_()
+        return overlay
+
+    def _on_welcome_finished(self, out_dir: str, container: str) -> None:
+        self.settings["out_dir"] = out_dir
+        self.settings["container"] = container
+        from core.settings import save_settings
+        save_settings(self.settings)
+        if hasattr(self, "_ui_state"):
+            self._ui_state.has_completed_onboarding = True
+            self._save_ui_state()
+        self.welcome_overlay = None
 
     def focus_vod_bar(self) -> None:
         self.vod_entry.setFocus()
@@ -322,6 +365,7 @@ class MainWindow(QMainWindow):
         ui_path = getattr(paths, "UI_STATE_PATH", paths.DATA_DIR / "luckytwitch_ui.json")
         has_saved = ui_path.is_file()
         state = load_ui_state(ui_path)
+        self._ui_state = state
         self.rail.set_expanded(state.rail_expanded, animate=False)
         if has_saved:
             w = max(state.window_w, MIN_SIZE[0])
@@ -335,9 +379,18 @@ class MainWindow(QMainWindow):
             else:
                 self.tabs.setCurrentWidget(self.tab_plan)
 
+        import os
+        should_welcome = (
+            self._show_welcome is True
+            or (self._show_welcome is None and not state.has_completed_onboarding and not os.environ.get("PYTEST_CURRENT_TEST"))
+        )
+        if should_welcome:
+            self.show_welcome_overlay()
+
     def _save_ui_state(self) -> None:
         idx = self.tabs.currentIndex()
         active_name = TAB_NAMES[idx] if 0 <= idx < len(TAB_NAMES) else "Plan"
+        has_onboard = self._ui_state.has_completed_onboarding if hasattr(self, "_ui_state") else False
         state = UIState(
             window_x=self.x(),
             window_y=self.y(),
@@ -345,6 +398,7 @@ class MainWindow(QMainWindow):
             window_h=self.height(),
             active_tab=active_name,
             rail_expanded=self.rail.expanded,
+            has_completed_onboarding=has_onboard,
         )
         save_ui_state(state)
 
@@ -427,6 +481,8 @@ class MainWindow(QMainWindow):
         self._client = value
         if hasattr(self, "command_bar"):
             self.command_bar.set_signed_in(value is not None)
+        if getattr(self, "welcome_overlay", None) is not None:
+            self.welcome_overlay.set_signed_in(value is not None)
         self.update_search_state()
 
     def get_client(self):
@@ -474,6 +530,24 @@ class MainWindow(QMainWindow):
     def log(self, msg: str) -> None:
         self.tab_queue.log(msg)
 
+    def _set_activity_pill_visible(self, visible: bool) -> None:
+        from qt_ui.motion import DURATION_FAST, Motion, animate_opacity
+
+        if not Motion.enabled() or not self.isVisible():
+            self.activity_pill.setVisible(visible)
+            return
+
+        if visible:
+            if not self.activity_pill.isVisible():
+                self.activity_pill.setVisible(True)
+                animate_opacity(self.activity_pill, 0.0, 1.0, DURATION_FAST)
+        else:
+            if self.activity_pill.isVisible():
+                animate_opacity(
+                    self.activity_pill, 1.0, 0.0, DURATION_FAST,
+                    on_finished=lambda: self.activity_pill.setVisible(False),
+                )
+
     def set_progress(self, frac: float, text: str) -> None:
         """A negative ``frac`` means «unknown»: the bar moves back and forth instead of filling."""
         if frac < 0:
@@ -483,30 +557,40 @@ class MainWindow(QMainWindow):
             self.set_status(f"{self._job_prefix}{text}")
             if self._job_prefix:
                 self.activity_pill.setText(self._job_prefix.rstrip(": "))
-                self.activity_pill.setVisible(True)
+                self._set_activity_pill_visible(True)
         else:
             if self._progress_mode != "determinate":
                 self.progress.setRange(0, 100)
                 self._progress_mode = "determinate"
             pct = round(frac * 100)
-            self.progress.setValue(pct)
+            from qt_ui.motion import DURATION_FAST, Motion, animate_value
+            if Motion.enabled() and self.isVisible():
+                animate_value(
+                    self.progress,
+                    start_val=float(self.progress.value()),
+                    end_val=float(pct),
+                    duration_ms=DURATION_FAST,
+                    on_update=lambda v: self.progress.setValue(int(round(v))),
+                )
+            else:
+                self.progress.setValue(pct)
             self.set_status(f"{self._job_prefix}{text}  \u2014  {frac * 100:.0f}%")
             if frac > 0 or self._job_prefix:
                 prefix = self._job_prefix.rstrip(": ") or "Running"
                 self.activity_pill.setText(f"{prefix} \u00b7 {pct}%")
-                self.activity_pill.setVisible(True)
+                self._set_activity_pill_visible(True)
             else:
-                self.activity_pill.setVisible(False)
+                self._set_activity_pill_visible(False)
 
     def on_job(self, n: int, total: int) -> None:
         self._job_prefix = f"Job {n}/{total}: " if total > 1 else ""
         self.activity_pill.setText(f"Job {n}/{total}")
-        self.activity_pill.setVisible(True)
+        self._set_activity_pill_visible(True)
 
     def on_queue_done(self) -> None:
         self.set_progress(0, "")
         self._job_prefix = ""
-        self.activity_pill.setVisible(False)
+        self._set_activity_pill_visible(False)
         self.set_status("Queue finished.")
         notify.system_notify(
             self, "Queue finished", "All queued downloads have finished.",

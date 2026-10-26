@@ -53,7 +53,8 @@ def main(argv: list[str] | None = None) -> int:
     app = LuckyApplication(argv)
     apply_theme(app)
     set_app_icon(app)
-    window = MainWindow(settings=load_settings(), client=make_client())
+    show_welcome = True if "--welcome" in argv else None
+    window = MainWindow(settings=load_settings(), client=make_client(), show_welcome=show_welcome)
     if hasattr(app, "link_opened"):
         app.link_opened.connect(window.open_link)
     window.show()

@@ -260,7 +260,7 @@ class VodGridDelegate(QStyledItemDelegate):
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
         hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
 
-        lift = -1.0 if hovered else 0.0
+        lift = -2.0 if hovered else 0.0
         card = QRectF(option.rect).adjusted(4.0, 4.0 + lift, -4.0, -4.0 + lift)
 
         bg_col = QColor(ACCENT_DIM if selected else (BG3 if hovered else BG2))
@@ -414,8 +414,16 @@ class ChannelDelegate(QStyledItemDelegate):
             by = rect.top() + (rect.height() - badge_h) / 2.0
             badge_rect = QRectF(bx, by, badge_w, badge_h)
 
+            from qt_ui.motion import Motion
+            if Motion.enabled():
+                import time, math
+                alpha = int(195 + 60 * math.sin(time.time() * 3.5))
+                col = QColor(235, 4, 0, max(120, min(255, alpha)))
+            else:
+                col = QColor("#eb0400")
+
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor("#eb0400"))
+            painter.setBrush(col)
             painter.drawRoundedRect(badge_rect, 3.0, 3.0)
 
             font_live = QFont(option.font)

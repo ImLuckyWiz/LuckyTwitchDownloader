@@ -41,17 +41,17 @@ QToolTip { background-color: ${BG3}; color: ${FG}; border: 1px solid ${BORDER}; 
 /* ---- buttons ---- */
 QPushButton { background-color: ${BG3}; color: ${FG}; border: none; border-radius: ${R_BTN}px; padding: 7px 14px; outline: none; }
 QPushButton:hover { background-color: ${HOVER}; }
-QPushButton:pressed { background-color: ${PRESSED}; }
+QPushButton:pressed { background-color: ${PRESSED}; padding: 8px 14px 6px 14px; }
 QPushButton:focus { border: 1px solid ${ACCENT_HOVER}; outline: none; }
 QPushButton:disabled { background-color: ${BG2}; color: ${DISABLED}; border: none; }
 QPushButton[variant="accent"] { background-color: ${ACCENT}; color: ${WHITE}; font-weight: bold; padding: 7px 16px; }
 QPushButton[variant="accent"]:hover { background-color: ${ACCENT_HOVER}; }
-QPushButton[variant="accent"]:pressed { background-color: ${ACCENT_PRESS}; }
+QPushButton[variant="accent"]:pressed { background-color: ${ACCENT_PRESS}; padding: 8px 16px 6px 16px; }
 QPushButton[variant="accent"]:focus { border: 1px solid ${WHITE}; outline: none; }
 QPushButton[variant="accent"]:disabled { background-color: ${BG3}; color: ${DISABLED}; border: none; }
 QPushButton[variant="ghost"] { background-color: ${BG}; color: ${MUTED}; padding: 5px 10px; border-radius: ${R_INPUT}px; }
 QPushButton[variant="ghost"]:hover { background-color: ${BG3}; color: ${FG}; }
-QPushButton[variant="ghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
+QPushButton[variant="ghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; padding: 6px 10px 4px 10px; }
 QPushButton[variant="ghost"]:disabled { background-color: ${BG}; color: ${DISABLED}; }
 
 /* ---- labels (transparent, so they sit on any surface) ---- */
@@ -187,7 +187,7 @@ QPushButton[variant="cardghost"]:hover { background-color: ${BG3}; color: ${FG};
 QPushButton[variant="cardghost"]:pressed { background-color: ${PRESSED}; color: ${FG}; }
 QPushButton[variant="chip"] { background-color: ${BG3}; color: ${FG}; padding: 2px 8px; font-size: ${FONT_CAPTION}pt; border-radius: ${R_CHIP}px; }
 QPushButton[variant="chip"]:hover { background-color: ${HOVER}; color: ${WHITE}; }
-QPushButton[variant="chip"]:pressed { background-color: ${ACCENT_PRESS}; color: ${WHITE}; }
+QPushButton[variant="chip"]:pressed { background-color: ${ACCENT_PRESS}; color: ${WHITE}; padding: 3px 8px 1px 8px; }
 QPushButton[variant="chip"]:disabled { background-color: ${BG2}; color: ${DISABLED}; }
 
 /* ---- shell (Phase 9b: nav rail, command bar, VOD strip, status bar, toasts) ---- */

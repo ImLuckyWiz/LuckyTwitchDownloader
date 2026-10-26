@@ -24,10 +24,11 @@ word-wrapped labels follow their layout in Qt. All of it runs on the GUI thread 
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Iterable
 
 from PySide6.QtCore import (
-    Property, QEvent, QObject, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer, Signal,
+    Property, QEasingCurve, QEvent, QObject, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer, Signal,
 )
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
@@ -81,6 +82,7 @@ class Toggle(QAbstractButton):
         self._pos = 1.0 if checked else 0.0  # 0 = off, 1 = on (animated)
         self._anim = QPropertyAnimation(self, b"position", self)
         self._anim.setDuration(self.DURATION_MS)
+        self._anim.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.toggled.connect(self._follow)
 
     # ---- animated position ---- #
@@ -169,7 +171,13 @@ class Toggle(QAbstractButton):
         r = h / 2 - pad
         cx = pad + r + self._pos * (w - 2 * (pad + r))
         p.setBrush(QColor(DISABLED if not enabled else WHITE))
-        p.drawEllipse(QRectF(cx - r, h / 2 - r, 2 * r, 2 * r))
+        if self.is_animating() and 0.0 < self._pos < 1.0:
+            stretch = 1.0 + 0.14 * math.sin(math.pi * self._pos)
+            rx = r * stretch
+            ry = r / math.sqrt(stretch)
+            p.drawEllipse(QPointF(cx, h / 2), rx, ry)
+        else:
+            p.drawEllipse(QRectF(cx - r, h / 2 - r, 2 * r, 2 * r))
         if self.hasFocus() and enabled:  # keyboard focus ring
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QPen(QColor(ACCENT_HOVER), 1))
@@ -235,11 +243,28 @@ class Tooltip(QObject):
         label.move(pos)
         label.show()
         self.tip = label
+        try:
+            from qt_ui.motion import DURATION_MICRO, Motion, animate_slide_and_fade
+            if Motion.enabled():
+                animate_slide_and_fade(
+                    label,
+                    pos + QPoint(0, 3),
+                    pos,
+                    start_alpha=0.0,
+                    end_alpha=1.0,
+                    duration_ms=DURATION_MICRO,
+                )
+        except Exception:
+            pass
 
     def hide_tip(self) -> None:
         self._timer.stop()
         if self.tip is not None:
             tip, self.tip = self.tip, None
+            prev = getattr(tip, "_slide_fade_group", None)
+            if prev is not None:
+                prev.stop()
+                tip._slide_fade_group = None
             tip.hide()
             tip.deleteLater()
 
