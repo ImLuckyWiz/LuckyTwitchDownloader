@@ -40,12 +40,12 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install -r requirements.txt -r requirements-qt.txt pytest
-      - name: Run tests (Windows: Qt + engine + tkinter)
+      - name: "Run tests (Windows: Qt + engine + tkinter)"
         if: runner.os == 'Windows'
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
-      - name: Run tests (macOS: Qt + engine)
+      - name: "Run tests (macOS: Qt + engine)"
         if: runner.os == 'macOS'
         env:
           QT_QPA_PLATFORM: offscreen
