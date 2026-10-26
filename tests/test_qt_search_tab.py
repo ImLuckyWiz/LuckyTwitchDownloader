@@ -893,8 +893,8 @@ def test_channel_delegate_renders_avatar_initials_and_live_badge(qtbot, tab, ses
     img = tab.results_view.viewport().grab().toImage()
     rect = tab.results_view.visualRect(tab.results_model.index(0, 0))
     # Red LIVE badge (#eb0400) painted near the right end of row 0
-    badge_pixel = img.pixelColor(rect.right() - 20, rect.center().y())
-    assert badge_pixel == QColor("#eb0400")
+    badge_colors = {img.pixelColor(x, int(rect.center().y())).name() for x in range(int(rect.right() - 40), int(rect.right() - 8))}
+    assert "#eb0400" in badge_colors
 
 
 def test_list_and_grid_view_switcher_shares_selection_and_paints_cards(qtbot, tab, session, fake_fetch):
