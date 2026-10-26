@@ -429,20 +429,9 @@ class QueueTab(QWidget):
         self.log_card = Card("Log")
         self.scroll.body_layout.addWidget(self.log_card, 1)
 
-        # F3 1-line preview of the latest message (always visible even when drawer is collapsed)
-        self.log_preview_label = QLabel("No log messages yet.")
-        self.log_preview_label.setObjectName("logPreviewLine")
-        self.log_preview_label.setProperty("role", "muted")
-        self.log_preview_label.setWordWrap(False)
-        self.log_card.add_widget(self.log_preview_label)
-
-        # F3 Collapsible drawer (collapsed by default; opens automatically on first error)
-        self.log_drawer = Collapsible("Log details", hint="filters, search & export", opened=False)
-        self.log_card.add_widget(self.log_drawer)
-
-        # Filter chips + search box + Pause autoscroll toggle
+        # Integrated console toolbar: filters & search on left, autoscroll & actions on right
         toolbar = QHBoxLayout()
-        toolbar.setContentsMargins(0, 6, 0, 6)
+        toolbar.setContentsMargins(0, 0, 0, 8)
         toolbar.setSpacing(6)
 
         self.filter_buttons: dict[str, QPushButton] = {}
@@ -459,8 +448,11 @@ class QueueTab(QWidget):
         self.log_search_entry = QLineEdit()
         self.log_search_entry.setPlaceholderText("Filter log lines\u2026")
         self.log_search_entry.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.log_search_entry.setMaximumWidth(240)
         self.log_search_entry.textChanged.connect(self._on_log_search)
-        toolbar.addWidget(self.log_search_entry, 1)
+        toolbar.addWidget(self.log_search_entry)
+
+        toolbar.addStretch(1)
 
         self.autoscroll_btn = QPushButton("Pause autoscroll")
         self.autoscroll_btn.setProperty("variant", "chip")
@@ -468,28 +460,31 @@ class QueueTab(QWidget):
         self.autoscroll_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.autoscroll_btn.toggled.connect(self._on_autoscroll_toggled)
         toolbar.addWidget(self.autoscroll_btn)
-        self.log_drawer.body_layout.addLayout(toolbar)
 
-        self.log_view = LogView()
-        self.log_drawer.body_layout.addWidget(self.log_view, 1)
-
-        buttons = QHBoxLayout()
-        buttons.setContentsMargins(0, 8, 0, 0)
-        buttons.setSpacing(6)
-        buttons.addStretch(1)
         self.save_log_btn = QPushButton("Save log\u2026")
-        self.save_log_btn.setIcon(icon("download", 15))
+        self.save_log_btn.setIcon(icon("download", 14))
         self.save_log_btn.clicked.connect(self.save_log)
+        toolbar.addWidget(self.save_log_btn)
+
         self.copy_btn = QPushButton("Copy log")
-        self.copy_btn.setIcon(icon("copy", 15))
+        self.copy_btn.setIcon(icon("copy", 14))
         self.copy_btn.clicked.connect(self.copy_log)
+        toolbar.addWidget(self.copy_btn)
+
         self.clear_log_btn = QPushButton("Clear log")
-        self.clear_log_btn.setIcon(icon("trash", 15))
+        self.clear_log_btn.setIcon(icon("trash", 14))
         self.clear_log_btn.clicked.connect(self.clear_log)
-        buttons.addWidget(self.save_log_btn)
-        buttons.addWidget(self.copy_btn)
-        buttons.addWidget(self.clear_log_btn)
-        self.log_drawer.body_layout.addLayout(buttons)
+        toolbar.addWidget(self.clear_log_btn)
+
+        self.log_card.body_layout.addLayout(toolbar)
+
+        # Embedded console terminal
+        self.log_view = LogView()
+        self.log_view.setMinimumHeight(180)
+        self.log_card.body_layout.addWidget(self.log_view, 1)
+
+        # Backward-compatibility stubs
+        self.log_preview_label = QLabel()
 
     # ---------------------------- the log (F3) ---------------------------- #
     def log(self, msg: str) -> None:
@@ -497,8 +492,6 @@ class QueueTab(QWidget):
         colour = LOG_COLOURS.get(kind, FG)
         self.log_preview_label.setText(f"{stamp}{msg}")
         self.log_preview_label.setStyleSheet(f"color: {colour};")
-        if kind == "err" and not self.log_drawer.opened:
-            self.log_drawer.set_opened(True)
 
     def set_log_filter(self, kind: str) -> None:
         for k, btn in self.filter_buttons.items():

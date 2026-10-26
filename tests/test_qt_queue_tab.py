@@ -642,7 +642,7 @@ def test_the_stub_handlers_are_still_stubs_and_the_window_still_starts_on_the_ri
 def test_the_tab_order_has_nothing_decorative(tab):
     """tkinter test_tab_order_of_search_queue_and_options_has_nothing_decorative: the scroll area around the tab
     must not take the keyboard (found in Phase 4, when the Search tab was checked the same way)."""
-    from PySide6.QtWidgets import QAbstractScrollArea, QPushButton
+    from PySide6.QtWidgets import QAbstractScrollArea, QLineEdit, QPushButton
 
     assert tab.scroll.focusPolicy() == Qt.FocusPolicy.NoFocus
     stops, w = [], tab.start_btn
@@ -654,7 +654,7 @@ def test_the_tab_order_has_nothing_decorative(tab):
     focusable = [x for x in stops if tab.isAncestorOf(x) and x.isVisibleTo(tab) and x.focusPolicy() != Qt.FocusPolicy.NoFocus]
     assert focusable
     for x in focusable:
-        assert isinstance(x, (QPushButton, QAbstractScrollArea)) and x is not tab.scroll, x
+        assert isinstance(x, (QPushButton, QAbstractScrollArea, QLineEdit)) and x is not tab.scroll, x
 
 
 # ------------------------------------------------------------------ Phase 9c: Rich rows, header summary, log drawer, reorder & retry
@@ -717,18 +717,22 @@ def test_delegate_paints_rich_row_progress_and_inline_open_button(tab, qtbot, mo
     assert opened == [(out_file, True)]
 
 
-def test_log_drawer_starts_collapsed_and_auto_opens_on_error(tab):
-    assert not tab.log_drawer.opened
+def test_integrated_log_console_and_toolbar(tab):
+    assert tab.log_view.isVisible()
+    assert tab.log_view.isReadOnly()
+    assert "all" in tab.filter_buttons
+    assert tab.filter_buttons["warn"].text() == "Warnings"
+    assert tab.filter_buttons["err"].text() == "Errors"
+
     tab.log("Fetching manifest")
-    assert "Fetching manifest" in tab.log_preview_label.text()
-    assert not tab.log_drawer.opened
+    assert "Fetching manifest" in tab.log_view.toPlainText()
 
     tab.log("Warning: slow segment")
-    assert not tab.log_drawer.opened
+    assert "Warning: slow segment" in tab.log_view.toPlainText()
 
     tab.log("ERROR: ffmpeg exited with code 1")
-    assert tab.log_drawer.opened
-    assert "ERROR: ffmpeg exited with code 1" in tab.log_preview_label.text()
+    assert "ERROR: ffmpeg exited with code 1" in tab.log_view.toPlainText()
+    assert len(tab.log_view.entries) == 3
 
 
 def test_log_severity_chips_search_autoscroll_and_save_log(tab, monkeypatch, tmp_path):

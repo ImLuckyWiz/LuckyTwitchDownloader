@@ -148,8 +148,18 @@ QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: no
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
 
 /* ---- the log (Queue & log tab) and the Plan tab's cut points ---- */
-QPlainTextEdit#logView, QPlainTextEdit#cutPoints { background-color: ${BG}; border: none; padding: 6px 8px; }
-QPlainTextEdit#logView:hover, QPlainTextEdit#logView:focus, QPlainTextEdit#cutPoints:hover, QPlainTextEdit#cutPoints:focus { border: none; }
+QPlainTextEdit#logView {
+    background-color: #141517;
+    border: 1px solid ${BORDER};
+    border-radius: ${R_INPUT}px;
+    padding: 8px 10px;
+    selection-background-color: ${ACCENT_DIM};
+}
+QPlainTextEdit#logView:focus {
+    border: 1px solid ${BORDER_STRONG};
+}
+QPlainTextEdit#cutPoints { background-color: ${BG}; border: none; padding: 6px 8px; }
+QPlainTextEdit#cutPoints:hover, QPlainTextEdit#cutPoints:focus { border: none; }
 QPlainTextEdit#planPreview { background-color: ${BG2}; border: none; padding: 2px; }
 QPlainTextEdit#planPreview:hover, QPlainTextEdit#planPreview:focus { border: none; }
 QWidget#timelineWell { background-color: ${BG}; border-radius: ${R_INPUT}px; }

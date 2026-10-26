@@ -8,6 +8,7 @@
 - `qt_ui/shell.py`, `qt_ui/timeline.py`, `qt_ui/tabs/search.py`, `qt_ui/twitch_dialog.py`: added `setAccessibleName` and `setAccessibleDescription` across all icon-only buttons.
 - `qt_ui/main_window.py`: full-height left navigation rail restructure; smart channel handle/URL detection routing to Search tab on Enter/Get Info; auto-focus search edit.
 - `luckytwitch_qt.py`: clean terminal SIGINT handler, wakeup timer, and sys.excepthook override.
+- `qt_ui/tabs/queue.py` & `qt_ui/theme.py`: redesigned Log card into a modern integrated Console terminal (removed redundant drawer and single-line preview; added top toolbar with filters, search, and action buttons; styled with IDE terminal dark theme `#141517` and borders).
 - `tests/test_qt_dialogs.py`: 5 comprehensive tests for themed dialogs and accessibility.
 - Docs updated: `MIGRATION_LOG.md` (no. 28), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`, `RELEASE_NOTES.md`.
 
