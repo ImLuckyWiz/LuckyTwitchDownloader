@@ -2,6 +2,23 @@
 
 The user asked for **released versions while a phase is in progress, even half-made ones**. So every meaningful chunk of work ends in a numbered release: a zip of the whole repo (`lt-repo_phase<N>_v<K>.zip`) plus an entry below. An entry always says what is done, what is NOT done, and what was NOT run, so a half-made version is never mistaken for a finished one. A phase is only "done" when HANDOFF.md says so and the user approves it; versions are the steps on the way.
 
+## Phase 7: Timeline (7a to 7e)
+
+### v1  (2026-10-26)  Full Timeline (7a to 7e) and tests complete, targeted Qt tests green on Windows
+
+**Done (new or changed files):**
+- `core/timeline.py`: pure geometry, colour, step, zone and snapping helpers (`Viewport`, `nice_step`, `game_colour`, `zone_at`, `y_of`, `build_snap_points`, `snap_time`).
+- `qt_ui/timeline.py`: `Timeline(QWidget)` and `TimelineCanvas(QWidget)` custom-painted with `QPainter` covering 7b (static paint of ruler, games, muted stretches, thumbnails, parts, cut/edge handles, toolbar, scrollbar, wrapping hint), 7c (storyboard thumbnail strip, dimmed skipped sections, PIL -> `QPixmap` conversion, hover frame preview, no-Pillow fallback), 7d (mouse press/drag/double-click/right-click/wheel zoom & pan, snapping, `Undo` button + `Ctrl+Z`/`Cmd+Z`, `on_edit` callback), and 7e (hover overlay line, time badge, cursor shapes, muted audio red bars and switch).
+- `qt_ui/tabs/plan.py`: wired the real `Timeline` into `PlanTab` (replacing `TimelinePlaceholder`) and skipped background frame loading when `PIL.Image` is unavailable.
+- `tests/test_qt_timeline.py`: 58 test functions (62 test cases) porting all 57 cases of `tests/test_gui_timeline.py` and the timeline/muted-audio tests of `tests/test_muted_audio.py`.
+- Docs updated: `HANDOFF.md`, `PHASE_NOTES.md`, `VERSIONS.md`, `PARITY.md` (all 57 `test_gui_timeline.py` boxes + 3 `test_muted_audio.py` boxes ticked), `MIGRATION_LOG.md` (no. 16 resolved, no. 18 added).
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `python -m pytest tests/test_qt_timeline.py tests/test_qt_plan_tab.py -q` -> 121 passed in 19.90s.
+
+**NOT done:** the user's hands-on check of the interactive Timeline on a real VOD on Windows.
+
+**NOT run:** the full test suite (`python -m pytest tests -q`), interactive run of `python luckytwitch_qt.py`.
+
 ## Phase 6: Plan tab (no timeline), Get info, links
 
 ### v1  (2026-10-26)  Phase 6 code and tests complete, targeted Qt tests green on Windows

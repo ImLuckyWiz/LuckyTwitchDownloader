@@ -1,4 +1,4 @@
-"""The Plan tab (Phase 6): the timeline placeholder (Phase 7 replaces it with the real strip), the cut points editor
+"""The Plan tab (Phases 6 and 7): the interactive timeline strip (``qt_ui/timeline.py``), the cut points editor
 with its live preview of the parts, the Clips -> chapters card, and the always-visible footer with «Add to queue» and
 «Add & start».
 
@@ -29,17 +29,17 @@ from luckytwitch_engine import (
     muted_overlap, ranges_of, ranges_to_text,
 )
 from qt_ui import dialogs
+from qt_ui import timeline as timeline_module
 from qt_ui.background_jobs import FramesRunner
 from qt_ui.binder import SettingsBinder
 from qt_ui.bridge import Bridge
 from qt_ui.theme import mono_font
+from qt_ui.timeline import IDLE_HINT, Timeline
 from qt_ui.widgets import Card, ScrollPage, SpinBox, Toggle, WrapLabel
 
 HEADER_HEIGHT = 34
 ROW_HEIGHT = 28
 PREVIEW_COLOURS = {"ok": OK, "err": ERR, "muted": MUTED}
-IDLE_HINT = ("Click the thumbnails to cut · click a part to skip it · drag a cut line to move it · "
-             "right-click a cut line to remove it · wheel = zoom")
 CUT_HINT = ("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
             "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end")
 
@@ -102,109 +102,7 @@ class ClipModel(QAbstractTableModel):
         self.endResetModel()
 
 
-class TimelinePlaceholder(QWidget):
-    """Stand-in for the timeline strip until Phase 7 builds the custom QPainter widget.
-
-    Exposes the same toolbar buttons (``btn_out``, ``btn_in``, ``btn_fit``, ``btn_undo``), the ``Show muted`` box, the
-    horizontal scrollbar, the wrapping hint line and the ``set_source`` / ``set_frames`` / ``set_ranges`` /
-    ``set_clip_marks`` / ``set_muted`` methods that ``PlanTab`` calls.
-    """
-
-    def __init__(self, on_edit: Callable[[list[Range]], None] | None = None, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.on_edit = on_edit or (lambda ranges: None)
-        self.duration: float = 0.0
-        self.segments: list[GameSegment] = []
-        self.storyboard: Storyboard | None = None
-        self.frames: list | None = None
-        self.frames_state = "none"
-        self.ranges: list[Range] | None = None
-        self.clip_marks: list[float] = []
-        self.muted: list[Range] = []
-
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(4)
-
-        bar = QHBoxLayout()
-        bar.setContentsMargins(0, 0, 0, 0)
-        bar.setSpacing(4)
-        self.btn_out = QPushButton("−")
-        self.btn_in = QPushButton("+")
-        self.btn_fit = QPushButton("Fit")
-        self.btn_undo = QPushButton("Undo")
-        self.btn_undo.setEnabled(False)
-        for b in (self.btn_out, self.btn_in, self.btn_fit):
-            bar.addWidget(b)
-        bar.addSpacing(4)
-        bar.addWidget(self.btn_undo)
-
-        self.muted_box = QWidget(self)
-        mbox = QHBoxLayout(self.muted_box)
-        mbox.setContentsMargins(12, 0, 0, 0)
-        mbox.setSpacing(6)
-        muted_title = QLabel("Show muted")
-        muted_title.setProperty("role", "muted")
-        mbox.addWidget(muted_title)
-        self.muted_switch = Toggle(checked=True)
-        self.muted_switch.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        mbox.addWidget(self.muted_switch)
-        self.muted_info = QLabel("")
-        self.muted_info.setProperty("role", "muted")
-        mbox.addWidget(self.muted_info)
-        self.muted_box.hide()
-        bar.addWidget(self.muted_box)
-        bar.addStretch(1)
-        outer.addLayout(bar)
-
-        self.canvas = QWidget(self)
-        self.canvas.setFixedHeight(135)
-        self.canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        outer.addWidget(self.canvas)
-
-        self.hbar = QScrollBar(Qt.Orientation.Horizontal, self)
-        self.hbar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        outer.addWidget(self.hbar)
-
-        self.hint_label = WrapLabel(IDLE_HINT, self)
-        self.hint_label.setProperty("role", "muted")
-        self.hint_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        outer.addWidget(self.hint_label)
-
-    def set_source(self, duration: float, segments: Sequence[GameSegment] = (),
-                   storyboard: Storyboard | None = None) -> None:
-        self.duration = float(duration or 0)
-        self.segments = list(segments)
-        self.storyboard = storyboard
-        self.frames = None
-        self.frames_state = "loading" if storyboard else "none"
-        self.ranges = None
-        self.clip_marks = []
-        self.set_muted(None)
-        self.hint_label.setText(IDLE_HINT)
-
-    def set_frames(self, frames: list | None) -> None:
-        self.frames = frames
-        self.frames_state = "ready" if frames and any(f is not None for f in frames) else "failed"
-
-    def set_ranges(self, ranges: list[Range] | None) -> None:
-        self.ranges = None if ranges is None else [(s, e) for s, e in ranges]
-
-    def set_clip_marks(self, times: Sequence[float]) -> None:
-        self.clip_marks = sorted(float(t) for t in times)
-
-    def set_muted(self, ranges: Sequence[Range] | None, redraw: bool = True) -> None:
-        self.muted = sorted((float(s), float(e)) for s, e in (ranges or []) if e > s)
-        if self.muted:
-            total = sum(e - s for s, e in self.muted)
-            n = len(self.muted)
-            self.muted_info.setText(f"{n} stretch{'es' if n != 1 else ''} · {fmt_hms(total)} silenced by Twitch")
-            self.muted_switch.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-            self.muted_box.show()
-        else:
-            self.muted_info.setText("")
-            self.muted_switch.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            self.muted_box.hide()
+TimelinePlaceholder = Timeline  # backward-compatible alias
 
 
 class PlanTab(ScrollPage):
@@ -244,7 +142,7 @@ class PlanTab(ScrollPage):
         well.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         wlay = QVBoxLayout(well)
         wlay.setContentsMargins(8, 8, 8, 8)
-        self.timeline = TimelinePlaceholder(on_edit=self.on_timeline_edit, parent=well)
+        self.timeline = Timeline(on_edit=self.on_timeline_edit, parent=well)
         wlay.addWidget(self.timeline)
         self.timeline_card.add_widget(well)
 
@@ -570,6 +468,9 @@ class PlanTab(ScrollPage):
     def _load_frames(self, src) -> None:
         """Download the preview frames of ``src`` in the background; they arrive on ``Bridge.frames``."""
         if getattr(src, "storyboard", None) is None:
+            return
+        if timeline_module.Image is None:
+            self.timeline.set_frames(None)
             return
         self.frames_runner.start(src)
 

@@ -262,121 +262,123 @@ Extra Qt tests beyond the 18 (all in `test_qt_search_tab.py` unless noted): a se
 
 #### `test_gui_timeline.py` (57 tests)
 
-- [ ] viewport maps time to pixels and back  
-  `test_gui_timeline.py::test_viewport_maps_time_to_pixels_and_back`
-- [ ] zoom keeps the moment under the mouse in place  
-  `test_gui_timeline.py::test_zoom_keeps_the_moment_under_the_mouse_in_place`
-- [ ] zoom is limited to the whole vod and to 30 seconds  
-  `test_gui_timeline.py::test_zoom_is_limited_to_the_whole_vod_and_to_30_seconds`
-- [ ] panning stays inside the vod and fit resets  
-  `test_gui_timeline.py::test_panning_stays_inside_the_vod_and_fit_resets`
-- [ ] ruler step is the smallest round one that leaves room  
-  `test_gui_timeline.py::test_ruler_step_is_the_smallest_round_one_that_leaves_room`
-- [ ] a game always gets the same colour  
-  `test_gui_timeline.py::test_a_game_always_gets_the_same_colour`
-- [ ] rows of the widget are found by height  
-  `test_gui_timeline.py::test_rows_of_the_widget_are_found_by_height`
-- [ ] without a vod it says so and ignores the mouse  
-  `test_gui_timeline.py::test_without_a_vod_it_says_so_and_ignores_the_mouse`
-- [ ] clicking the thumbnails cuts there  
-  `test_gui_timeline.py::test_clicking_the_thumbnails_cuts_there`
-- [ ] cuts snap to game changes but only when close  
-  `test_gui_timeline.py::test_cuts_snap_to_game_changes_but_only_when_close`
-- [ ] cuts snap to clips too  
-  `test_gui_timeline.py::test_cuts_snap_to_clips_too`
-- [ ] clicking on a cut line grabs it instead of adding another  
-  `test_gui_timeline.py::test_clicking_on_a_cut_line_grabs_it_instead_of_adding_another`
-- [ ] dragging a cut line moves it and one undo takes the whole drag back  
-  `test_gui_timeline.py::test_dragging_a_cut_line_moves_it_and_one_undo_takes_the_whole_drag_back`
-- [ ] a cut line cannot be dragged past its neighbour  
-  `test_gui_timeline.py::test_a_cut_line_cannot_be_dragged_past_its_neighbour`
-- [ ] dragging the start of a part next to a skipped section  
-  `test_gui_timeline.py::test_dragging_the_start_of_a_part_next_to_a_skipped_section`
-- [ ] right click removes a cut line between two parts  
-  `test_gui_timeline.py::test_right_click_removes_a_cut_line_between_two_parts`
-- [ ] right click on the border of a skipped section explains instead  
-  `test_gui_timeline.py::test_right_click_on_the_border_of_a_skipped_section_explains_instead`
-- [ ] clicking a part skips it and clicking the gap brings it back  
-  `test_gui_timeline.py::test_clicking_a_part_skips_it_and_clicking_the_gap_brings_it_back`
-- [ ] the last remaining part cannot be skipped  
-  `test_gui_timeline.py::test_the_last_remaining_part_cannot_be_skipped`
-- [ ] clicking a skipped section in the thumbnails explains instead of cutting  
-  `test_gui_timeline.py::test_clicking_a_skipped_section_in_the_thumbnails_explains_instead_of_cutting`
-- [ ] an empty plan starts with the whole vod on a click  
-  `test_gui_timeline.py::test_an_empty_plan_starts_with_the_whole_vod_on_a_click`
-- [ ] double clicking a game makes it its own part  
-  `test_gui_timeline.py::test_double_clicking_a_game_makes_it_its_own_part`
-- [ ] shift double click keeps only that game  
-  `test_gui_timeline.py::test_shift_double_click_keeps_only_that_game`
-- [ ] double click outside the game row acts like a click  
-  `test_gui_timeline.py::test_double_click_outside_the_game_row_acts_like_a_click`
-- [ ] with an invalid cut text the timeline does not edit  
-  `test_gui_timeline.py::test_with_an_invalid_cut_text_the_timeline_does_not_edit`
-- [ ] mouse wheel zooms around the mouse and shift wheel moves  
-  `test_gui_timeline.py::test_mouse_wheel_zooms_around_the_mouse_and_shift_wheel_moves`
-- [ ] dragging the ruler pans a zoomed timeline  
-  `test_gui_timeline.py::test_dragging_the_ruler_pans_a_zoomed_timeline`
-- [ ] a new vod forgets the old one  
-  `test_gui_timeline.py::test_a_new_vod_forgets_the_old_one`
-- [ ] hovering names the time and the game  
-  `test_gui_timeline.py::test_hovering_names_the_time_and_the_game`
-- [ ] without game information the games row says so  
-  `test_gui_timeline.py::test_without_game_information_the_games_row_says_so`
-- [ ] thumbnails show loading then pictures  
-  `test_gui_timeline.py::test_thumbnails_show_loading_then_pictures`
-- [ ] zooming in shows more of the frames  
-  `test_gui_timeline.py::test_zooming_in_shows_more_of_the_frames`
-- [ ] frames that all failed say unavailable  
-  `test_gui_timeline.py::test_frames_that_all_failed_say_unavailable`
-- [ ] a vod without a storyboard says so  
-  `test_gui_timeline.py::test_a_vod_without_a_storyboard_says_so`
-- [ ] without pillow the timeline still works and says why  
-  `test_gui_timeline.py::test_without_pillow_the_timeline_still_works_and_says_why`
-- [ ] the hover preview appears only when the pictures are ready  
-  `test_gui_timeline.py::test_the_hover_preview_appears_only_when_the_pictures_are_ready`
-- [ ] skipped parts are dimmed in the thumbnails  
-  `test_gui_timeline.py::test_skipped_parts_are_dimmed_in_the_thumbnails`
-- [ ] the timeline sits above the cut points  
-  `test_gui_timeline.py::test_the_timeline_sits_above_the_cut_points`
-- [ ] loading a vod feeds the timeline  
-  `test_gui_timeline.py::test_loading_a_vod_feeds_the_timeline`
-- [ ] the timeline follows the cut text  
-  `test_gui_timeline.py::test_the_timeline_follows_the_cut_text`
-- [ ] a broken cut text switches the timeline to its error state  
-  `test_gui_timeline.py::test_a_broken_cut_text_switches_the_timeline_to_its_error_state`
-- [ ] an edit on the timeline rewrites the cut text and the preview  
-  `test_gui_timeline.py::test_an_edit_on_the_timeline_rewrites_the_cut_text_and_the_preview`
-- [ ] skipping the first part moves the start  
-  `test_gui_timeline.py::test_skipping_the_first_part_moves_the_start`
-- [ ] skipping a middle part writes a second line  
-  `test_gui_timeline.py::test_skipping_a_middle_part_writes_a_second_line`
-- [ ] the timeline and the text agree after a long series of edits  
-  `test_gui_timeline.py::test_the_timeline_and_the_text_agree_after_a_long_series_of_edits`
-- [ ] split at a clip updates the timeline and a second split changes nothing  
-  `test_gui_timeline.py::test_split_at_a_clip_updates_the_timeline_and_a_second_split_changes_nothing`
-- [ ] frames arrive in the background and reach the timeline  
-  `test_gui_timeline.py::test_frames_arrive_in_the_background_and_reach_the_timeline`
-- [ ] frames of a vod that was replaced are ignored  
-  `test_gui_timeline.py::test_frames_of_a_vod_that_was_replaced_are_ignored`
-- [ ] a crash while loading frames only costs the thumbnails  
-  `test_gui_timeline.py::test_a_crash_while_loading_frames_only_costs_the_thumbnails`
-- [ ] without pillow no frames are requested  
-  `test_gui_timeline.py::test_without_pillow_no_frames_are_requested`
-- [ ] a vod without game info or thumbnails still gets a working timeline  
-  `test_gui_timeline.py::test_a_vod_without_game_info_or_thumbnails_still_gets_a_working_timeline`
-- [ ] with no vod the timeline waits  
-  `test_gui_timeline.py::test_with_no_vod_the_timeline_waits`
-- [ ] refreshing the clips updates the marks without a vod change  
-  `test_gui_timeline.py::test_refreshing_the_clips_updates_the_marks_without_a_vod_change`
+**Ported in Phase 7** (`tests/test_qt_timeline.py`; every tkinter test below maps one-to-one onto a Qt test with the same name).
+
+- [x] viewport maps time to pixels and back  
+  `test_gui_timeline.py::test_viewport_maps_time_to_pixels_and_back` -> same name in `test_qt_timeline.py`
+- [x] zoom keeps the moment under the mouse in place  
+  `test_gui_timeline.py::test_zoom_keeps_the_moment_under_the_mouse_in_place` -> same name in `test_qt_timeline.py`
+- [x] zoom is limited to the whole vod and to 30 seconds  
+  `test_gui_timeline.py::test_zoom_is_limited_to_the_whole_vod_and_to_30_seconds` -> same name in `test_qt_timeline.py`
+- [x] panning stays inside the vod and fit resets  
+  `test_gui_timeline.py::test_panning_stays_inside_the_vod_and_fit_resets` -> same name in `test_qt_timeline.py`
+- [x] ruler step is the smallest round one that leaves room  
+  `test_gui_timeline.py::test_ruler_step_is_the_smallest_round_one_that_leaves_room` -> same name in `test_qt_timeline.py`
+- [x] a game always gets the same colour  
+  `test_gui_timeline.py::test_a_game_always_gets_the_same_colour` -> same name in `test_qt_timeline.py`
+- [x] rows of the widget are found by height  
+  `test_gui_timeline.py::test_rows_of_the_widget_are_found_by_height` -> same name in `test_qt_timeline.py`
+- [x] without a vod it says so and ignores the mouse  
+  `test_gui_timeline.py::test_without_a_vod_it_says_so_and_ignores_the_mouse` -> same name in `test_qt_timeline.py`
+- [x] clicking the thumbnails cuts there  
+  `test_gui_timeline.py::test_clicking_the_thumbnails_cuts_there` -> same name in `test_qt_timeline.py`
+- [x] cuts snap to game changes but only when close  
+  `test_gui_timeline.py::test_cuts_snap_to_game_changes_but_only_when_close` -> same name in `test_qt_timeline.py`
+- [x] cuts snap to clips too  
+  `test_gui_timeline.py::test_cuts_snap_to_clips_too` -> same name in `test_qt_timeline.py`
+- [x] clicking on a cut line grabs it instead of adding another  
+  `test_gui_timeline.py::test_clicking_on_a_cut_line_grabs_it_instead_of_adding_another` -> same name in `test_qt_timeline.py`
+- [x] dragging a cut line moves it and one undo takes the whole drag back  
+  `test_gui_timeline.py::test_dragging_a_cut_line_moves_it_and_one_undo_takes_the_whole_drag_back` -> same name in `test_qt_timeline.py`
+- [x] a cut line cannot be dragged past its neighbour  
+  `test_gui_timeline.py::test_a_cut_line_cannot_be_dragged_past_its_neighbour` -> same name in `test_qt_timeline.py`
+- [x] dragging the start of a part next to a skipped section  
+  `test_gui_timeline.py::test_dragging_the_start_of_a_part_next_to_a_skipped_section` -> same name in `test_qt_timeline.py`
+- [x] right click removes a cut line between two parts  
+  `test_gui_timeline.py::test_right_click_removes_a_cut_line_between_two_parts` -> same name in `test_qt_timeline.py`
+- [x] right click on the border of a skipped section explains instead  
+  `test_gui_timeline.py::test_right_click_on_the_border_of_a_skipped_section_explains_instead` -> same name in `test_qt_timeline.py`
+- [x] clicking a part skips it and clicking the gap brings it back  
+  `test_gui_timeline.py::test_clicking_a_part_skips_it_and_clicking_the_gap_brings_it_back` -> same name in `test_qt_timeline.py`
+- [x] the last remaining part cannot be skipped  
+  `test_gui_timeline.py::test_the_last_remaining_part_cannot_be_skipped` -> same name in `test_qt_timeline.py`
+- [x] clicking a skipped section in the thumbnails explains instead of cutting  
+  `test_gui_timeline.py::test_clicking_a_skipped_section_in_the_thumbnails_explains_instead_of_cutting` -> same name in `test_qt_timeline.py`
+- [x] an empty plan starts with the whole vod on a click  
+  `test_gui_timeline.py::test_an_empty_plan_starts_with_the_whole_vod_on_a_click` -> same name in `test_qt_timeline.py`
+- [x] double clicking a game makes it its own part  
+  `test_gui_timeline.py::test_double_clicking_a_game_makes_it_its_own_part` -> same name in `test_qt_timeline.py`
+- [x] shift double click keeps only that game  
+  `test_gui_timeline.py::test_shift_double_click_keeps_only_that_game` -> same name in `test_qt_timeline.py`
+- [x] double click outside the game row acts like a click  
+  `test_gui_timeline.py::test_double_click_outside_the_game_row_acts_like_a_click` -> same name in `test_qt_timeline.py`
+- [x] with an invalid cut text the timeline does not edit  
+  `test_gui_timeline.py::test_with_an_invalid_cut_text_the_timeline_does_not_edit` -> same name in `test_qt_timeline.py`
+- [x] mouse wheel zooms around the mouse and shift wheel moves  
+  `test_gui_timeline.py::test_mouse_wheel_zooms_around_the_mouse_and_shift_wheel_moves` -> same name in `test_qt_timeline.py`
+- [x] dragging the ruler pans a zoomed timeline  
+  `test_gui_timeline.py::test_dragging_the_ruler_pans_a_zoomed_timeline` -> same name in `test_qt_timeline.py`
+- [x] a new vod forgets the old one  
+  `test_gui_timeline.py::test_a_new_vod_forgets_the_old_one` -> same name in `test_qt_timeline.py`
+- [x] hovering names the time and the game  
+  `test_gui_timeline.py::test_hovering_names_the_time_and_the_game` -> same name in `test_qt_timeline.py`
+- [x] without game information the games row says so  
+  `test_gui_timeline.py::test_without_game_information_the_games_row_says_so` -> same name in `test_qt_timeline.py`
+- [x] thumbnails show loading then pictures  
+  `test_gui_timeline.py::test_thumbnails_show_loading_then_pictures` -> same name in `test_qt_timeline.py`
+- [x] zooming in shows more of the frames  
+  `test_gui_timeline.py::test_zooming_in_shows_more_of_the_frames` -> same name in `test_qt_timeline.py`
+- [x] frames that all failed say unavailable  
+  `test_gui_timeline.py::test_frames_that_all_failed_say_unavailable` -> same name in `test_qt_timeline.py`
+- [x] a vod without a storyboard says so  
+  `test_gui_timeline.py::test_a_vod_without_a_storyboard_says_so` -> same name in `test_qt_timeline.py`
+- [x] without pillow the timeline still works and says why  
+  `test_gui_timeline.py::test_without_pillow_the_timeline_still_works_and_says_why` -> same name in `test_qt_timeline.py`
+- [x] the hover preview appears only when the pictures are ready  
+  `test_gui_timeline.py::test_the_hover_preview_appears_only_when_the_pictures_are_ready` -> same name in `test_qt_timeline.py`
+- [x] skipped parts are dimmed in the thumbnails  
+  `test_gui_timeline.py::test_skipped_parts_are_dimmed_in_the_thumbnails` -> same name in `test_qt_timeline.py`
+- [x] the timeline sits above the cut points  
+  `test_gui_timeline.py::test_the_timeline_sits_above_the_cut_points` -> same name in `test_qt_timeline.py`
+- [x] loading a vod feeds the timeline  
+  `test_gui_timeline.py::test_loading_a_vod_feeds_the_timeline` -> same name in `test_qt_timeline.py`
+- [x] the timeline follows the cut text  
+  `test_gui_timeline.py::test_the_timeline_follows_the_cut_text` -> same name in `test_qt_timeline.py`
+- [x] a broken cut text switches the timeline to its error state  
+  `test_gui_timeline.py::test_a_broken_cut_text_switches_the_timeline_to_its_error_state` -> same name in `test_qt_timeline.py`
+- [x] an edit on the timeline rewrites the cut text and the preview  
+  `test_gui_timeline.py::test_an_edit_on_the_timeline_rewrites_the_cut_text_and_the_preview` -> same name in `test_qt_timeline.py`
+- [x] skipping the first part moves the start  
+  `test_gui_timeline.py::test_skipping_the_first_part_moves_the_start` -> same name in `test_qt_timeline.py`
+- [x] skipping a middle part writes a second line  
+  `test_gui_timeline.py::test_skipping_a_middle_part_writes_a_second_line` -> same name in `test_qt_timeline.py`
+- [x] the timeline and the text agree after a long series of edits  
+  `test_gui_timeline.py::test_the_timeline_and_the_text_agree_after_a_long_series_of_edits` -> same name in `test_qt_timeline.py`
+- [x] split at a clip updates the timeline and a second split changes nothing  
+  `test_gui_timeline.py::test_split_at_a_clip_updates_the_timeline_and_a_second_split_changes_nothing` -> same name in `test_qt_timeline.py`
+- [x] frames arrive in the background and reach the timeline  
+  `test_gui_timeline.py::test_frames_arrive_in_the_background_and_reach_the_timeline` -> same name in `test_qt_timeline.py`
+- [x] frames of a vod that was replaced are ignored  
+  `test_gui_timeline.py::test_frames_of_a_vod_that_was_replaced_are_ignored` -> same name in `test_qt_timeline.py`
+- [x] a crash while loading frames only costs the thumbnails  
+  `test_gui_timeline.py::test_a_crash_while_loading_frames_only_costs_the_thumbnails` -> same name in `test_qt_timeline.py`
+- [x] without pillow no frames are requested  
+  `test_gui_timeline.py::test_without_pillow_no_frames_are_requested` -> same name in `test_qt_timeline.py`
+- [x] a vod without game info or thumbnails still gets a working timeline  
+  `test_gui_timeline.py::test_a_vod_without_game_info_or_thumbnails_still_gets_a_working_timeline` -> same name in `test_qt_timeline.py`
+- [x] with no vod the timeline waits  
+  `test_gui_timeline.py::test_with_no_vod_the_timeline_waits` -> same name in `test_qt_timeline.py`
+- [x] refreshing the clips updates the marks without a vod change  
+  `test_gui_timeline.py::test_refreshing_the_clips_updates_the_marks_without_a_vod_change` -> same name in `test_qt_timeline.py`
 
 #### `test_muted_audio.py` (3 tkinter tests)
 
-- [ ] the timeline draws a red line for each muted stretch and says how much  
-  `test_muted_audio.py::test_the_timeline_draws_a_red_line_for_each_muted_stretch_and_says_how_much`
-- [ ] the red line can be switched off  
-  `test_muted_audio.py::test_the_red_line_can_be_switched_off`
-- [ ] a new vod forgets the old muted stretches  
-  `test_muted_audio.py::test_a_new_vod_forgets_the_old_muted_stretches`
+- [x] the timeline draws a red line for each muted stretch and says how much  
+  `test_muted_audio.py::test_the_timeline_draws_a_red_line_for_each_muted_stretch_and_says_how_much` -> same name in `test_qt_timeline.py`
+- [x] the red line can be switched off  
+  `test_muted_audio.py::test_the_red_line_can_be_switched_off` -> same name in `test_qt_timeline.py`
+- [x] a new vod forgets the old muted stretches  
+  `test_muted_audio.py::test_a_new_vod_forgets_the_old_muted_stretches` -> same name in `test_qt_timeline.py`
 
 ## Options tab  (Phase 5)
 

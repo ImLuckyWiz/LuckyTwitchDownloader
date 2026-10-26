@@ -89,12 +89,17 @@ No entries for Phase 0 (it changed no behaviour).
 **Qt:** `closeEvent` cancels it too.
 **Why:** no orphan processes. Decided by the agent; the user can veto it.
 
-## 16. The timeline strip is a placeholder widget until Phase 7  (Phase 6, until Phase 7)
+## 16. The timeline strip was a placeholder widget in Phase 6 (resolved in Phase 7)
 **tkinter:** `PlanTabMixin` embeds the interactive `Timeline` canvas widget (`ui/timeline.py`).
-**Qt:** `PlanTab` embeds `TimelinePlaceholder` (`qt_ui/tabs/plan.py`), which provides the toolbar buttons (`−`, `+`, `Fit`, `Undo`), the `Show muted` switch and stretch summary, the 135 px canvas area, the horizontal scrollbar, the wrapping idle hint, and the `set_source` / `set_frames` / `set_ranges` / `set_clip_marks` / `set_muted` API that `PlanTab` and `FramesRunner` call. Phase 7 replaces it with the custom `QPainter` `Timeline` widget.
-**Why:** PLAN.md splits the Plan tab (Phase 6) from the custom-painted Timeline widget (Phase 7). Temporary.
+**Qt:** Phase 6 used `TimelinePlaceholder` while building the rest of the Plan tab; Phase 7 replaced it with the full custom-painted `Timeline` widget (`qt_ui/timeline.py`).
+**Why:** PLAN.md split the Plan tab (Phase 6) from the custom-painted Timeline widget (Phase 7). Resolved.
 
 ## 17. macOS URL launch events and bringing the window to the front use Qt APIs  (Phase 6)
 **tkinter:** registered `::tk::mac::OpenDocument` via `root.createcommand`, and raised the window with `deiconify()` + `lift()` + temporary `-topmost True`.
 **Qt:** `LuckyApplication(QApplication)` intercepts `QEvent.Type.FileOpen` (`QFileOpenEvent.url().toString()`) and emits `link_opened` to `MainWindow.open_link`; `MainWindow.bring_to_front()` clears `Qt.WindowState.WindowMinimized` and calls `show()`, `raise_()` and `activateWindow()`.
 **Why:** the native Qt equivalents of those Tk window-system hooks. Decided by the agent.
+
+## 18. The Timeline strip is painted with `QPainter` on a `QWidget` and uses an integer `QScrollBar`  (Phase 7)
+**tkinter:** `Timeline` drew canvas items (`create_rectangle`, `create_line`, `create_text`, `create_image`, `create_polygon`) on a `tk.Canvas`, converted PIL frames with `ImageTk.PhotoImage`, and drove a fractional `ttk.Scrollbar` (`set(lo, hi)` in `0.0..1.0`).
+**Qt:** `Timeline` (`qt_ui/timeline.py`, decision D2) paints the ruler, game bars, muted stretches, storyboard thumbnails, parts, cut/edge handles and hover overlay in `TimelineCanvas.paintEvent` with `QPainter`, converts PIL frames to `QPixmap` via `QImage` (`Format_RGBA8888`), and drives a horizontal `QScrollBar` scaled to `0..10000` with `pageStep` proportional to `vp.span / vp.duration`.
+**Why:** decision D2 of PLAN.md; same geometry, colours, snapping and mouse/keyboard interactions. Decided by the user (D2) and the agent.

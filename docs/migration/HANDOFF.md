@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 6 done, waiting for approval, see VERSIONS.md: v1). Last completed phase: 5 (approved by the user, tag `migration-phase-5`; Phase 4 also approved, tag `migration-phase-4`).
+Last updated: 2026-10-26 (Phase 7 done, waiting for approval, see VERSIONS.md: Phase 7 v1). Last completed phase: 6 (approved by the user, tag `migration-phase-6`; Phases 4 and 5 also approved, tags `migration-phase-4` and `migration-phase-5`).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -20,8 +20,8 @@ Last updated: 2026-10-26 (Phase 6 done, waiting for approval, see VERSIONS.md: v
 | 3 | Queue and log tab | approved | migration-phase-3 | |
 | 4 | Search tab and Twitch sign-in | approved | migration-phase-4 | |
 | 5 | Options tab | approved | migration-phase-5 | |
-| 6 | Plan tab (no timeline), Get info, links | done (waiting for approval; v1 delivered, targeted Qt tests green on Windows) | | |
-| 7 | Timeline (7a to 7e) | not started | | |
+| 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
+| 7 | Timeline (7a to 7e) | done (waiting for approval; v1 delivered, 7a–7e complete and 62 Qt timeline tests green on Windows) | | |
 | 8 | Packaging, CI, cutover | not started | | |
 | 9 | Redesign beyond parity | optional, not started | | |
 
@@ -144,11 +144,11 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 - Tests: 798 in total, all passing (Phase 0 baseline, `baseline/TEST_BASELINE.md`). 235 need a real Tk and display: nine `tests/test_gui_*.py` files (232) and 3 in `tests/test_muted_audio.py`. (Earlier text said 197; that was out of date.)
 - CI: `.github/workflows/build.yml` builds Windows, macOS arm64 and macOS Intel on Python 3.12, tests and packages the two Premiere plugins, and publishes a release for every tag `v*`.
 
-- **Plan tab, Get info and links (Phase 6).** `qt_ui/tabs/plan.py` (`PlanTab`, `ClipModel`, `TimelinePlaceholder`), `qt_ui/background_jobs.py` (`InfoRunner`, `FramesRunner`), `qt_ui/main_window.py` (`on_get_info`, `add_to_queue`, `download_clips`, `start_link_listener`, `poll_links`, `open_link`), `luckytwitch_qt.py` (`LuckyApplication` for macOS `QFileOpenEvent`, command-line `weblink.hand_off`). All 38 settings keys are now bound (33 on Options, 5 on Plan). Phase 7 replaces `TimelinePlaceholder` in `PlanTab._build_timeline_card` with the real custom `QWidget` timeline strip (`qt_ui/timeline.py`) keeping the same methods (`set_source`, `set_frames`, `set_ranges`, `set_clip_marks`, `set_muted`, toolbar buttons `btn_out`/`btn_in`/`btn_fit`/`btn_undo`, `muted_box`, `canvas`, `hbar`, `hint_label`).
+- **Plan tab, Get info and links (Phase 6) + Timeline (Phase 7).** `qt_ui/tabs/plan.py` (`PlanTab`, `ClipModel`), `core/timeline.py` (`Viewport`, `nice_step`, `game_colour`, `zone_at`, `y_of`, `build_snap_points`, `snap_time`), `qt_ui/timeline.py` (`Timeline`, `TimelineCanvas`), `qt_ui/background_jobs.py` (`InfoRunner`, `FramesRunner`), `qt_ui/main_window.py` (`on_get_info`, `add_to_queue`, `download_clips`, `start_link_listener`, `poll_links`, `open_link`), `luckytwitch_qt.py` (`LuckyApplication` for macOS `QFileOpenEvent`, command-line `weblink.hand_off`). All 38 settings keys are bound (33 on Options, 5 on Plan), and all four tabs and the custom-painted Timeline strip are complete.
 
 ## 7. Next step
 
-Phase 6 (version 1) is built and its targeted Qt tests pass on Windows (`test_qt_plan_tab.py` 59 passed, `test_qt_main_window.py` 12 passed). It waits for the user's test runs and hands-on check of the Plan tab, «Get info», «Add to queue» / «Add & start» and `luckytwitch://` links on Windows (PHASE_NOTES.md, Phase 6), then approval and tag `migration-phase-6` (and pre-release `v0.1.0-alpha.1` if desired). After Phase 6 is approved, the user says when to start Phase 7 (Timeline 7a to 7e; PLAN.md section 6).
+Phase 7 (Timeline, 7a to 7e, version 1) is built and its 62 Qt timeline tests pass on Windows (`test_qt_timeline.py` 62 passed, `test_qt_plan_tab.py` 59 passed). It waits for the user's hands-on check of the Timeline on Windows (`python luckytwitch_qt.py` with a real VOD: ruler, game bars, muted red stretches, storyboard thumbnails, hover preview, click to cut/skip, drag edges with snapping, double-click a game, right-click to remove a cut, wheel zoom, Undo / Ctrl+Z), then approval and tag `migration-phase-7`. After Phase 7 is approved, the user says when to start Phase 8 (Packaging, CI and cutover; PLAN.md section 6).
 
 ## 8. Update checklist (end of every phase)
 
