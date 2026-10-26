@@ -67,9 +67,9 @@ def test_build_windows_sanitizes_pe_version_for_nuitka():
 
 def test_requirements_include_pyside6():
     req = (ROOT / "requirements.txt").read_text(encoding="utf-8")
-    req_qt = (ROOT / "requirements-qt.txt").read_text(encoding="utf-8")
+    req_dev = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
     assert "PySide6==6.12.0" in req
-    assert "PySide6==6.12.0" in req_qt
+    assert "pytest-qt" in req_dev
     assert "nuitka" in req
 
 
@@ -135,14 +135,12 @@ def test_read_bundled_version_reads_version_file_when_present(tmp_path, monkeypa
 def test_ci_workflow_runs_pytest_offscreen_and_passes_version_to_both_builders():
     yml = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
     assert "QT_QPA_PLATFORM: offscreen" in yml
-    assert "requirements-qt.txt" in yml
+    assert "requirements-dev.txt" in yml
     assert "python -m pytest tests" in yml
     assert "build_windows.bat" in yml
     assert "bash build_mac.sh" in yml
 
 
-def test_release_notes_have_top_entries_for_beta_and_v2():
-    qt_notes = (ROOT / "docs" / "migration" / "RELEASE_NOTES_QT.md").read_text(encoding="utf-8").splitlines()
+def test_release_notes_have_top_entries_for_v2():
     main_notes = (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").splitlines()
-    assert qt_notes[0].strip() in ("## v0.8.0-beta", "## v0.8.0-beta.1")
     assert main_notes[0].strip() == "## v2.0.0"

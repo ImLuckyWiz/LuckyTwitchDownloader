@@ -29,7 +29,6 @@ jobs:
         shell: bash
         run: |
           notes=RELEASE_NOTES.md
-          case "$GITHUB_REF_NAME" in *-*) notes=docs/migration/RELEASE_NOTES_QT.md ;; esac   # pre-release tag (v0.8.0-beta.1)
           first=$(head -n1 "$notes" | sed 's/^## *//; s/[[:space:]]*$//' | tr -d '\r')
           if [ "$first" != "$GITHUB_REF_NAME" ]; then
             echo "::error file=$notes,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update $notes before tagging."
@@ -39,17 +38,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt -r requirements-qt.txt pytest
-      - name: "Run tests (Windows: Qt + engine + tkinter)"
-        if: runner.os == 'Windows'
+        run: python -m pip install -r requirements-dev.txt
+      - name: "Run tests"
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
-      - name: "Run tests (macOS: Qt + engine)"
-        if: runner.os == 'macOS'
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: python -m pytest tests --ignore-glob="tests/test_gui_*.py" --ignore=tests/test_core_matches_tkinter.py -q
       - name: Ensure Inno Setup (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -156,7 +149,6 @@ jobs:
         shell: bash
         run: |
           notes=RELEASE_NOTES.md
-          case "$GITHUB_REF_NAME" in *-*) notes=docs/migration/RELEASE_NOTES_QT.md ;; esac
           awk -v tag="$GITHUB_REF_NAME" '
             { sub(/\r$/, "") }
             $0 == "## " tag { found=1; print; next }

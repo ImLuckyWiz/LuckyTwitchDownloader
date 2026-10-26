@@ -50,12 +50,7 @@ def main() -> int:
         "app = LuckyApplication([]); apply_theme(app); set_app_icon(app); "
         "w = MainWindow(settings={}, client=None); w.show(); app.processEvents(); w.close()"
     )
-    tk_probe = (
-        "import tkinter as tk, luckytwitch_downloader as dl; "
-        "dl.ensure_tools = lambda *a, **k: None; dl.make_client = lambda: None; "
-        "r = tk.Tk(); r.withdraw(); dl.apply_dark_theme(r); app = dl.App(r); r.update_idletasks(); "
-        "[r.after_cancel(i) for i in r.tk.call('after', 'info')]; r.destroy()"
-    )
+    tk_probe = None
 
     print("=== Startup Time (source, 3 runs) ===")
     qt_times = _time_command(qt_probe)

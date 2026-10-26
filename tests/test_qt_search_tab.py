@@ -830,12 +830,7 @@ def test_the_channel_model_marks_live_streamers_only_in_the_results(tab):
 def test_the_constants_are_the_ones_of_the_tkinter_app():
     assert core_search.THUMB_SIZE == (128, 72) and core_search.THUMB_GAP == 14
     assert core_search.VIDEO_KINDS == {"Past broadcasts": "archive", "Highlights": "highlight", "Uploads": "upload"}
-    pytest.importorskip("tkinter")
-    import luckytwitch_downloader as dl
-
-    assert core_search.VIDEO_KINDS == dl.VIDEO_KINDS
-    assert core_search.THUMB_SIZE == dl.THUMB_SIZE and core_search.THUMB_GAP == dl.THUMB_GAP
-    assert paths.MAX_RECENT == dl.MAX_RECENT
+    assert paths.MAX_RECENT == 12
 
 
 # ------------------------------------------------------------------ the combo box

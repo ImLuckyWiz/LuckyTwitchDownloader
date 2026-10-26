@@ -49,7 +49,7 @@ def capture(window: MainWindow, out_path: Path) -> None:
 
 
 def main(out_dir: Path | None = None) -> int:
-    target_dir = out_dir or (ROOT / "docs" / "migration" / "phase9" / "baseline")
+    target_dir = out_dir or (ROOT / "build" / "screenshots")
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # Isolate from user machine settings

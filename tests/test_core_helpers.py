@@ -59,11 +59,17 @@ def test_defaults_are_the_38_documented_keys_with_the_documented_types():
     assert len(d) == 38
     assert sum(isinstance(v, bool) for v in d.values()) == 14
     assert sum(isinstance(v, str) for v in d.values()) == 24
-    doc = (ROOT / "docs" / "migration" / "SETTINGS_KEYS.md").read_text(encoding="utf-8")
-    rows = re.findall(r"^\| `(\w+)` \| (string|bool) \|", doc, flags=re.M)
-    assert {k for k, _ in rows} == set(d)
-    for key, kind in rows:
-        assert isinstance(d[key], bool) == (kind == "bool"), key
+    expected_bools = {
+        "exact", "keep_full", "chapters", "sidecar", "premiere_xml",
+        "premiere_plugin", "game_markers", "muted_markers", "chat",
+        "chat_embed", "chat_render", "chat_render_smooth", "subfolders", "auto_update",
+    }
+    assert {k for k, v in d.items() if isinstance(v, bool)} == expected_bools
+    for k, v in d.items():
+        if k in expected_bools:
+            assert isinstance(v, bool), f"{k} should be bool"
+        else:
+            assert isinstance(v, str), f"{k} should be str" 
 
 
 def test_load_settings_without_a_file_gives_the_defaults(data_dir):

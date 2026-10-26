@@ -1,4 +1,4 @@
-"""Make the project root importable (luckytwitch_engine, luckytwitch_downloader, ui) from the tests.
+"""Make the project root importable (luckytwitch_engine, luckytwitch_qt, qt_ui, core) from the tests.
 
 The Qt tests run on Qt's offscreen platform (no display, same result on every machine); set QT_QPA_PLATFORM
 yourself to run them on a real one.

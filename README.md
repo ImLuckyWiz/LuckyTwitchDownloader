@@ -121,11 +121,11 @@ Uninstalling the app leaves this data folder in place; delete it for a clean rem
 ## Run from source
 
 ```
-pip install requests pillow
-python luckytwitch_downloader.py
+pip install -r requirements.txt
+python luckytwitch_qt.py
 ```
 
-Python 3.10+ with Tk is required (on macOS use Python from python.org, since the system Python ships an old Tk). When run from source, settings and downloads stay next to the scripts.
+Python 3.10+ is required. When run from source, settings and downloads stay next to the scripts.
 
 ## Build it yourself
 
@@ -138,9 +138,10 @@ Nuitka compiles native standalone binaries, so build each system on that system.
 
 ```
 luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpeg, chapters)
-luckytwitch_downloader.py   the Tk app: window, tabs, queue
+luckytwitch_qt.py           the Qt 6 app entry point
+qt_ui/                      Qt 6 UI components (main_window, shell, tabs, timeline, widgets, icons)
+core/                       pure business logic (config, credentials, settings, options, timeline)
 weblink.py                  luckytwitch:// links: reading them, handing them to the open window, registering the scheme
-ui/                         UI pieces split out of the app (plan_tab.py, timeline.py, common.py: colours and fonts)
 tests/                      pytest suite
 premiere-plugin/            the Premiere Pro panel (UXP) that reads the .markers.json (JavaScript, own tests)
 premiere-plugin-cep/        the second Premiere Pro panel (CEP): same file, edits the whole timeline (JavaScript, own tests)
@@ -154,7 +155,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The two Premiere panels have their own tests (`cd premiere-plugin && npm test`, `cd premiere-plugin-cep && npm test`, Node 20+, no dependencies; the CEP tests also check that its `markers-core.js` is exactly the UXP one). The engine tests need nothing else. The GUI tests open a real (hidden) Tk window and are skipped when there is no display; on a headless Linux machine run `xvfb-run -a python -m pytest`.
+The two Premiere panels have their own tests (`cd premiere-plugin && npm test`, `cd premiere-plugin-cep && npm test`, Node 20+, no dependencies; the CEP tests also check that its `markers-core.js` is exactly the UXP one). The engine tests need nothing else. The Qt GUI tests run automatically offscreen on both desktop and headless CI environments.
 
 ## Credits
 
