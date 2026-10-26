@@ -1,4 +1,4 @@
-## v0.8.0-beta.1
+## v0.8.0-beta
 
 **First complete PySide6 (Qt 6) release candidate.** All four tabs (**Search**, **Plan**, **Options**, and **Queue & log**), the interactive **Timeline** with storyboard thumbnails and muted-audio stretches, **Twitch sign-in**, **chat overlay rendering**, and **`luckytwitch://` links** now run on PySide6.
 

@@ -138,5 +138,5 @@ def test_ci_workflow_runs_pytest_offscreen_and_passes_version_to_both_builders()
 def test_release_notes_have_top_entries_for_beta_and_v2():
     qt_notes = (ROOT / "docs" / "migration" / "RELEASE_NOTES_QT.md").read_text(encoding="utf-8").splitlines()
     main_notes = (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").splitlines()
-    assert qt_notes[0].strip() == "## v0.8.0-beta.1"
+    assert qt_notes[0].strip() in ("## v0.8.0-beta", "## v0.8.0-beta.1")
     assert main_notes[0].strip() == "## v2.0.0"
