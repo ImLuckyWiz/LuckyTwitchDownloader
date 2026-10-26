@@ -1,3 +1,17 @@
+## v2.1.0
+
+LuckyTwitch Downloader **v2.1.0** introduces a guided **First-Run Welcome & Quick Setup** experience alongside a comprehensive **60 FPS Motion System Upgrade** across the entire Qt 6 interface.
+
+### What's new in 2.1:
+- **First-Run Welcome & Quick Setup:** Guided full-bleed onboarding overlay for first launches. Choose your downloads folder, pick your preferred container format (`MP4` for universal video editor compatibility or `MKV` for crash resistance), and check your Twitch sign-in status in 5 seconds. Reopen anytime via the `F2` shortcut or `--welcome` CLI flag.
+- **Dynamic Living Canvas:** Custom-painted ambient background with radial glow blending Twitch purple into emerald with an ongoing subtle breathing pulse loop.
+- **60 FPS Motion System Core:** Rebuilt motion architecture featuring standardized duration tokens (`DURATION_MICRO`, `DURATION_FAST`, `DURATION_NORMAL`, `DURATION_ENTER`), `OutCubic` easing curves, and reusable motion helpers (`animate_opacity`, `animate_slide_and_fade`, `animate_value`, `animate_height`).
+- **Tactile Micro-Interactions:** Modern spring-like knob stretch on toggle switches, subtle 1 px tactile depression padding on buttons, chips, and ghost controls, and smooth slide-and-fade tooltips.
+- **Smooth Page & Shell Transitions:** Crossfade transitions between navigation tabs, animated reveal (0 → 48 px) and clear for the VOD strip, and animated onboarding card accordion on the Plan tab.
+- **Dynamic Feedback & Visual Polish:** Indeterminate barberpole shimmer on downloading queue rows, breathing alpha pulse on red `LIVE` badges, smooth hover lifts on VOD cards, and smooth value tweening on progress meters.
+- **Toast & Dialog Animations:** Slide-and-fade entries and dismissals for notification toasts with smooth vertical stack repositioning, plus animated accordion folds on dialog technical details.
+- **Zero-Delay Accessibility Fallback:** Strict adherence to Windows `SPI_GETCLIENTAREAANIMATION` (reduced motion). When animations are disabled, all transitions resolve instantaneously without hanging timers.
+
 ## v2.0.0
 
 LuckyTwitch Downloader now runs on **Qt 6 (PySide6)** with a completely reimagined, modern dark interface, crisp High-DPI vector iconography, and professional-grade workflow enhancements while preserving 100% backward compatibility with your settings, Twitch login, recent streamers, and Premiere Pro plugins.
