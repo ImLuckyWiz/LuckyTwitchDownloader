@@ -17,7 +17,7 @@ from typing import Callable, Sequence
 from PySide6.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QTextCharFormat, QTextCursor, QTextOption
 from PySide6.QtWidgets import (
-    QAbstractItemView, QBoxLayout, QFrame, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QProgressBar,
+    QAbstractItemView, QBoxLayout, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QProgressBar,
     QPushButton, QScrollBar, QSizePolicy, QStyledItemDelegate, QTableView, QVBoxLayout, QWidget,
 )
 
@@ -37,11 +37,11 @@ from qt_ui.bridge import Bridge
 from qt_ui.icons import icon
 from qt_ui.theme import mono_font
 from qt_ui.timeline import IDLE_HINT, Timeline
-from qt_ui.widgets import Card, ScrollPage, SpinBox, Toggle, WrapLabel
+from qt_ui.widgets import Card, MarqueeLabel, ScrollPage, SpinBox, Toggle, WrapLabel
 
 HEADER_HEIGHT = 34
 ROW_HEIGHT = 28
-WIDE_BREAKPOINT = 1000
+WIDE_BREAKPOINT = 1100
 PREVIEW_COLOURS = {"ok": OK, "err": ERR, "muted": MUTED}
 CUT_HINT = ("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
             "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end")
@@ -60,7 +60,7 @@ for _key, _label, _setting in STRATEGY_CHOICES:
 CLIP_COLUMNS = (  # key, heading, width, alignment, stretches
     ("at", "At", 80, "center", False),
     ("views", "Views", 70, "center", False),
-    ("dur", "Dur", 60, "center", False),
+    ("dur", "Duration", 75, "center", False),
     ("title", "Title", 380, "w", True),
     ("creator", "Creator", 140, "w", False),
     ("chap", "Chapter", 108, "center", False),
@@ -161,9 +161,8 @@ class PartCard(QFrame):
         lay.addWidget(self.dur_lbl)
 
         if game_name:
-            self.game_lbl = QLabel(game_name, self)
-            self.game_lbl.setProperty("role", "muted")
-            lay.addWidget(self.game_lbl)
+            self.game_lbl = MarqueeLabel(game_name, self)
+            lay.addWidget(self.game_lbl, 1)
         else:
             self.game_lbl = None
 
@@ -174,7 +173,8 @@ class PartCard(QFrame):
         else:
             self.muted_lbl = None
 
-        lay.addStretch(1)
+        if not game_name:
+            lay.addStretch(1)
 
         self.skip_btn = QPushButton(self)
         self.skip_btn.setIcon(icon("x", 12, MUTED))
@@ -187,7 +187,7 @@ class PartCard(QFrame):
 
 
 class ClipModel(QAbstractTableModel):
-    """The clips table of the Plan tab (decision D5): At, Views, Dur, Title, Creator, Chapter."""
+    """The clips table of the Plan tab (decision D5): At, Views, Duration, Title, Creator, Chapter."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -213,6 +213,8 @@ class ClipModel(QAbstractTableModel):
         if not index.isValid() or not 0 <= index.row() < len(self.rows):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
+            return self.rows[index.row()][index.column()]
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.rows[index.row()][index.column()]
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return int(_alignment(CLIP_COLUMNS[index.column()][3]))
@@ -455,28 +457,32 @@ class PlanTab(ScrollPage):
 
         frow = QWidget()
         frow.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        flay = QHBoxLayout(frow)
-        flay.setContentsMargins(0, 0, 0, 8)
-        flay.setSpacing(6)
+        fgrid = QGridLayout(frow)
+        fgrid.setContentsMargins(0, 0, 0, 8)
+        fgrid.setHorizontalSpacing(14)
+        fgrid.setVerticalSpacing(6)
         self.filter_spins: dict[str, SpinBox] = {}
 
-        def num_field(label: str, name: str, width: int = 6, first: bool = False) -> None:
-            if not first:
-                flay.addSpacing(8)
+        def add_filter_field(row: int, col: int, label: str, name: str, width: int = 5) -> None:
+            cell = QWidget()
+            clay = QHBoxLayout(cell)
+            clay.setContentsMargins(0, 0, 0, 0)
+            clay.setSpacing(6)
             lbl = QLabel(label)
             lbl.setProperty("role", "muted")
-            flay.addWidget(lbl)
+            clay.addWidget(lbl)
             sp = SpinBox(0, 1_000_000, width)
             self.binder.bind(name, sp)
             sp.valueChanged.connect(self._on_filter_spin)
-            flay.addWidget(sp)
+            clay.addWidget(sp)
+            clay.addStretch(1)
+            fgrid.addWidget(cell, row, col)
             self.filter_spins[name] = sp
 
-        num_field("Min views", "min_views", 6, first=True)
-        num_field("Min duration (s)", "min_duration", 5)
-        num_field("Top N by views (0 = all)", "top_n", 5)
-        num_field("Lead-in (s)", "pad_before", 4)
-        flay.addStretch(1)
+        add_filter_field(0, 0, "Min views", "min_views", 6)
+        add_filter_field(0, 1, "Min duration (s)", "min_duration", 5)
+        add_filter_field(1, 0, "Top N (0 = all)", "top_n", 5)
+        add_filter_field(1, 1, "Lead-in (s)", "pad_before", 4)
         self.clips_card.add_widget(frow)
 
         # D4: Multi-select toolbar above the clips table
@@ -520,16 +526,17 @@ class PlanTab(ScrollPage):
         self.tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tree.setShowGrid(False)
         self.tree.setWordWrap(False)
+        self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.tree.verticalHeader().hide()
         self.tree.verticalHeader().setDefaultSectionSize(ROW_HEIGHT)
         head = self.tree.horizontalHeader()
         head.setFixedHeight(HEADER_HEIGHT)
         head.setHighlightSections(False)
-        head.setSectionsClickable(False)
+        head.setSectionsClickable(True)
+        head.setStretchLastSection(False)
         for col, (_key, _text, width, _anchor, stretch) in enumerate(CLIP_COLUMNS):
-            head.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch if stretch else QHeaderView.ResizeMode.Fixed)
-            if not stretch:
-                head.resizeSection(col, width)
+            head.setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
+            head.resizeSection(col, width)
         self.tree.setMinimumHeight(HEADER_HEIGHT + 6 * ROW_HEIGHT + 2)  # tkinter: height=6 rows
         self.tree.doubleClicked.connect(self.open_clip)
         self.tree.selectionModel().selectionChanged.connect(self._on_clip_selection_changed)

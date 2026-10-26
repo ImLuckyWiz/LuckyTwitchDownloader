@@ -656,10 +656,15 @@ def test_a_second_launch_hands_its_link_to_the_open_window(qtbot, reads, monkeyp
 def test_responsive_two_column_vs_stacked_layout(win):
     page = win.tab_plan
     win.tabs.setCurrentWidget(page)
-    win.resize(1100, 750)
+    win.resize(1150, 750)
     QApplication.processEvents()
     assert page.is_two_column()
     assert page.cuts_card.x() < page.clips_card.x()
+
+    win.resize(1000, 700)
+    QApplication.processEvents()
+    assert not page.is_two_column()
+    assert page.cuts_card.y() < page.clips_card.y()
 
     win.resize(900, 700)
     QApplication.processEvents()
@@ -670,7 +675,7 @@ def test_responsive_two_column_vs_stacked_layout(win):
 def test_part_cards_and_coverage_bar_follow_plan_and_support_skip(win):
     segments = [
         eng.GameSegment(0.0, 1800.0, "Just Chatting"),
-        eng.GameSegment(1800.0, 7200.0, "Elden Ring"),
+        eng.GameSegment(1800.0, 7200.0, "Elden Ring: Shadow of the Erdtree Edition"),
     ]
     load_vod(win, segments=segments, muted=[(60.0, 180.0)])
     page = win.tab_plan
@@ -680,8 +685,10 @@ def test_part_cards_and_coverage_bar_follow_plan_and_support_skip(win):
     assert len(page.part_cards) == 3
     assert page.part_cards[0].badge_lbl.text() == "P1"
     assert page.part_cards[0].game_name == "Just Chatting"
+    assert page.part_cards[0].game_lbl.text() == "Just Chatting"
     assert page.part_cards[0].muted_lbl is not None
-    assert page.part_cards[1].game_name == "Elden Ring"
+    assert page.part_cards[1].game_name == "Elden Ring: Shadow of the Erdtree Edition"
+    assert page.part_cards[1].game_lbl.text() == "Elden Ring: Shadow of the Erdtree Edition"
     assert page.coverage_bar.value() == 100
     assert page.coverage_badge.text() == "100% of VOD"
 
@@ -728,4 +735,21 @@ def test_clip_multi_select_toolbar_and_download_n_clips_label(win):
     page.clear_clips_btn.click()
     assert page.selected_clip_rows() == []
     assert page.download_clips_btn.text() == "Download only selected clip"
+
+
+def test_clips_table_duration_header_and_tooltips(win):
+    load_clips(win)
+    page = win.tab_plan
+    dur_col = [c[0] for c in CLIP_COLUMNS].index("dur")
+    assert CLIP_COLUMNS[dur_col][1] == "Duration"
+
+    # Tooltip on model
+    m = page.clip_model
+    assert m.data(m.index(0, 3), Qt.ItemDataRole.ToolTipRole) == "Epic fail \U0001F602"
+
+    # Header interactive resize mode
+    head = page.tree.horizontalHeader()
+    for col in range(len(CLIP_COLUMNS)):
+        assert head.sectionResizeMode(col) == head.ResizeMode.Interactive
+
 

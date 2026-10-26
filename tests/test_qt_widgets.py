@@ -20,8 +20,8 @@ import core.palette as pal  # noqa: E402
 from qt_ui import theme  # noqa: E402
 from qt_ui import widgets as w  # noqa: E402
 from qt_ui.widgets import (  # noqa: E402
-    Card, Collapsible, EmptyState, InfoIcon, ScrollFrame, ScrollPage, SettingRow, SideNav, Toggle, TokenChips,
-    Tooltip,
+    Card, Collapsible, EmptyState, InfoIcon, MarqueeLabel, ScrollFrame, ScrollPage, SettingRow, SideNav, Toggle,
+    TokenChips, Tooltip,
 )
 
 
@@ -990,3 +990,19 @@ def test_the_advanced_header_is_a_flat_muted_button_that_lights_up(qtbot):
     adv.header.setDown(True)
     assert near(pixel(adv.header, 2, 2), pal.PRESSED)
     adv.header.setDown(False)
+
+
+def test_marquee_label_measurement_and_static_elision(qtbot):
+    lbl = MarqueeLabel("Short text")
+    shown(qtbot, lbl, size=(200, 30))
+    assert lbl.text() == "Short text"
+    assert lbl.toolTip() == "Short text"
+    assert lbl._overflow() == 0.0
+
+    lbl_long = MarqueeLabel("Very long category name that definitely overflows a small label")
+    shown(qtbot, lbl_long, size=(100, 30))
+    assert lbl_long._overflow() > 0.0
+    # In tests Motion is disabled by default, so timer does not run and paintEvent uses clean elision
+    pix = lbl_long.grab()
+    assert not pix.isNull()
+

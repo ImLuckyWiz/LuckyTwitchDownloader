@@ -1,12 +1,12 @@
-## Phase 9e: The Plan Page  (2026-10-26, version 1 delivered)
-**Done (9e v1, see VERSIONS.md):**
-- **D1 — Wide 2-Column Responsive Layout (`qt_ui/tabs/plan.py`):** below the full-width `Timeline` card, `self.lower_layout` (`QBoxLayout`) arranges `Cut points` (left) and `Clips → chapters` (right) side-by-side at window widths `>= 1000 px`, and stacks them vertically (`TopToBottom`) at `< 1000 px` so nothing clips, while keeping `cuts_card.parent() is self.body` and `clips_card.parent() is self.body`.
-- **D2 — Visual Part Cards & Skip Action (`PartCard` in `qt_ui/tabs/plan.py`):** renders interactive `PartCard` chips (`P1 · 0:00:00 → 0:30:00 · (0:30:00)`) with a deterministic game-colour stripe (`game_colour`), dominant game name, muted-audio overlap note, and an inline `✕` skip button (`skip_part()`) that toggles the part out of the cut points and timeline while preserving `self.preview` (`preview_text()` and `preview_kind`) for full test compatibility.
+## Phase 9e: The Plan Page  (2026-10-26, version 2 delivered)
+**Done (9e v2, see VERSIONS.md):**
+- **D1 — Wide 2-Column Responsive Layout (`qt_ui/tabs/plan.py`):** below the full-width `Timeline` card, `self.lower_layout` (`QBoxLayout`) arranges `Cut points` (left) and `Clips → chapters` (right) side-by-side at window widths `>= 1100 px` (`WIDE_BREAKPOINT = 1100`), and stacks them vertically (`TopToBottom`) at `< 1100 px` so nothing clips.
+- **D2 — Visual Part Cards & Auto-Looping Marquee (`PartCard` in `qt_ui/tabs/plan.py`, `MarqueeLabel` in `qt_ui/widgets.py`):** renders interactive `PartCard` chips with game-colour stripes, muted-audio warnings, `✕` skip buttons, and auto-looping `MarqueeLabel` (1.5 s pause, smooth scroll, 1.5 s end pause, loop reset) for long game category titles.
 - **D3 — Strategy Segmented Control & Coverage Bar (`qt_ui/tabs/plan.py`, `qt_ui/main_window.py`):** segmented pills (`Auto`, `Full VOD + split`, `Only the parts`) synced bidirectionally with `settings["strategy"]` and `OptionsTab`, paired with `coverage_bar` (`0..100%`) and `coverage_badge` (`100% of VOD` in `OK` green when 100% covered).
-- **D4 & D5 — Clip Multi-Select Toolbar, Dynamic «Download N clips» CTA, & View-Count Bars (`qt_ui/tabs/plan.py`):** `Select all`, `Invert`, and `Clear` buttons above `clipsTable`, dynamic `Download N clip(s)` button text when clips are selected, `ClipViewsDelegate` proportional view-count bars on column 1, and vector icons on Plan action buttons.
-- **New tests (`tests/test_qt_plan_tab.py`):** 4 new Phase 9e tests (59 test functions / 63 test cases total in `test_qt_plan_tab.py`).
+- **D4 & D5 — Filter 2x2 Grid, Clips Table Enhancements, Dynamic CTA, & View Bars (`qt_ui/tabs/plan.py`):** 2x2 `QGridLayout` for filter spinboxes eliminating label squishing; `"Dur"` updated to full `"Duration"`; interactive column resizing via header divider drag; horizontal scrolling (`ScrollBarAsNeeded`); cell hover tooltips on `ClipModel`; `Select all` / `Invert` / `Clear` toolbar; dynamic `Download N clip(s)` CTA; `ClipViewsDelegate` proportional bars on column 1; and vector icons on Plan buttons.
+- **New tests (`tests/test_qt_plan_tab.py`, `tests/test_qt_widgets.py`):** tests for 1100 px breakpoint, Duration header, cell tooltips, and `MarqueeLabel` static & overflow modes (169 passing in total).
 **Divergences from the tkinter app:** MIGRATION_LOG.md no. 25.
-**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `test_qt_plan_tab.py` + `test_qt_main_window.py` -> **75 passed** in 20.38s.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `test_qt_plan_tab.py` + `test_qt_main_window.py` + `test_qt_widgets.py` -> **169 passed** in 27.89s.
 **Still open:** Phases 9f (Timeline), 9g (Search & Twitch sign-in), and 9h (final polish & release).
 
 ## Phase 9d: The Options Page  (2026-10-26, version 1 delivered)

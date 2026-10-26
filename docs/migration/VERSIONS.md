@@ -1,15 +1,19 @@
 ## Phase 9: UI redesign beyond parity
 
-### 9e v1  (2026-10-26)  The Plan page: wide 2-column responsive workspace, visual part cards with game stripes & skip action, strategy segmented control, coverage bar, clip multi-select toolbar, and view-count bar delegate
+### 9e v2  (2026-10-26)  Plan page polish: filter squishing fix (2x2 grid), 1100 px breakpoint, auto-looping MarqueeLabel, interactive column resizing & Duration header
 
 **Done (new or changed files):**
-- `qt_ui/tabs/plan.py`: D1 responsive 2-column layout (`lower_layout` switching between `LeftToRight` at `>= 1000 px` and `TopToBottom` at `< 1000 px`, preserving `cuts_card.parent() is body` and `clips_card.parent() is body`); D2 `PartCard` visual chips (`P1 · start → end · (duration)`, game colour stripe from `game_colour`, dominant game label, muted audio note, and `✕` `skip_part` button); D3 `strategy_buttons` segmented control (`Auto`, `Full VOD + split`, `Only the parts`) synced with `settings["strategy"]` + `coverage_bar` and `coverage_badge`; D4 clip multi-select toolbar (`select_all_clips_btn`, `invert_clips_btn`, `clear_clips_btn`) + dynamic `Download N clip(s)` button label; D5 `ClipViewsDelegate` proportional view bar on column 1 and vector icons on Plan buttons.
-- `qt_ui/main_window.py`: connected `tab_plan.strategy_changed` to `tab_options.binder.reload()` and `tab_options.refresh_changed_markers()`.
-- `tests/test_qt_plan_tab.py`: added 4 new Phase 9e tests (59 test functions / 63 test cases total in `test_qt_plan_tab.py`) covering responsive 2-column vs stacked layout, part cards & coverage bar + skip button, strategy segmented control synchronization, and clip multi-select toolbar + `Download N clips`.
-- Docs updated: `MIGRATION_LOG.md` (no. 25), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
+- `qt_ui/widgets.py`: added `MarqueeLabel` with auto-looping marquee animation (1.5 s initial pause, smooth horizontal scroll at 35 px/s, 1.5 s end pause, loop reset; static clean elision when `Motion.enabled()` is False; auto-pauses when hidden or text fits to consume 0% CPU).
+- `qt_ui/tabs/plan.py`:
+  - Filter squishing fix: converted `Clips → chapters` filter inputs into a clean 2x2 `QGridLayout` (`Min views`, `Min duration (s)`, `Top N (0 = all)`, `Lead-in (s)`), dropping minimum width from 610 px to 220 px.
+  - Breakpoint raised: updated `WIDE_BREAKPOINT = 1100` so 2-column mode only activates when there is ample width.
+  - Category marquee: updated `PartCard` to use `MarqueeLabel` for the game category title (`self.game_lbl`).
+  - Table enhancements: updated `CLIP_COLUMNS` heading from `"Dur"` to full `"Duration"`; enabled `QHeaderView.ResizeMode.Interactive` so users can manually drag column dividers; enabled horizontal scrollbar (`ScrollBarAsNeeded`); added cell tooltips in `ClipModel.data` on `ToolTipRole`.
+- `tests/test_qt_plan_tab.py` & `tests/test_qt_widgets.py`: updated responsive layout test for the 1100 px breakpoint, added Duration header and cell tooltip tests, and added `test_marquee_label_measurement_and_static_elision` (169 Qt tests passing across Plan, Main Window, and Widgets).
+- Docs updated: `MIGRATION_LOG.md` (no. 25 updated), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`, and `PHASE_9E_PLAN_POLISH.md`.
 
 **Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
-- `python -m pytest tests/test_qt_plan_tab.py tests/test_qt_main_window.py -q` -> **75 passed** in 20.38s.
+- `python -m pytest tests/test_qt_plan_tab.py tests/test_qt_main_window.py tests/test_qt_widgets.py -q` -> **169 passed** in 27.89s.
 
 **NOT done:** Phases 9f (Timeline polish), 9g (Search & Twitch sign-in), and 9h (final polish & docs).
 

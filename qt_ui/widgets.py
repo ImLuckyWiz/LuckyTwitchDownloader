@@ -304,6 +304,139 @@ class WrapLabel(QLabel):
         return super().heightForWidth(min(width, self.maximumWidth()))
 
 
+class MarqueeLabel(QWidget):
+    """A single-line label that smoothly auto-scrolls horizontally if its text overflows available width.
+
+    Auto-looping behavior:
+    1. Pauses at start for ~1.5 s
+    2. Scrolls smoothly across to the end
+    3. Pauses at end for ~1.5 s
+    4. Resets to start and repeats
+    Respects Motion.enabled() (when disabled, draws cleanly elided text without running timers).
+    """
+
+    def __init__(self, text: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        self._text = text
+        self._offset: float = 0.0
+        self._state: str = "pause_start"
+        self._pause_ticks: int = 0
+        self._speed: float = 35.0  # px/s
+        self._fps: int = 30
+        self._timer = QTimer(self)
+        self._timer.setInterval(1000 // self._fps)
+        self._timer.timeout.connect(self._on_tick)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        if text:
+            self.setToolTip(text)
+
+    def text(self) -> str:
+        return self._text
+
+    def setText(self, text: str) -> None:
+        if self._text == text:
+            return
+        self._text = text
+        self._offset = 0.0
+        self._state = "pause_start"
+        self._pause_ticks = 0
+        self.setToolTip(text)
+        self.update()
+        self._check_timer()
+
+    def sizeHint(self) -> QSize:
+        fm = self.fontMetrics()
+        return QSize(min(120, fm.horizontalAdvance(self._text)), fm.height())
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(30, self.fontMetrics().height())
+
+    def _overflow(self) -> float:
+        total_w = self.fontMetrics().horizontalAdvance(self._text)
+        return max(0.0, float(total_w - self.width()))
+
+    def _check_timer(self) -> None:
+        try:
+            from qt_ui.motion import Motion
+            motion_ok = Motion.enabled()
+        except ImportError:
+            motion_ok = True
+
+        if motion_ok and self.isVisible() and self._overflow() > 0:
+            if not self._timer.isActive():
+                self._timer.start()
+        else:
+            if self._timer.isActive():
+                self._timer.stop()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self._check_timer()
+
+    def hideEvent(self, event) -> None:  # noqa: N802
+        super().hideEvent(event)
+        if self._timer.isActive():
+            self._timer.stop()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if self._overflow() <= 0:
+            self._offset = 0.0
+        self._check_timer()
+
+    def _on_tick(self) -> None:
+        overflow = self._overflow()
+        if overflow <= 0:
+            self._offset = 0.0
+            self._timer.stop()
+            self.update()
+            return
+
+        pause_limit = int(1.5 * self._fps)
+        if self._state == "pause_start":
+            self._pause_ticks += 1
+            if self._pause_ticks >= pause_limit:
+                self._pause_ticks = 0
+                self._state = "scrolling"
+        elif self._state == "scrolling":
+            step = self._speed / self._fps
+            self._offset += step
+            if self._offset >= overflow:
+                self._offset = overflow
+                self._state = "pause_end"
+                self._pause_ticks = 0
+            self.update()
+        elif self._state == "pause_end":
+            self._pause_ticks += 1
+            if self._pause_ticks >= pause_limit:
+                self._pause_ticks = 0
+                self._offset = 0.0
+                self._state = "pause_start"
+                self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        fm = self.fontMetrics()
+        overflow = self._overflow()
+
+        try:
+            from qt_ui.motion import Motion
+            motion_ok = Motion.enabled()
+        except ImportError:
+            motion_ok = True
+
+        p.setPen(QColor(MUTED))
+        if not motion_ok or overflow <= 0:
+            elided = fm.elidedText(self._text, Qt.TextElideMode.ElideRight, max(0, self.width()))
+            p.drawText(self.rect(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided)
+        else:
+            p.setClipRect(self.rect())
+            y = (self.height() + fm.ascent() - fm.descent()) // 2
+            p.drawText(int(round(-self._offset)), y, self._text)
+        p.end()
+
+
 class SettingRow(QWidget):
     """``[ Name  ⓘ ]                          [ control ]``  /  ``[ one-line hint ]``, then a divider.
 
