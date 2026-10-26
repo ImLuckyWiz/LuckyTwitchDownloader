@@ -10,6 +10,7 @@
   ``TokenChips``   buttons that insert ``{token}`` at the cursor of a line edit (replacing a selection)
   ``EmptyState``   a message laid over an empty list or table, optionally with a button
   ``ScrollFrame`` / ``ScrollPage``   a vertically scrolling page; the page has a footer bar that never scrolls
+  ``ComboBox``     drop-down list (Phase 4): the stylesheet draws the field, the widget draws the little arrow
 
 Colours come from ``core.palette``; the looks that need a stylesheet (card, divider, sidebar, chip, ...) are in
 ``qt_ui/theme.py`` and are chosen with object names and the dynamic properties ``variant`` / ``role`` /
@@ -24,11 +25,11 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 
 from PySide6.QtCore import (
-    Property, QEvent, QObject, QPoint, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer, Signal,
+    Property, QEvent, QObject, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer, Signal,
 )
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
-    QAbstractButton, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy,
+    QAbstractButton, QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy,
     QVBoxLayout, QWidget,
 )
 
@@ -778,3 +779,28 @@ class ScrollPage(QWidget):
                 break
         return [x for x in chain if (self.body.isAncestorOf(x) or self.footer.isAncestorOf(x))
                 and x.focusPolicy() & Qt.FocusPolicy.TabFocus]
+
+
+# --------------------------------------------------------------------------- #
+# Drop-down list
+# --------------------------------------------------------------------------- #
+class ComboBox(QComboBox):
+    """A read-only drop-down (``activated`` is the user-only signal, like tkinter's ``<<ComboboxSelected>>``).
+
+    The stylesheet gives the field its look and an empty drop-down area (``QComboBox::down-arrow`` has no image);
+    the arrow is painted here, grey, white while the pointer is over the box or the list is open.
+    """
+
+    ARROW_AREA = 22  # width of the drop-down area (the same number as in theme.py)
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt name)
+        super().paintEvent(event)
+        lit = self.isEnabled() and (self.underMouse() or self.view().isVisible())
+        colour = QColor(FG if lit else (MUTED if self.isEnabled() else DISABLED))
+        cx, cy = self.width() - self.ARROW_AREA / 2 - 1, self.height() / 2
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(colour)
+        p.drawPolygon(QPolygonF([QPointF(cx - 4, cy - 2), QPointF(cx + 4, cy - 2), QPointF(cx, cy + 2.5)]))
+        p.end()

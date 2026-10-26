@@ -33,44 +33,49 @@ Three more tkinter tests live in `tests/test_muted_audio.py` (after its `importo
 - Message boxes: `Search` (error, search and video-list failures), `Select a VOD` (info, `Select a VOD in the list first.`).
 - Sign-in dialog (`Twitch API…` button in the top bar, `Sign in…` in the search tab): text about the optional use for clips; status line, device code in large mono bold accent text; buttons `Sign in with Twitch`, `Open page again`, `Sign out`; group `Advanced: use your own Twitch app instead` with `Client ID:` and `Client Secret:` (masked) entries and `Save own app`; line `Saved in: <config path>`; `Close`. Message boxes (parent = dialog): `Twitch sign-in` error, `Missing data` (`Fill in both fields.`), `Error`, `Network error`. Login runs in a worker, a `pump` on the GUI thread polls its result.
 
+
+**Phase 4 (Qt) notes.** Where the Qt code is: `qt_ui/tabs/search.py` (tab), `qt_ui/search_models.py` (`ChannelModel`, `VodModel`, `ThumbCache`, `ThumbDelegate`), `qt_ui/thumbs.py` (4 worker threads), `qt_ui/twitch_dialog.py` (dialog), `core/search.py` (constants). The window owns the Twitch client (`MainWindow.client`; setting it refreshes the Search tab). The old messages are `Bridge.search_ok`, `search_err`, `videos_ok`, `videos_err`, `thumb`; the dialog's own four (code, ok, error, cancelled) are `LoginSignals` on the dialog. Differences are in `MIGRATION_LOG.md` no. 8 to 12.
+
+Extra Qt tests beyond the 18 (all in `test_qt_search_tab.py` unless noted): a search runs in a worker and fills the list; Enter searches; empty query, no session; exact login match opens the streamer; failed search and expired session; picking from one list clears the other; a new streamer bumps the generation and empties the table; a slow answer for the first of two streamers is dropped (real threads); the kind drop-down reloads without touching the recent list; Load more with the cursor; recent list order, cap of 12, saved file; double click, Enter and the message box of «Use this VOD»; the window hands the link to the entry and «Get info»; thumbnails (fetched off the GUI thread, pixmaps on it, painted by the delegate, stale and unreadable ones, cache cap, workers start lazily and stop); and in `test_qt_twitch_dialog.py` (37): every text, the three status states, the whole device-code flow with a fake API and with the real engine functions over fake HTTP, errors, cancel, closing in each way, late answers dropped, sign out, own app (missing data, wrong credentials, network error, saved), and the dialog inside the main window.
+
 #### `test_gui_search_tab.py` (18 tests)
 
-- [ ] without a session the banner shows and searching is off  
-  `test_gui_search_tab.py::test_without_a_session_the_banner_shows_and_searching_is_off`
-- [ ] signing in hides the banner and enables searching  
-  `test_gui_search_tab.py::test_signing_in_hides_the_banner_and_enables_searching`
-- [ ] the banner button opens the sign in dialog  
-  `test_gui_search_tab.py::test_the_banner_button_opens_the_sign_in_dialog`
-- [ ] the lists start with a hint each  
-  `test_gui_search_tab.py::test_the_lists_start_with_a_hint_each`
-- [ ] a search without results says what was searched  
-  `test_gui_search_tab.py::test_a_search_without_results_says_what_was_searched`
-- [ ] search results replace the message and a new empty search brings it back  
-  `test_gui_search_tab.py::test_search_results_replace_the_message_and_a_new_empty_search_brings_it_back`
-- [ ] recent streamers toggle their message and the clear button  
-  `test_gui_search_tab.py::test_recent_streamers_toggle_their_message_and_the_clear_button`
-- [ ] vods hide the message and the header counts them  
-  `test_gui_search_tab.py::test_vods_hide_the_message_and_the_header_counts_them`
-- [ ] the header says there is more and uses the singular  
-  `test_gui_search_tab.py::test_the_header_says_there_is_more_and_uses_the_singular`
-- [ ] a streamer without vods gets an explanation  
-  `test_gui_search_tab.py::test_a_streamer_without_vods_gets_an_explanation`
-- [ ] loading is announced and a failure ends it  
-  `test_gui_search_tab.py::test_loading_is_announced_and_a_failure_ends_it`
-- [ ] an answer for an older streamer changes nothing  
-  `test_gui_search_tab.py::test_an_answer_for_an_older_streamer_changes_nothing`
-- [ ] vod headings line up with their columns  
-  `test_gui_search_tab.py::test_vod_headings_line_up_with_their_columns`
-- [ ] the use hint sits next to the button and the header has no instruction  
-  `test_gui_search_tab.py::test_the_use_hint_sits_next_to_the_button_and_the_header_has_no_instruction`
-- [ ] the streamer lists keep working as before  
-  `test_gui_search_tab.py::test_the_streamer_lists_keep_working_as_before`
-- [ ] empty state shows hides and refills  
-  `test_gui_search_tab.py::test_empty_state_shows_hides_and_refills`
-- [ ] empty state can carry a button  
-  `test_gui_search_tab.py::test_empty_state_can_carry_a_button`
-- [ ] empty state leaves room for the column headings  
-  `test_gui_search_tab.py::test_empty_state_leaves_room_for_the_column_headings`
+- [x] without a session the banner shows and searching is off  
+  `test_gui_search_tab.py::test_without_a_session_the_banner_shows_and_searching_is_off` -> same name in `test_qt_search_tab.py`
+- [x] signing in hides the banner and enables searching  
+  `test_gui_search_tab.py::test_signing_in_hides_the_banner_and_enables_searching` -> same name in `test_qt_search_tab.py`
+- [x] the banner button opens the sign in dialog  
+  `test_gui_search_tab.py::test_the_banner_button_opens_the_sign_in_dialog` -> `test_qt_search_tab.py::test_the_banner_text_and_button`, `::test_the_banner_button_asks_for_the_sign_in_dialog`; the dialog opens: `test_qt_twitch_dialog.py::test_the_twitch_api_button_and_the_banner_open_the_dialog`
+- [x] the lists start with a hint each  
+  `test_gui_search_tab.py::test_the_lists_start_with_a_hint_each` -> same name in `test_qt_search_tab.py`
+- [x] a search without results says what was searched  
+  `test_gui_search_tab.py::test_a_search_without_results_says_what_was_searched` -> same name in `test_qt_search_tab.py`
+- [x] search results replace the message and a new empty search brings it back  
+  `test_gui_search_tab.py::test_search_results_replace_the_message_and_a_new_empty_search_brings_it_back` -> same name in `test_qt_search_tab.py`
+- [x] recent streamers toggle their message and the clear button  
+  `test_gui_search_tab.py::test_recent_streamers_toggle_their_message_and_the_clear_button` -> same name in `test_qt_search_tab.py`
+- [x] vods hide the message and the header counts them  
+  `test_gui_search_tab.py::test_vods_hide_the_message_and_the_header_counts_them` -> same name in `test_qt_search_tab.py`
+- [x] the header says there is more and uses the singular  
+  `test_gui_search_tab.py::test_the_header_says_there_is_more_and_uses_the_singular` -> same name in `test_qt_search_tab.py`
+- [x] a streamer without vods gets an explanation  
+  `test_gui_search_tab.py::test_a_streamer_without_vods_gets_an_explanation` -> same name in `test_qt_search_tab.py`
+- [x] loading is announced and a failure ends it  
+  `test_gui_search_tab.py::test_loading_is_announced_and_a_failure_ends_it` -> same name in `test_qt_search_tab.py`
+- [x] an answer for an older streamer changes nothing  
+  `test_gui_search_tab.py::test_an_answer_for_an_older_streamer_changes_nothing` -> same name in `test_qt_search_tab.py`
+- [x] vod headings line up with their columns  
+  `test_gui_search_tab.py::test_vod_headings_line_up_with_their_columns` -> same name in `test_qt_search_tab.py` (the model's heading alignment equals its cells' alignment)
+- [x] the use hint sits next to the button and the header has no instruction  
+  `test_gui_search_tab.py::test_the_use_hint_sits_next_to_the_button_and_the_header_has_no_instruction` -> same name in `test_qt_search_tab.py`
+- [x] the streamer lists keep working as before  
+  `test_gui_search_tab.py::test_the_streamer_lists_keep_working_as_before` -> same name in `test_qt_search_tab.py` (a QListView has no heading at all; the VOD table has the columns thumbnail, Title, Date, Length, Views)
+- [x] empty state shows hides and refills  
+  `test_gui_search_tab.py::test_empty_state_shows_hides_and_refills` -> same name in `test_qt_widgets.py` (Phase 2)
+- [x] empty state can carry a button  
+  `test_gui_search_tab.py::test_empty_state_can_carry_a_button` -> same name in `test_qt_widgets.py` (Phase 2)
+- [x] empty state leaves room for the column headings  
+  `test_gui_search_tab.py::test_empty_state_leaves_room_for_the_column_headings` -> same name in `test_qt_widgets.py` (Phase 2)
 
 ## Queue and log tab  (Phase 3)
 
@@ -520,8 +525,8 @@ Phase 1 covers the frame of this screen in `test_qt_main_window.py`: title, size
 - [ ] plan tab footer is still packed at the bottom  
   `test_gui_final_pass.py::test_plan_tab_footer_is_still_packed_at_the_bottom`
 - [ ] tab order of search queue and options has nothing decorative  
-  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative`
+  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative` -> Search: `test_qt_search_tab.py::test_keyboard_order_has_nothing_decorative`; Queue: `test_qt_queue_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 4); Options: Phase 5, so the box stays open
 - [ ] timeline hint wraps to the width of the strip  
   `test_gui_final_pass.py::test_timeline_hint_wraps_to_the_width_of_the_strip`
-- [ ] search type list is never squeezed by a long title  
-  `test_gui_final_pass.py::test_search_type_list_is_never_squeezed_by_a_long_title`
+- [x] search type list is never squeezed by a long title  
+  `test_gui_final_pass.py::test_search_type_list_is_never_squeezed_by_a_long_title` -> same name in `test_qt_search_tab.py` (Phase 4)

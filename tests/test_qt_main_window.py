@@ -52,7 +52,7 @@ def test_the_four_tabs_have_the_same_names_in_the_same_order(win):
 
 
 def test_the_tabs_that_are_not_built_yet_are_empty(win):
-    for i in range(3):  # Search, Plan, Options (the Queue & log tab is built in Phase 3)
+    for i in (1, 2):  # Plan, Options (Queue & log was built in Phase 3, Search in Phase 4)
         assert win.tabs.widget(i).findChildren(QLabel) == []
         assert win.tabs.widget(i).children() == []
 
@@ -109,8 +109,7 @@ def qtbot_key(name):
 
 def test_the_stub_handlers_do_nothing_and_do_not_raise(win):
     before = (win.status_label.text(), win.info_label.text(), win.tabs.currentIndex())
-    win.on_get_info()
-    win.ask_credentials()
+    win.on_get_info()  # the Twitch API dialog (the other stub of Phase 1) was built in Phase 4
     assert (win.status_label.text(), win.info_label.text(), win.tabs.currentIndex()) == before
 
 

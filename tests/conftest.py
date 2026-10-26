@@ -30,3 +30,29 @@ def _data_folder_in_tmp(request, tmp_path, monkeypatch):
                        ("CONFIG_PATH", "config.json"), ("LINKS_DIR", "links"), ("BEAT_PATH", "running.beat")):
         monkeypatch.setattr(paths, name, tmp_path / "data" / leaf)
     (tmp_path / "data").mkdir(exist_ok=True)
+
+
+@pytest.fixture(autouse=True)
+def _collect_garbage_at_a_known_moment(request):
+    """Run Python's garbage collector right after each Qt test, once pytest-qt has closed and deleted its widgets.
+
+    A window or tab that sits in a reference cycle is cleaned up by the collector, which first empties the Python
+    objects of its children; if Qt has not deleted the C++ widgets yet, it then calls virtual methods (a model's
+    ``rowCount``, an event filter) on those emptied objects and an error shows up in whatever test happens to be
+    running. Collecting here makes that moment the same on every run and every machine.
+    """
+    yield
+    if not request.module.__name__.rsplit(".", 1)[-1].startswith("test_qt_"):
+        return
+    try:
+        from PySide6.QtCore import QEvent
+        from PySide6.QtWidgets import QApplication
+    except ImportError:  # pragma: no cover
+        return
+    import gc
+
+    app = QApplication.instance()
+    if app is not None:
+        app.processEvents()
+        app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    gc.collect()

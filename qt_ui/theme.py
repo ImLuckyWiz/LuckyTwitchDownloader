@@ -12,9 +12,10 @@ is shown, or call ``unpolish``/``polish`` on it afterwards):
 Phase 2 added the looks of the widget kit (``qt_ui/widgets.py``): object names ``card``, ``divider``, ``sideNav``,
 ``emptyState``, ``tooltipBubble``, ``scrollFrame``/``scrollBody``; buttons ``variant="nav"`` (selected: property
 ``selected="true"``), ``"cardghost"`` (the «Advanced» header) and ``"chip"``; label roles ``"rowtitle"`` and
-``"emptytitle"``. Not styled yet: combo boxes, spin boxes and check boxes (they keep the Fusion look in the dark
-palette until the phases that first use them, 4 and 5). Keyboard focus on buttons is not drawn, same as the
-tkinter app (``focusthickness=0``).
+``"emptytitle"``. Phase 4 added combo boxes, list items, group boxes, the sign-in banner (``#signinBar``) and the
+sign-in code (``QLabel#loginCode``). Not styled yet: spin boxes and check boxes (they keep the Fusion look in the
+dark palette until Phase 5). Keyboard focus on buttons is not drawn, same as the tkinter app
+(``focusthickness=0``).
 """
 
 from __future__ import annotations
@@ -86,6 +87,29 @@ QHeaderView::section {
     background-color: ${BG3}; color: ${FG}; border: none; padding: 7px 8px; font-weight: bold;
 }
 QHeaderView::section:hover { background-color: ${HOVER}; }
+
+/* ---- list items, combo boxes, group boxes (Search tab, Twitch dialog) ---- */
+QListView::item { padding: 0 6px; }
+QComboBox {
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; padding: 5px 6px; min-height: 18px;
+    selection-background-color: ${BG2}; selection-color: ${FG};
+}
+QComboBox:hover { border-color: ${HOVER}; }
+QComboBox:focus, QComboBox:on { border-color: ${ACCENT}; }
+QComboBox:disabled { background-color: ${BG}; color: ${DISABLED}; }
+QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 22px; border: none; }
+QComboBox::down-arrow { image: none; width: 0; height: 0; }
+QComboBox QAbstractItemView {
+    background-color: ${BG2}; color: ${FG}; border: 1px solid ${BORDER}; outline: none;
+    selection-background-color: ${ACCENT}; selection-color: ${WHITE};
+}
+QGroupBox { border: 1px solid ${BORDER}; margin-top: 8px; padding-top: 8px; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 10px; padding: 0 4px; color: ${ACCENT}; font-weight: bold; }
+
+/* ---- the sign-in banner of the Search tab and the code of the Twitch dialog ---- */
+#signinBar { background-color: ${ACCENT_DIM}; }
+#signinBar QLabel { color: ${WHITE}; background: transparent; }
+QLabel#loginCode { color: ${ACCENT}; }
 
 /* ---- slim scrollbars without arrows ---- */
 QScrollBar:vertical { background: ${BG}; width: 11px; margin: 0; border: none; }

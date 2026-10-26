@@ -47,3 +47,29 @@ No entries for Phase 0 (it changed no behaviour).
 **tkinter:** a card's body expanded when the page was taller than its content.
 **Qt:** `Card` now adds its body with stretch 1 and its title bar with the `Maximum` height policy, so the queue and log cards share the spare height of the tab. Cards with fixed content look the same (the 92 widget tests and the gallery check still pass).
 **Why:** needed for the two cards of the Queue & log tab to grow with the window. This touches a Phase 2 file (`qt_ui/widgets.py`); decided by the agent.
+
+
+## 8. Emoji and other characters outside the Basic Multilingual Plane are shown  (Phase 4)
+**tkinter:** `bmp()` dropped every character above U+FFFF (emoji and the like) from streamer names, VOD titles and status text, because some Windows Tk builds crash on them.
+**Qt:** the text is shown as it is; Qt draws such characters (with the system emoji font) and does not crash on them. The Queue tab's labels (Phase 3) already did the same without an entry here.
+**Why:** `bmp()` was a workaround for a Tk problem, not a wanted behaviour. Decided by the agent; NOT checked on Windows with a real emoji title (user check).
+
+## 9. Thumbnails need no Pillow; the cache is capped  (Phase 4)
+**tkinter:** with Pillow missing the log said «Pillow is not installed: thumbnails are disabled in the Search tab (pip install pillow).»; every thumbnail was kept for the life of the list; the 4 worker threads started with the app.
+**Qt:** the thumbnails are decoded and scaled with Qt (`QImage` / `QPixmap`, on the GUI thread, stretched to 128x72 like the old `resize`), so the message is gone. The cache keeps at most 300 pixmaps (the least recently used goes first); a row whose pixmap was dropped is made again from its file when it is painted. The 4 worker threads start with the first thumbnail and end when the window closes. A thumbnail that cannot be read leaves the row without one, as before.
+**Why:** Pillow stays in the project for the timeline frames (Phase 7), but the Search tab does not need it; the cap and the lazy start are the plan's wording (PLAN.md Phase 4). Decided by the agent.
+
+## 10. Escape closes the Twitch API dialog  (Phase 4)
+**tkinter:** the dialog closed with its «Close» button or the window's X only.
+**Qt:** Escape closes it too (every `QDialog` does). Closing in any way cancels a sign-in that is waiting, like before.
+**Why:** standard Qt behaviour; changing it would take extra code for no gain. Not asked for; the user can veto it.
+
+## 11. The Twitch API dialog is window-modal  (Phase 4)
+**tkinter:** `grab_set()` took all mouse and keyboard input of the application.
+**Qt:** `open()` makes it modal for the main window only. There is one other window, so nothing visible changes. Like the tkinter version, `ask_credentials()` returns at once and does not wait for the dialog.
+**Why:** how a modal `QDialog` is opened without blocking. Decided by the agent.
+
+## 12. «Use this VOD» does not load the VOD yet  (Phase 4, until Phase 6)
+**tkinter:** puts the link in the entry, selects the Plan tab and runs «Get info».
+**Qt:** puts the link in the entry and selects the Plan tab; «Get info» is still the Phase 1 stub (`MainWindow.on_get_info`), so nothing is loaded until Phase 6 builds it. The Search tab sends the link through its `vod_chosen` signal; `MainWindow.use_vod` calls `on_get_info()`, so Phase 6 only has to fill that method.
+**Why:** the Get info flow belongs to Phase 6 (PLAN.md). Temporary.

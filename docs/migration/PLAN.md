@@ -6,7 +6,7 @@ For the agent(s) doing the work. Based on a read of luckytwitch_downloader.py, t
 
 ## 1. Rules for the agent (read first)
 
-- **One phase per session.** At the end of a phase: stop, report against that phase's Definition of Done (DoD), list any divergences, and wait for the user's explicit go-ahead. Never start the next phase on your own, and never batch phases.
+- **One phase per session.** At the end of a phase: stop, report against that phase's Definition of Done (DoD), list any divergences, and wait for the user's explicit go-ahead. Never start the next phase on your own, and never batch phases. A phase may be delivered in versions (`-v1`, `-v2`, ...) before it is finished: see HANDOFF.md section 3 and section 4, "Versions of a phase".
 - **Parity first, redesign second.** Phases 0-8 reproduce today's behaviour in Qt. Layout or information-architecture changes happen only in Phase 9. Build widgets in the new styling from the start (cheap in Qt), but keep screens laid out as they are now.
 - **The tkinter app stays shippable until Phase 8.** All new code goes in new packages. Old files change only where a phase explicitly says so. Main is frozen: the 1.x app gets no updates until the PySide6 version is complete.
 - **Do not touch** luckytwitch_engine.py, weblink.py, premiere-plugin/ or premiere-plugin-cep/. None of them import tkinter. If you find a bug there, report it, do not fix it.

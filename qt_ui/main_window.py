@@ -1,12 +1,15 @@
 """The main window: top bar, info line, four tabs, progress bar and status line.
 
 Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, same texts, same order). The
-handlers of «Get info» and «Twitch API…» are stubs: they come in Phase 6 and Phase 4. Phase 3 filled the Queue &
-log tab and added what belongs to the whole window: the progress bar and status line (``set_progress``), the
-«Job n/m» prefix, and closing (cancel a running job, save the settings, remove the heartbeat file).
+handler of «Get info» is a stub (Phase 6). Phase 3 filled the Queue & log tab and added what belongs to the whole
+window: the progress bar and status line (``set_progress``), the «Job n/m» prefix, and closing (cancel a running
+job, save the settings, remove the heartbeat file). Phase 4 filled the Search tab and the Twitch API dialog; the
+window owns the Twitch ``client`` (setting it refreshes the Search tab).
 """
 
 from __future__ import annotations
+
+import weakref
 
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -14,11 +17,13 @@ from PySide6.QtWidgets import (
 )
 
 from core import paths
+from core.config import make_client
 from core.settings import save_settings
 from qt_ui import dialogs
 from qt_ui.bridge import Bridge
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
 from qt_ui.theme import dark_titlebar
+from qt_ui.twitch_dialog import TwitchDialog
 
 WINDOW_TITLE = "LuckyTwitch Downloader"
 START_SIZE = (1020, 910)
@@ -26,6 +31,17 @@ MIN_SIZE = (900, 560)
 TAB_NAMES = ("Search", "Plan", "Options", "Queue & log")
 READY_TEXT = "Ready. Paste a VOD URL or ID and press «Get info»."
 NO_VOD_TEXT = "No VOD loaded."
+
+
+def _weak(method):
+    """A function that calls ``method`` while its object lives, and does nothing (returns None) afterwards."""
+    ref = weakref.WeakMethod(method)
+
+    def call(*args):
+        fn = ref()
+        return fn(*args) if fn is not None else None
+
+    return call
 
 
 def _tab_text(name: str) -> str:
@@ -41,7 +57,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.bridge = bridge if bridge is not None else Bridge(self)
         self.settings = settings if settings is not None else {}
-        self.client = client
+        self._client = client
+        self._login_dialog: TwitchDialog | None = None
         # state the later phases fill in: the tools setup (Phase 5) and the saved-chat overlay (Phase 5)
         self.tools_busy = False
         self.tools_ctx = None
@@ -92,7 +109,7 @@ class MainWindow(QMainWindow):
         self.tabs.tabBar().setExpanding(False)
         self.tabs.tabBar().setDrawBase(False)
         self.tab_search, self.tab_plan, self.tab_options, self.tab_queue = (
-            SearchTab(), PlanTab(), OptionsTab(), QueueTab(self.bridge))
+            SearchTab(self.bridge), PlanTab(), OptionsTab(), QueueTab(self.bridge))
         for widget, name in zip((self.tab_search, self.tab_plan, self.tab_options, self.tab_queue), TAB_NAMES):
             self.tabs.addTab(widget, _tab_text(name))
         tabs_lay.addWidget(self.tabs)
@@ -120,10 +137,20 @@ class MainWindow(QMainWindow):
         # the queue tab and the window talk through signals and two hooks
         queue = self.tab_queue
         queue.status_message.connect(self.set_status)
-        queue.plan_requested.connect(lambda: self.tabs.setCurrentWidget(self.tab_plan))
-        queue.show_requested.connect(lambda: self.tabs.setCurrentWidget(self.tab_queue))
-        queue.blocked_reason = self.queue_blocked_reason
-        queue.output_dir = lambda: self.settings.get("out_dir", "")
+        queue.plan_requested.connect(self.show_plan_tab)
+        queue.show_requested.connect(self.show_queue_tab)
+        # hooks hold the window WEAKLY: a hook that kept the window alive would make a reference cycle, and when the
+        # garbage collector breaks such a cycle it empties the child widgets' Python objects before Qt has finished
+        # deleting them (Qt then calls into half-dead objects: errors at random moments, mostly in tests)
+        queue.blocked_reason = _weak(self.queue_blocked_reason)
+        queue.output_dir = _weak(self.output_dir)
+        search = self.tab_search
+        search.get_client = _weak(self.get_client)
+        search.reload_client = _weak(self.reload_client)
+        search.status_message.connect(self.set_status)
+        search.signin_requested.connect(self.ask_credentials)
+        search.vod_chosen.connect(self.use_vod)
+        search.update_search_state()  # the client is known only now
         self.bridge.progress.connect(self.set_progress)
         self.bridge.job.connect(self.on_job)
         self.bridge.queue_done.connect(self.on_queue_done)
@@ -134,6 +161,37 @@ class MainWindow(QMainWindow):
         dark_titlebar(self)
 
     # ---------------------------- helpers ---------------------------- #
+    @property
+    def client(self):
+        """The Twitch client, or None when nobody is signed in. Setting it refreshes the Search tab."""
+        return self._client
+
+    @client.setter
+    def client(self, value) -> None:
+        self._client = value
+        self.update_search_state()
+
+    def get_client(self):
+        return self.client
+
+    def reload_client(self) -> None:
+        """A saved session expired: make the client again from what is saved (the Search tab asks for this)."""
+        self.client = make_client()
+
+    def output_dir(self) -> str:
+        return self.settings.get("out_dir", "")
+
+    def show_plan_tab(self) -> None:
+        self.tabs.setCurrentWidget(self.tab_plan)
+
+    def show_queue_tab(self) -> None:
+        self.tabs.setCurrentWidget(self.tab_queue)
+
+    def update_search_state(self) -> None:
+        tab = getattr(self, "tab_search", None)
+        if tab is not None:
+            tab.update_search_state()
+
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
 
@@ -180,6 +238,9 @@ class MainWindow(QMainWindow):
                 return
             if runner.ctx:
                 runner.ctx.cancel()
+        if self._login_dialog is not None:
+            self._login_dialog.close()  # cancels a sign-in that is waiting for the person
+        self.tab_search.shutdown()
         if self.settings:  # a window made without settings must not overwrite the saved file with nothing
             save_settings(self.settings)
         try:
@@ -196,5 +257,16 @@ class MainWindow(QMainWindow):
     def on_get_info(self) -> None:
         """Stub. The Get info flow comes in Phase 6."""
 
+    def use_vod(self, url: str) -> None:
+        """«Use this VOD» in the Search tab: the link goes into the entry, the Plan tab opens, «Get info» runs."""
+        self.vod_entry.setText(url)
+        self.tabs.setCurrentWidget(self.tab_plan)
+        self.on_get_info()
+
     def ask_credentials(self) -> None:
-        """Stub. The Twitch API / sign-in dialog comes in Phase 4."""
+        """The Twitch API dialog (modal; this returns at once, like the tkinter one)."""
+        if self._login_dialog is not None:
+            self._login_dialog.close()
+            self._login_dialog.deleteLater()
+        self._login_dialog = TwitchDialog(self, self)
+        self._login_dialog.open()

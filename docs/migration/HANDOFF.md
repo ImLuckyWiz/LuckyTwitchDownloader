@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-20 (Phase 3 done, waiting for approval). Last completed phase: 2 (taken as approved because the Phase 3 session was started; the user did not report the Windows checks); Phase 3 built, not yet approved.
+Last updated: 2026-10-26 (Phase 4 version 1 delivered, in progress). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
 
 ## 1. Status
 
@@ -11,8 +11,8 @@ Last updated: 2026-10-20 (Phase 3 done, waiting for approval). Last completed ph
 | 0 | Baseline and decisions | approved | migration-phase-0 | |
 | 1 | Skeleton and plumbing | approved | migration-phase-1 | |
 | 2 | Widget kit | approved | migration-phase-2 | |
-| 3 | Queue and log tab | done (waiting for approval) | migration-phase-3 | |
-| 4 | Search tab and Twitch sign-in | not started | | |
+| 3 | Queue and log tab | approved | migration-phase-3 | |
+| 4 | Search tab and Twitch sign-in | in progress (version 1 delivered, not yet run on Windows) | | |
 | 5 | Options tab | not started | | |
 | 6 | Plan tab (no timeline), Get info, links | not started | | |
 | 7 | Timeline (7a to 7e) | not started | | |
@@ -56,6 +56,8 @@ Where things are (decided in Phase 0): `PARITY.md`, `SETTINGS_KEYS.md`, `MIGRATI
 - Settings JSON keys stay identical.
 - Every deliberate difference goes in MIGRATION_LOG.md. Never improve behavior silently.
 - The agent has no access to the repository and never runs git against it: it works on an uploaded zip and delivers a zip plus commands for the user to run (section 4).
+- **Deliver in versions, not in one batch (decided by the user, 2026-10-26).** A phase can be delivered in semi-phases named `phase-N-<name>-v1`, `-v2`, and so on. Deliver a version as soon as there is something the user can run and look at, even if the phase is not done. Do not spend a session chasing errors that only show up in the Linux sandbox: run the full suite at the start of a session and at most once at the end, never in loops, and do not fight environment-dependent failures for more than a few minutes. Deliver what exists, say what was not run, list the exact checks for Windows, and let the user paste the logs; the next version fixes them one by one. Details: section 4, "Versions of a phase".
+- **Hand over when going in circles, and let the user run the tests (decided by the user, 2026-10-26).** When the agent notices it is repeating fix-and-rerun cycles, or that the same kind of error keeps coming back, it stops, delivers what it has, and says what it was fixing and what it suspects. The agent writes the tests, but running them is the user's job on Windows: it delivers the test files and the exact commands, and the user pastes the results. In the sandbox the agent only does cheap checks (the files compile, one small test file of a few seconds, the baseline count at the start); it never runs the whole suite to "see what happens".
 
 ## 4. Branch, tags and releases
 
@@ -101,6 +103,18 @@ Making the zip to upload at the start of a session (run it from the repository, 
 git archive --format=zip -o ..\lt-repo.zip HEAD
 ```
 
+### Versions of a phase (semi-phases)
+
+The user can ask for, and the agent can offer, a delivery before a phase is finished. Rules:
+- **Name:** `phase-N-<name>-v1.zip`, then `-v2`, and so on. Same format as a full delivery (only new and changed files, no `.git`, no caches; list the zip contents before sending), same PowerShell block with exact `git add` paths. The commit message says `Phase N (version K): ...`.
+- **No tag** for a version. The tag `migration-phase-N` is made only when the whole phase is approved. The status table says `in progress (version K delivered)`.
+- **Docs in every version:** HANDOFF.md (status row, Last updated, Next step) and a PHASE_NOTES.md entry marked `IN PROGRESS: version K` that says what is built, what was run, what was NOT run, the known problems and the Windows checks. PARITY.md ticks only for behaviours that have a passing test. MIGRATION_LOG.md entries as usual.
+- **What the agent runs:** the full suite once at the start (to confirm the baseline number), targeted test files while working, at most one full run at the end. It never loops on full runs. If something fails only in the full run or only on Linux, it reports it with the log and the likely cause instead of continuing for a long time.
+- **Stop signs (hand over, do not continue):** the third fix-and-rerun round on the same problem; errors that differ from run to run or between orders of tests; a full run that takes more than a couple of minutes; a failure that only the Linux sandbox shows. Then the agent writes down the symptom, what it tried and the suspected cause in PHASE_NOTES.md and delivers.
+- **Tests are written by the agent and run by the user:** every version ships its new and changed test files, and the Windows checks list the test files in the order to run them. The agent says which of them it did not run at all.
+- **The user's checks:** commands to run on Windows one at a time (the new test files first, then the touched ones, the full suite last), what to paste back, and what to look at by eye.
+- **Next session:** starts from the user's pasted logs and the uploaded zip, fixes one problem at a time, and delivers `-v2`.
+
 ## 5. Warnings
 
 - **Installer collision.** The Windows installer for every build uses the same app id and install folder as the stable app, and the data folder (settings, Twitch login, tools) is shared. A pre-release installed over a real install replaces it. Before the first Qt installer is published (Phase 8, or earlier if a Qt pre-release is installable) give the Qt build its own app id, install folder and data folder name, or keep testers off their main install.
@@ -126,7 +140,7 @@ git archive --format=zip -o ..\lt-repo.zip HEAD
 
 ## 7. Next step
 
-Phase 3 is built and waits for the user's approval (PHASE_NOTES.md, Phase 3). The user's checks: run `python tools/queue_demo.py --fake` on Windows and try the tab (start, cancel the long job, close the window while it runs, resize the window); run `python tools/queue_demo.py --real <a short VOD URL>` once (the first 30 seconds are downloaded) and paste what the log and the table show; run `python -m pytest tests/test_qt_queue_tab.py tests/test_qt_main_window.py -q` on Windows (expected 81 passed); the Phase 1 and Phase 2 checks and the two fixed tkinter tests are still open. When approved: set Phase 3 to approved here, and start Phase 4 (PLAN.md section 6: Search tab and Twitch sign-in). First action of that session: install `python3-tk` and `requirements-qt.txt`, run the full suite under `xvfb-run -a` to confirm 1031 pass, then read `PARITY.md` "Search tab and Twitch sign-in dialog", `build_search_tab`, `on_search*`, `load_channel`, `on_videos_*`, `_thumb_worker`, `on_thumb`, `ask_credentials` and `tests/test_gui_search_tab.py`. Phase 4 uses `Card`, `EmptyState`, the `Bridge` signals `search_ok`, `search_err`, `videos_ok`, `videos_err`, `thumb`, and `qt_ui/dialogs.py`.
+Phase 4 is delivered in steps. **Version 1** is built (Search tab, thumbnails, Twitch API dialog, tests, PARITY ticks, MIGRATION_LOG no. 8 to 12) and has NOT been run on Windows. The user runs the Qt tests on Windows and pastes the errors; the next session fixes them one by one (PHASE_NOTES.md, Phase 4). Known open problem: in the full suite on Linux, tests that leave windows in reference cycles gave random teardown errors; a fix (weak window hooks in `main_window.py`, a gc fixture in `tests/conftest.py`) is in version 1 but the full suite was NOT re-run afterwards. Phase 4 is done when the Windows runs are clean, the user has tried the Search tab and the sign-in dialog, and the user approves. Then: Phase 5 (Options tab, PLAN.md section 6).
 
 ## 8. Update checklist (end of every phase)
 

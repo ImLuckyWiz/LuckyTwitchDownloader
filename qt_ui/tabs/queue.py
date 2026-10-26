@@ -17,7 +17,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QItemSelectionModel, Signal
+from PySide6.QtCore import QItemSelectionModel, Qt, Signal
 from PySide6.QtGui import QColor, QTextCharFormat, QTextCursor, QTextOption
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QPushButton, QTableView,
@@ -90,6 +90,7 @@ class QueueTab(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         self.scroll = ScrollFrame(8, self)  # scrolls when the window is too short, like the tkinter ScrollFrame
+        self.scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # nothing decorative in the Tab order (found in Phase 4)
         self.scroll.body_layout.setSpacing(10)
         outer.addWidget(self.scroll)
         self._build_queue_card()

@@ -636,3 +636,21 @@ def test_the_stub_handlers_are_still_stubs_and_the_window_still_starts_on_the_ri
     qtbot.addWidget(no_client)
     assert no_client.tabs.currentWidget() is no_client.tab_plan
     assert isinstance(no_client.tab_queue, QueueTab) and no_client.tab_queue.bridge is no_client.bridge
+
+
+def test_the_tab_order_has_nothing_decorative(tab):
+    """tkinter test_tab_order_of_search_queue_and_options_has_nothing_decorative: the scroll area around the tab
+    must not take the keyboard (found in Phase 4, when the Search tab was checked the same way)."""
+    from PySide6.QtWidgets import QAbstractScrollArea, QPushButton
+
+    assert tab.scroll.focusPolicy() == Qt.FocusPolicy.NoFocus
+    stops, w = [], tab.start_btn
+    for _ in range(200):
+        stops.append(w)
+        w = w.nextInFocusChain()
+        if w is tab.start_btn:
+            break
+    focusable = [x for x in stops if tab.isAncestorOf(x) and x.isVisibleTo(tab) and x.focusPolicy() != Qt.FocusPolicy.NoFocus]
+    assert focusable
+    for x in focusable:
+        assert isinstance(x, (QPushButton, QAbstractScrollArea)) and x is not tab.scroll, x
