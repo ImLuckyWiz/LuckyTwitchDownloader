@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 4 version 1 delivered, in progress). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
+Last updated: 2026-10-26 (Phase 4 done, waiting for approval). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
 
 ## 1. Status
 
@@ -12,7 +12,7 @@ Last updated: 2026-10-26 (Phase 4 version 1 delivered, in progress). Last comple
 | 1 | Skeleton and plumbing | approved | migration-phase-1 | |
 | 2 | Widget kit | approved | migration-phase-2 | |
 | 3 | Queue and log tab | approved | migration-phase-3 | |
-| 4 | Search tab and Twitch sign-in | in progress (version 1 delivered, not yet run on Windows) | | |
+| 4 | Search tab and Twitch sign-in | done (waiting for approval; Windows tests clean, hands-on check open) | | |
 | 5 | Options tab | not started | | |
 | 6 | Plan tab (no timeline), Get info, links | not started | | |
 | 7 | Timeline (7a to 7e) | not started | | |
@@ -140,7 +140,7 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 4 is delivered in steps. **Version 1** is built (Search tab, thumbnails, Twitch API dialog, tests, PARITY ticks, MIGRATION_LOG no. 8 to 12) and has NOT been run on Windows. The user runs the Qt tests on Windows and pastes the errors; the next session fixes them one by one (PHASE_NOTES.md, Phase 4). Known open problem: in the full suite on Linux, tests that leave windows in reference cycles gave random teardown errors; a fix (weak window hooks in `main_window.py`, a gc fixture in `tests/conftest.py`) is in version 1 but the full suite was NOT re-run afterwards. Phase 4 is done when the Windows runs are clean, the user has tried the Search tab and the sign-in dialog, and the user approves. Then: Phase 5 (Options tab, PLAN.md section 6).
+Phase 4 is built and its tests are clean on Windows (Python 3.14, 2026-10-26: Search tab 70 passed, Twitch dialog 37, queue and main window 82, full suite 1108 passed, 31 skipped; no teardown errors). It waits for the user's hands-on check of the Search tab and the sign-in dialog (PHASE_NOTES.md, Phase 4) and approval. After approval the user tags `migration-phase-4`. Then the user says when to start Phase 5 (Options tab, PLAN.md section 6); do not start it before that.
 
 ## 8. Update checklist (end of every phase)
 
