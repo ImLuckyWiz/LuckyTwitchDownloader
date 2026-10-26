@@ -21,7 +21,6 @@ rm -rf dist/LuckyTwitch.app
 
 python3 -m nuitka --mode=app \
   --enable-plugin=pyside6 \
-  --macos-create-app-bundle \
   --macos-app-icon=assets/icon.icns \
   --macos-app-name=LuckyTwitch \
   --macos-signed-app-name="$BUNDLE_ID" \
