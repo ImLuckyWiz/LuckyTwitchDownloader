@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, and Phase 9c v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, and Phase 9d v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -156,10 +156,15 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 9a (v1-v2 + A5 qt_ui/icons.py), Phase 9b (The Shell, v1), and Phase 9c (The Queue Page, v1) are built and the full test suite passes on Windows (python -m pytest tests -q -> **1526 passed, 31 skipped, 0 failed**).
+Phase 9a (v1-v2 + A5 icons), Phase 9b (The Shell), Phase 9c (The Queue Page), and Phase 9d (The Options Page) are built and all Qt tests pass on Windows.
 Next:
-1. **User check on Windows:** launch python luckytwitch_qt.py (and python tools/widget_gallery.py) to inspect the vector icons, Left Navigation Rail, Command Bar, Loaded-VOD Strip, rich Queue rows (QueueRowDelegate), real-time header counters, collapsible Log drawer (with severity chips, search, pause autoscroll, and Save log...), and Retry / Up / Down reordering; commit Phase 9c v1.
-2. **Phase 9d (The Options Page):** search settings box (G1), changed-from-default indicator dot + per-section reset (G2), presets bar (G3), live naming preview token pills (G4), and tool rows with individual Check / Update / Open folder buttons (G5).
+1. **User check on Windows:** launch python luckytwitch_qt.py to inspect the Options tab:
+   - Search box at the top filtering settings with match counter (G1).
+   - Changed-from-default accent dots (●) and Reset buttons on modified settings (G2).
+   - Sidebar count badges showing modified settings per section (G2).
+   - Files will be saved as preview card with live resolved path and free disk space (G3).
+   - Dedicated yt-dlp and fmpeg status rows (G5).
+2. **Phase 9e (The Plan Page):** 2-column wide layout (D1), clip multi-select toolbar (D2), segmented strategy toggle (D3), and part summary cards.
 
 ## 8. Update checklist (end of every phase)
 

@@ -1,5 +1,24 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9d v1  (2026-10-26)  The Options page: settings search, changed-from-default markers & reset, live output preview card with disk space, and dedicated tool status rows
+
+**Done (new or changed files):**
+- qt_ui/widgets.py: added changed_dot, 
+eset_btn, and set_changed() on SettingRow; added set_badge() on SideNav to display modified setting count badges per section.
+- qt_ui/tabs/options.py: G1 settings search bar (search_entry) with live match counter (match_counter); G2 
+efresh_changed_markers() updating changed_dot, 
+eset_btn, and SideNav section badges; G3 save_preview_card displaying full live path and drive free space (shutil.disk_usage); G5 dedicated ytdlp_row and fmpeg_row status rows.
+- 	ests/test_qt_options_tab.py: added 4 new Phase 9d tests (64 total) verifying settings search filtering, changed markers & reset button click, save preview card with disk space, and tool status parsing.
+- Docs updated: MIGRATION_LOG.md (no. 24), PHASE_NOTES.md, VERSIONS.md, HANDOFF.md.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- python -m pytest tests/test_qt_options_tab.py -q -> 64 passed in 10.20s.
+- python -m pytest tests/test_qt_widgets.py tests/test_qt_main_window.py tests/test_core_matches_tkinter.py -q -> 136 passed in 28.19s.
+
+**NOT done:** Phases 9e (Plan layout), 9f (Timeline), 9g (Search & Twitch sign-in), and 9h (final polish & docs).
+
+**NOT run:** live interactive window inspection on Windows (python luckytwitch_qt.py).
+
 ### 9c v1 (includes 9a A5 icons)  (2026-10-26)  The Queue page: rich rows delegate, real-time header counters, collapsible log drawer with filters/search/export, retry & live reorder, plus A5 vector icon layer
 
 **Done (new or changed files):**

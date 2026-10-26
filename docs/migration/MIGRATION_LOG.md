@@ -145,3 +145,12 @@ unning, done, ailed, cancelled), in-row progress bar for the active job, and an
 - **F4 Retry & Thread-Safe Reordering (qt_ui/queue_model.py, qt_ui/queue_runner.py, qt_ui/tabs/queue.py):** Retry resets failed or cancelled items back to queued at the end of the queue; ↑ / ↓ (move_selected / move_item / move_row) reorders waiting (queued) items under QueueModel._lock (RLock), and QueueRunner pulls the next waiting item dynamically from model in current row order so live reordering while a job is running takes effect immediately.
 **Why:** Phase 9a A5 + Phase 9c Queue redesign (PHASE_9_PLAN.md Section 4 F and Section 6). Approved by the user.
 
+## 24. Redesigned Options page: settings search, changed-from-default markers, live output preview, and tool status rows  (Phase 9d v1)
+**tkinter:** no settings search (person had to navigate 7 tabs manually); no indication of which settings differed from defaults; file naming examples were buried inside the collapsed Advanced area; tools section only had a single plain text summary.
+**Qt:** qt_ui/tabs/options.py, qt_ui/widgets.py introduce:
+- **G1 Settings Search:** top-level search entry with live match counter (e.g. 3 matches); dynamically filters setting rows across all sections, automatically expanding Collapsible cards when their inner settings match the query.
+- **G2 Changed From Default Markers & Per-Row Reset:** comparing each setting against DEFAULTS[key], modified rows display an accent dot (●) and a Reset button that immediately restores the default; SideNav buttons show real-time count badges of modified settings (e.g. Chat (2)).
+- **G3 Live Output Destination & Disk Space Preview Card:** a prominent Files will be saved as card above the fold in Output showing the full resolved file path based on current naming templates and container format, alongside live drive free space (shutil.disk_usage).
+- **G5 Dedicated Tool Status Rows:** individual status rows for yt-dlp and fmpeg with live status labels, version details, and dedicated action buttons (Update yt-dlp now, Open tools folder).
+**Why:** Phase 9d Options page redesign (PHASE_9_PLAN.md Section 4 G and Section 6). Approved by the user.
+

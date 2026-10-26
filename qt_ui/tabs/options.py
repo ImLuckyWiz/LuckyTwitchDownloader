@@ -23,7 +23,9 @@ the hook ``source_provider`` (returns the loaded ``SourceInfo`` or None; Phase 6
 
 from __future__ import annotations
 
+import shutil
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
@@ -34,10 +36,12 @@ from core.files import open_in_file_manager
 from core.options import (
     CHAT_RENDER_FPS_NAMES, CHAT_RENDER_LOOK_NAMES, CHAT_RENDER_TYPE_NAMES, STRATEGY_NAMES, flag,
 )
+from core.settings import DEFAULTS
 from luckytwitch_engine import APP_DIR, CHAT_FORMATS, TOOLS_DIR
 from qt_ui import dialogs
 from qt_ui.binder import SettingsBinder
-from qt_ui.widgets import Card, Collapsible, ComboBox, ScrollFrame, SideNav, SpinBox, Toggle, TokenChips, WrapLabel
+from qt_ui.icons import icon
+from qt_ui.widgets import Card, Collapsible, ComboBox, ScrollFrame, SettingRow, SideNav, SpinBox, Toggle, TokenChips, WrapLabel
 
 SECTIONS = [
     ("output", "Output"),
@@ -77,6 +81,8 @@ class OptionsTab(QWidget):
         self.template_entries: dict[str, QLineEdit] = {}
         self.chip_rows: dict[str, TokenChips] = {}
         self.example_labels: dict[str, QLabel] = {}  # setting name -> its «Example:» line
+        self.rows_by_key: dict[str, tuple[SettingRow, str]] = {}
+        self.searchable_rows: list[dict] = []
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -92,6 +98,23 @@ class OptionsTab(QWidget):
         outer.addWidget(self.scroll, 1)
         body = self.scroll.body_layout
         body.setSpacing(0)
+
+        # G1: Settings search bar at the top of the options view
+        search_row = QHBoxLayout()
+        search_row.setContentsMargins(4, 4, 4, 12)
+        search_row.setSpacing(8)
+        self.search_entry = QLineEdit()
+        self.search_entry.setPlaceholderText("Search settings\u2026")
+        self.search_entry.setClearButtonEnabled(True)
+        self.search_entry.textChanged.connect(self._on_search_query_changed)
+        search_row.addWidget(self.search_entry, 1)
+
+        self.match_counter = QLabel("")
+        self.match_counter.setProperty("role", "muted")
+        self.match_counter.setVisible(False)
+        search_row.addWidget(self.match_counter)
+        body.addLayout(search_row)
+
         for key, _label in SECTIONS:
             section = QWidget()
             lay = QVBoxLayout(section)
@@ -114,6 +137,7 @@ class OptionsTab(QWidget):
         self.binder.changed.connect(self._on_setting_changed)
         self._sync_folder_template()
         self.refresh_name_examples()
+        self.refresh_changed_markers()
 
     # ------------------------------------------------------------------ sections
     def show_section(self, key: str) -> None:
@@ -183,7 +207,8 @@ class OptionsTab(QWidget):
         row.add_control(QLabel(text))
 
     def _template_row(self, holder, title: str, hint: str, key: str, tokens: list[str], info: str = "",
-                      divider: bool = True, per_row: int = 6) -> QLineEdit:
+                      divider: bool = True, per_row: int = 6, section_key: str = "",
+                      card: Card | None = None, adv: Collapsible | None = None) -> QLineEdit:
         """A name template: entry + clickable token chips + a live example. Returns the entry."""
         row = holder.add_row(title, hint, info, divider=divider)
         entry = self._entry(key)
@@ -201,9 +226,26 @@ class OptionsTab(QWidget):
         self.template_entries[key] = entry
         self.chip_rows[key] = chips
         self.example_labels[key] = example
+        if section_key and card:
+            self._register_setting(row, key, section_key, card, adv)
         return entry
 
-    # ------------------------------------------------------------------ live examples
+    def _register_setting(self, row: SettingRow, key: str, section_key: str, card: Card,
+                          adv: Collapsible | None = None) -> None:
+        self.rows_by_key[key] = (row, section_key)
+        info_text = row.info.text if getattr(row, "info", None) is not None else ""
+        hint_text = row.hint_label.text() if getattr(row, "hint_label", None) is not None else ""
+        search_text = f"{row.title_label.text()} {hint_text} {info_text}".lower()
+        self.searchable_rows.append({
+            "row": row,
+            "key": key,
+            "section_key": section_key,
+            "card": card,
+            "adv": adv,
+            "text": search_text,
+        })
+
+    # ------------------------------------------------------------------ live examples & preview (G3)
     def example_for(self, key: str) -> str:
         """The text of the example under the template ``key`` (without «Example:»). A half-typed template never
         raises: the answer is then «(can't be shown: ...)»."""
@@ -223,12 +265,96 @@ class OptionsTab(QWidget):
         """Redraw every «Example:» line (also called when a VOD is loaded, to use its real name)."""
         for key, label in self.example_labels.items():
             label.setText("Example:  " + self.example_for(key))
+        self._refresh_save_preview()
+
+    def _refresh_save_preview(self) -> None:
+        """Update the 'Files will be saved as' card (G3) with the fully resolved sample path and disk space."""
+        if not hasattr(self, "save_preview_path"):
+            return
+        out_dir = str(self.settings.get("out_dir") or DEFAULTS["out_dir"])
+        container = str(self.settings.get("container") or "mp4")
+        folder_tpl = self.example_for("folder_template")
+        name_tpl = self.example_for("name_template")
+        subfolders = flag(self.settings, "subfolders")
+        if subfolders and folder_tpl and not folder_tpl.startswith("("):
+            full_path = Path(out_dir) / folder_tpl / f"{name_tpl}.{container}"
+        else:
+            full_path = Path(out_dir) / f"{name_tpl}.{container}"
+        self.save_preview_path.setText(str(full_path))
+
+        try:
+            target_dir = Path(out_dir)
+            while not target_dir.exists() and target_dir.parent != target_dir:
+                target_dir = target_dir.parent
+            if target_dir.exists():
+                free_bytes = shutil.disk_usage(target_dir).free
+                free_gb = free_bytes / (1024 ** 3)
+                self.disk_space_label.setText(f"Drive free space: {free_gb:.1f} GB")
+            else:
+                self.disk_space_label.setText("Destination folder will be created on first download")
+        except Exception:
+            self.disk_space_label.setText("")
 
     def _on_setting_changed(self, key: str) -> None:
         if key in EXAMPLE_KEYS:
             self.refresh_name_examples()
         if key == "subfolders":
             self._sync_folder_template()
+        if key == "out_dir":
+            self._refresh_save_preview()
+        self.refresh_changed_markers()
+
+    def refresh_changed_markers(self) -> None:
+        """G2: update 'Changed from default' accent dots and SideNav count badges."""
+        counts: dict[str, int] = {k: 0 for k, _ in SECTIONS}
+        for key, (row, section_key) in self.rows_by_key.items():
+            curr = self.settings.get(key)
+            default = DEFAULTS.get(key)
+            is_changed = curr is not None and default is not None and str(curr) != str(default)
+            if is_changed:
+                counts[section_key] = counts.get(section_key, 0) + 1
+
+            def _make_reset(k=key, def_val=default):
+                return lambda: self.binder.set(k, def_val)
+
+            row.set_changed(is_changed, on_reset=_make_reset())
+
+        for section_key, count in counts.items():
+            self.nav.set_badge(section_key, count)
+
+    def _on_search_query_changed(self, text: str) -> None:
+        """G1: Search settings across all sections, expanding matches and updating match counter."""
+        query = text.strip().lower()
+        if not query:
+            self.match_counter.setVisible(False)
+            for item in self.searchable_rows:
+                item["row"].setVisible(True)
+                item["card"].setVisible(True)
+            self.show_section(self.nav.current or "output")
+            return
+
+        matched = 0
+        sections_with_matches: set[str] = set()
+        cards_with_matches: set[Card] = set()
+
+        for item in self.searchable_rows:
+            matches = query in item["text"]
+            item["row"].setVisible(matches)
+            if matches:
+                matched += 1
+                sections_with_matches.add(item["section_key"])
+                cards_with_matches.add(item["card"])
+                if item["adv"] is not None:
+                    item["adv"].set_opened(True)
+
+        for s_key, section_widget in self.sections.items():
+            section_widget.setVisible(s_key in sections_with_matches)
+
+        for item in self.searchable_rows:
+            item["card"].setVisible(item["card"] in cards_with_matches)
+
+        self.match_counter.setText(f"{matched} match" if matched == 1 else f"{matched} matches")
+        self.match_counter.setVisible(True)
 
     def _sync_folder_template(self) -> None:
         """«Stream folder name» is greyed out while «Organize in subfolders» is off."""
@@ -241,9 +367,23 @@ class OptionsTab(QWidget):
     # ------------------------------------------------------------------ Output
     def _section_output(self, f: QWidget) -> None:
         self._heading(f, "Output", "Where the finished files go and how they are named.")
+
+        # G3: Files will be saved as preview card
+        self.save_preview_card = self._card(f, "Files will be saved as", "Full destination path of your next download.")
+        preview_row = self.save_preview_card.add_row("Destination preview", "")
+        self.save_preview_path = WrapLabel("")
+        self.save_preview_path.setProperty("role", "accent")
+        self.save_preview_path.setMaximumWidth(640)
+        self.disk_space_label = QLabel("")
+        self.disk_space_label.setProperty("role", "muted")
+        preview_row.below_layout.setContentsMargins(0, 4, 0, 0)
+        preview_row.below_layout.addWidget(self.save_preview_path)
+        preview_row.below_layout.addWidget(self.disk_space_label)
+
         card = self._card(f)
 
         row = card.add_row("Output folder", "Where the finished files are saved.")
+        self._register_setting(row, "out_dir", "output", card)
         self.browse_btn = QPushButton("Browse…")
         self.browse_btn.clicked.connect(self.pick_folder)
         row.add_control(self.browse_btn)
@@ -254,24 +394,29 @@ class OptionsTab(QWidget):
         row.below_layout.addWidget(self._entry("out_dir"))
 
         row = card.add_row("Format", "Container of the finished files.", divider=False)
+        self._register_setting(row, "container", "output", card)
         row.add_control(self._combo("container", ["mp4", "mkv"], 5))
 
         adv = self._advanced("output", card, "download threads, file and folder names")
         row = adv.add_row("Download threads", "Parallel connections per download. 8 is a good default.")
+        self._register_setting(row, "threads", "output", card, adv)
         row.add_control(self._spin("threads", 1, 32, 5))
 
         self._template_row(
             adv, "File name", "How each part is called. Click a token to add it.", "name_template",
             ["streamer", "date", "id", "title", "n", "total", "start", "end"],
             info="{n} is the part number, {total} how many parts there are, {start} and {end} the part's "
-                 "time range in the VOD (like 01h02m03s). {id} is the VOD's Twitch id.")
+                 "time range in the VOD (like 01h02m03s). {id} is the VOD's Twitch id.",
+            section_key="output", card=card, adv=adv)
 
         row = adv.add_row("Organize in subfolders", "Folder / Streamer / Stream / parts.")
+        self._register_setting(row, "subfolders", "output", card, adv)
         self._switch(row, "subfolders")
 
         self.folder_entry = self._template_row(
             adv, "Stream folder name", "Name of the folder that holds one stream's files.", "folder_template",
-            ["streamer", "date", "id", "title"], divider=False, per_row=4)
+            ["streamer", "date", "id", "title"], divider=False, per_row=4,
+            section_key="output", card=card, adv=adv)
 
     # ------------------------------------------------------------------ Cuts
     def _section_cuts(self, f: QWidget) -> None:
@@ -282,6 +427,7 @@ class OptionsTab(QWidget):
             "Strategy", "How the VOD is downloaded.",
             info="Auto: downloads the full VOD once and splits it when the parts cover at least the "
                  "threshold (see Advanced), otherwise downloads only the parts.\nOr force one of the two.")
+        self._register_setting(row, "strategy", "cuts", card)
         combo = self._combo("strategy", STRATEGY_NAMES, 30)
         combo.activated.connect(self.preview_requested)  # only a choice by the person, like <<ComboboxSelected>>
         row.add_control(combo)
@@ -291,10 +437,12 @@ class OptionsTab(QWidget):
             info="Off (default): the cuts are lossless and land on keyframes, about 2 seconds "
                  "of precision.\nOn: the video is re-encoded so every cut is frame-exact. "
                  "That is slow and uses a lot of CPU.")
+        self._register_setting(row, "exact", "cuts", card)
         self._switch(row, "exact")
 
         row = card.add_row("Keep the full VOD", "Also keep the full file when the full-VOD strategy is used.",
                            divider=False)
+        self._register_setting(row, "keep_full", "cuts", card)
         self._switch(row, "keep_full")
 
         adv = self._advanced("cuts", card, "auto threshold")
@@ -302,6 +450,7 @@ class OptionsTab(QWidget):
             "Auto threshold", "Auto uses the full VOD above this share.", divider=False,
             info="Auto downloads the full VOD (and splits it) when the parts cover at least this "
                  "percentage of it; below that it downloads only the parts.")
+        self._register_setting(row, "threshold", "cuts", card, adv)
         spin = self._spin("threshold", 1, 100, 5)
         spin.valueChanged.connect(self.preview_requested)
         row.add_control(spin)
@@ -315,10 +464,12 @@ class OptionsTab(QWidget):
 
         entry = self._template_row(
             card, "Chapter title", "Name of each clip's chapter.", "title_tpl",
-            ["title", "creator", "views", "duration"], per_row=4)
+            ["title", "creator", "views", "duration"], per_row=4,
+            section_key="chapters", card=card)
         entry.textEdited.connect(self.refresh_clips_requested)
 
         row = card.add_row("Tail", "Seconds the chapter lasts after the clip ends.")
+        self._register_setting(row, "pad_after", "chapters", card)
         spin = self._spin("pad_after", 0, 600, 6)
         spin.valueChanged.connect(self.refresh_clips_requested)
         row.add_control(spin)
@@ -328,6 +479,7 @@ class OptionsTab(QWidget):
             "Gap chapter name", "Name for the stretches between clips.", divider=False,
             info="MP4 needs every stretch to have a name, so don't leave this empty for MP4. "
                  "Empty is fine only for MKV.")
+        self._register_setting(row, "gap_title", "chapters", card)
         row.add_control(self._entry("gap_title", 18))
 
     # ------------------------------------------------------------------ Premiere Pro
@@ -339,12 +491,14 @@ class OptionsTab(QWidget):
             "LuckyTwitch Premiere plugin", "Saves a .markers.json with colors and clip details.",
             info="One .markers.json next to each part, for the LuckyTwitch Premiere plugin. "
                  "It works even if chapters are off.")
+        self._register_setting(row, "premiere_plugin", "premiere", card)
         self._switch(row, "premiere_plugin", refresh_clips=True)
 
         row = card.add_row(
             "Game / category changes", "Also marks every time the game changes.",
             info="Adds markers named «GAME: ...» to the .markers.xml and as game markers in the "
                  ".markers.json. Works for full VODs and for parts, even if chapters are off.")
+        self._register_setting(row, "game_markers", "premiere", card)
         self._switch(row, "game_markers")
 
         row = card.add_row(
@@ -353,14 +507,17 @@ class OptionsTab(QWidget):
                  ".markers.json as «muted» markers (the plugin decides the color), so you can see "
                  "them in Premiere. It needs the plugin file above to be on. The same stretches "
                  "show in red on the Plan tab's timeline.")
+        self._register_setting(row, "muted_markers", "premiere", card)
         self._switch(row, "muted_markers")
 
         adv = self._advanced("premiere", card, "plain markers and clip list")
         row = adv.add_row("Plain Premiere markers", "Saves a .markers.xml you can import without the plugin.",
                           info="Plain import, without colors. Works even if chapters are off.")
+        self._register_setting(row, "premiere_xml", "premiere", card, adv)
         self._switch(row, "premiere_xml", refresh_clips=True)
         row = adv.add_row("Clip list", "Saves a .clips.json (clip titles, creators, links) next to each part.",
                           divider=False)
+        self._register_setting(row, "sidecar", "premiere", card, adv)
         self._switch(row, "sidecar")
 
     # ------------------------------------------------------------------ Chat
@@ -375,6 +532,7 @@ class OptionsTab(QWidget):
                  "as «name.chat.json». Inside the .json the message times count from the start of "
                  "the VOD, not from the start of the part; the file's start/end say which stretch "
                  "it covers.\nTwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader).")
+        self._register_setting(row, "chat", "chat", card)
         self._switch(row, "chat")
 
         row = card.add_row(
@@ -387,6 +545,7 @@ class OptionsTab(QWidget):
                  "fetched from Twitch, BTTV, FFZ and 7TV when it is drawn, so it needs internet.\n"
                  "Size on disk for a very busy chat (3 messages a second, 400 x 1080): about 3.4 GB "
                  "per hour with Animation, 28 GB with ProRes 4444, 0.4 GB with H.264.")
+        self._register_setting(row, "chat_render", "chat", card)
         self._switch(row, "chat_render")
 
         row = card.add_row(
@@ -402,8 +561,10 @@ class OptionsTab(QWidget):
 
         adv = self._advanced("chat", card, "file format, embedded emotes and how the overlay looks")
         row = adv.add_row("Format", "File type of the saved chat.")
+        self._register_setting(row, "chat_format", "chat", card, adv)
         row.add_control(self._combo("chat_format", list(CHAT_FORMATS), 6))
         row = adv.add_row("Embed emotes and badges", "Bigger file, but it works offline.")
+        self._register_setting(row, "chat_embed", "chat", card, adv)
         self._switch(row, "chat_embed")
 
         row = adv.add_row(
@@ -414,21 +575,28 @@ class OptionsTab(QWidget):
                  "editor knows, but very big files. Use it if your editor does not read "
                  "Animation.\nBlack background · H.264: small and quick, but not see-through. In the "
                  "editor, set the clip's blend mode to Screen and the black disappears.")
+        self._register_setting(row, "chat_render_mode", "chat", card, adv)
         row.add_control(self._combo("chat_render_mode", CHAT_RENDER_TYPE_NAMES, 36))
         row = adv.add_row("Look", "What is behind the text (not used by the black background type).")
+        self._register_setting(row, "chat_render_look", "chat", card, adv)
         row.add_control(self._combo("chat_render_look", CHAT_RENDER_LOOK_NAMES, 28))
         row = adv.add_row("Size", "Width × height in pixels. Height 0 = the same as the video.")
+        self._register_setting(row, "chat_render_width", "chat", card, adv)
         row.add_control(self._spin("chat_render_width", 100, 3840, 6))
         times = QLabel("×")
         times.setProperty("role", "muted")
         row.add_control(times)
+        self._register_setting(row, "chat_render_height", "chat", card, adv)
         row.add_control(self._spin("chat_render_height", 0, 4320, 6))
         row = adv.add_row("Text size", "Size of the letters, in points.")
+        self._register_setting(row, "chat_render_font_size", "chat", card, adv)
         row.add_control(self._spin("chat_render_font_size", 6, 96, 5))
         row = adv.add_row("Frame rate", "Frames per second of the chat video.")
+        self._register_setting(row, "chat_render_fps", "chat", card, adv)
         row.add_control(self._combo("chat_render_fps", CHAT_RENDER_FPS_NAMES, 14))
         row = adv.add_row("Smooth scrolling", "Redraws on every frame instead of 5 times a second. Slower.",
                           divider=False)
+        self._register_setting(row, "chat_render_smooth", "chat", card, adv)
         self._switch(row, "chat_render_smooth")
 
     # ------------------------------------------------------------------ Clips
@@ -441,18 +609,34 @@ class OptionsTab(QWidget):
             ["clip_title", "creator", "views", "clip_id", "clip_duration",
              "streamer", "date", "id", "title", "start", "end"],
             info="Clip tokens: {clip_title} {creator} {views} {clip_id} {clip_duration}.\nYou can also use the "
-                 "VOD's: {streamer} {date} {id} {title} {start} {end}. ({id} and {title} are the VOD's, not the clip's.)")
+                 "VOD's: {streamer} {date} {id} {title} {start} {end}. ({id} and {title} are the VOD's, not the clip's.)",
+            section_key="clips", card=card)
 
         row = card.add_row("Extra time before", "Seconds added before the clip starts.")
+        self._register_setting(row, "clip_pad_before", "clips", card)
         row.add_control(self._spin("clip_pad_before", 0, 600, 6))
         self._unit(row, "s")
         row = card.add_row("Extra time after", "Seconds added after the clip ends.", divider=False)
+        self._register_setting(row, "clip_pad_after", "clips", card)
         row.add_control(self._spin("clip_pad_after", 0, 600, 6))
         self._unit(row, "s")
 
     # ------------------------------------------------------------------ Tools
     def _section_tools(self, f: QWidget) -> None:
         self._heading(f, "Tools", "yt-dlp and ffmpeg do the downloading and cutting.")
+
+        # G5 Dedicated tools status card
+        tools_status_card = self._card(f, "Download & processing tools")
+        self.ytdlp_row = tools_status_card.add_row("yt-dlp", "Twitch stream downloader engine")
+        self.ytdlp_status_label = QLabel("Checking…")
+        self.ytdlp_status_label.setProperty("role", "muted")
+        self.ytdlp_row.add_control(self.ytdlp_status_label)
+
+        self.ffmpeg_row = tools_status_card.add_row("ffmpeg", "Audio/video muxing, cutting, and stitching", divider=False)
+        self.ffmpeg_status_label = QLabel("Checking…")
+        self.ffmpeg_status_label.setProperty("role", "muted")
+        self.ffmpeg_row.add_control(self.ffmpeg_status_label)
+
         card = self._card(f)
 
         row = card.add_row("Installed tools", "")
@@ -463,6 +647,7 @@ class OptionsTab(QWidget):
         row.below_layout.addWidget(self.tools_info_label)
 
         row = card.add_row("Check for yt-dlp updates on startup", "Recommended: Twitch changes often.")
+        self._register_setting(row, "auto_update", "tools", card)
         self._switch(row, "auto_update")
 
         row = card.add_row("Update yt-dlp", "Download the latest version now.")
@@ -540,6 +725,12 @@ class OptionsTab(QWidget):
     # ------------------------------------------------------------------ what the window tells the tab
     def set_tools_info(self, text: str) -> None:
         self.tools_info_label.setText(text)
+        for part in text.replace("\n", " · ").split(" · "):
+            p = part.strip()
+            if "yt-dlp" in p.lower() and hasattr(self, "ytdlp_status_label"):
+                self.ytdlp_status_label.setText(p)
+            elif "ffmpeg" in p.lower() and hasattr(self, "ffmpeg_status_label"):
+                self.ffmpeg_status_label.setText(p)
 
     def set_tools_running(self, running: bool) -> None:
         self.update_btn.setEnabled(not running)

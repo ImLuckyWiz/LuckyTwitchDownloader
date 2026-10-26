@@ -1,3 +1,14 @@
+## Phase 9d: The Options Page  (2026-10-26, version 1 delivered)
+**Done (9d v1, see VERSIONS.md):**
+- **G1 — Settings Search (search_entry, match_counter in qt_ui/tabs/options.py):** search bar at the top of the Options scroll area; dynamically filters rows across all sections by name, hint, and info tooltip; automatically expands matching Collapsible cards.
+- **G2 — Changed-From-Default Markers & Reset (SettingRow, SideNav in qt_ui/widgets.py, qt_ui/tabs/options.py):** compares every setting against DEFAULTS[key]; shows an accent dot (●) and Reset button on modified rows; displays modified setting count badges on sidebar items (SideNav.set_badge).
+- **G3 — Live Output Destination & Disk Space Preview Card (save_preview_card in qt_ui/tabs/options.py):** prominent preview card in Output showing the live destination path and drive free space (shutil.disk_usage).
+- **G5 — Dedicated Tool Status Rows (ytdlp_row, fmpeg_row in qt_ui/tabs/options.py):** separate status rows for yt-dlp and fmpeg with live status information and action buttons.
+- **New tests (	ests/test_qt_options_tab.py):** 4 new tests in 	est_qt_options_tab.py (64 total).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 24.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** 	est_qt_options_tab.py (64 passed in 10.20s), 	est_qt_widgets.py + 	est_qt_main_window.py + 	est_core_matches_tkinter.py (136 passed in 28.19s).
+**Still open:** Phases 9e (Plan layout), 9f (Timeline), 9g (Search & Twitch sign-in), and 9h (final polish & release).
+
 ## Phase 9c: The Queue Page (+ 9a A5 Vector Icons)  (2026-10-26, version 1 delivered)
 **Done (9c v1 + 9a A5, see VERSIONS.md):**
 - **A5 — Vector Icon Layer (qt_ui/icons.py, 	ests/test_qt_icons.py, 	ools/widget_gallery.py):** unpacked from phase-9a-icons-v1.zip (144 tests passing) and wired into NavRail, CommandBar, VodStrip, and QueueTab.

@@ -749,3 +749,56 @@ def test_the_settings_the_options_tab_edits_are_saved_when_the_window_closes(win
     win.close()
     saved = json.loads(paths.SETTINGS_PATH.read_text(encoding="utf-8"))
     assert saved["threads"] == "6" and saved["exact"] is True and set(saved) == set(DEFAULTS)
+
+
+# ------------------------------------------------------------------ Phase 9d (G1 to G5)
+def test_search_settings_filters_rows_and_shows_match_count(tab):
+    assert tab.search_entry is not None
+    assert not tab.match_counter.isVisible()
+
+    tab.search_entry.setText("ffmpeg")
+    assert tab.match_counter.isVisible()
+    assert "match" in tab.match_counter.text()
+
+    tab.search_entry.setText("")
+    assert not tab.match_counter.isVisible()
+    assert tab.sections["output"].isVisible()
+
+
+def test_changed_from_default_marker_and_reset(tab, qtbot):
+    tab.advanced["output"].set_opened(True)
+    row, section = tab.rows_by_key["threads"]
+    assert not row.changed_dot.isVisible()
+    assert not row.reset_btn.isVisible()
+
+    tab.binder.set("threads", "16")
+    assert row.changed_dot.isVisible()
+    assert row.reset_btn.isVisible()
+    assert "(1)" in tab.nav.buttons["output"].text()
+
+    # Reset reverts to default
+    row.reset_btn.click()
+    assert control(tab, "threads").value() == 8
+    assert tab.settings["threads"] == "8"
+    assert not row.changed_dot.isVisible()
+    assert not row.reset_btn.isVisible()
+    assert "(1)" not in tab.nav.buttons["output"].text()
+
+
+def test_files_will_be_saved_as_preview_card_and_disk_space(tab):
+    assert hasattr(tab, "save_preview_card")
+    assert tab.save_preview_path.text() != ""
+    assert "Drive free space" in tab.disk_space_label.text() or "Destination folder" in tab.disk_space_label.text()
+
+    tab.binder.set("container", "mkv")
+    assert tab.save_preview_path.text().endswith(".mkv")
+
+
+def test_tools_status_rows_show_individual_versions(tab):
+    assert hasattr(tab, "ytdlp_status_label")
+    assert hasattr(tab, "ffmpeg_status_label")
+
+    tab.set_tools_info("yt-dlp 2024.10.22 · ffmpeg 7.0")
+    assert "2024.10.22" in tab.ytdlp_status_label.text()
+    assert "7.0" in tab.ffmpeg_status_label.text()
+

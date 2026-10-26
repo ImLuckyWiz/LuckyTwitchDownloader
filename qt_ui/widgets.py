@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QSpinBox, QVBoxLayout, QWidget,
 )
 
-from core.palette import ACCENT, ACCENT_HOVER, BG3, BORDER, DISABLED, FG, MUTED, WHITE
+from core.palette import ACCENT, ACCENT_HOVER, ACCENT_TEXT, BG3, BORDER, DISABLED, FG, MUTED, WHITE
 
 _ON_TRACK_DISABLED = "#4a3a78"  # the purple track of a disabled switch (same value as the tkinter Toggle)
 _OFF_TRACK_HOVER = "#4a4d55"
@@ -335,6 +335,24 @@ class SettingRow(QWidget):
         self.title_label = QLabel(title, text)
         self.title_label.setProperty("role", "rowtitle")
         top.addWidget(self.title_label)
+
+        self.changed_dot = QLabel("●", text)
+        self.changed_dot.setProperty("role", "accent")
+        self.changed_dot.setStyleSheet(f"color: {ACCENT_TEXT}; font-size: 10px;")
+        self.changed_dot.setToolTip("Modified from default")
+        self.changed_dot.setVisible(False)
+        top.addWidget(self.changed_dot)
+
+        self.reset_btn = QPushButton("Reset", text)
+        self.reset_btn.setProperty("variant", "ghost")
+        self.reset_btn.setStyleSheet(f"font-size: 11px; padding: 1px 4px; color: {MUTED};")
+        self.reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.reset_btn.setToolTip("Reset to default")
+        self.reset_btn.setVisible(False)
+        self._on_reset_callback = None
+        self.reset_btn.clicked.connect(self._handle_reset)
+        top.addWidget(self.reset_btn)
+
         self.info: InfoIcon | None = None
         if info:
             self.info = InfoIcon(info, text)
@@ -380,6 +398,16 @@ class SettingRow(QWidget):
     def add_below(self, widget: QWidget) -> QWidget:
         self.below_layout.addWidget(widget)
         return widget
+
+    def set_changed(self, changed: bool, on_reset: Callable[[], None] | None = None) -> None:
+        """Show or hide the 'modified from default' accent dot and Reset button (Phase 9d, G2)."""
+        self.changed_dot.setVisible(bool(changed))
+        self.reset_btn.setVisible(bool(changed))
+        self._on_reset_callback = on_reset
+
+    def _handle_reset(self) -> None:
+        if callable(self._on_reset_callback):
+            self._on_reset_callback()
 
 
 class Card(QFrame):
@@ -536,6 +564,7 @@ class SideNav(QFrame):
     def __init__(self, items: Iterable[tuple[str, str]], width_chars: int = 17, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("sideNav")
+        self._raw_items = list(items)
         box = QVBoxLayout(self)
         box.setContentsMargins(8, 8, 8, 8)
         box.setSpacing(2)
@@ -568,6 +597,13 @@ class SideNav(QFrame):
         for k, b in self.buttons.items():
             _set_variant(b, "selected", k == key)
         self.selected.emit(key)
+
+    def set_badge(self, key: str, count: int) -> None:
+        """Update the sidebar item label to show count of changed settings (e.g. 'Chat (2)') (Phase 9d, G2)."""
+        btn = self.buttons.get(key)
+        if btn is not None:
+            base_label = next((l for k, l in self._raw_items if k == key), key)
+            btn.setText(f"{base_label} ({count})" if count > 0 else base_label)
 
 
 # --------------------------------------------------------------------------- #
