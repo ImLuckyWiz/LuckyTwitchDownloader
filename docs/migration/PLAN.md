@@ -197,7 +197,7 @@ Sizes are relative: S, M, L, XL.
 
 ### Phase 9: Redesign beyond parity (optional, user-led)
 
-Only after parity sign-off, and only from references or mockups the user provides. This is where layout and tab structure may change. Nothing here is a requirement of the migration.
+Only after parity sign-off. This is where layout and tab structure may change. Nothing here is a requirement of the migration. **Update 2026-10-26:** the user asked the agent to propose the redesign instead of providing references; the detailed plan (ideas, versions 9a to 9h, tests, risks, decisions D8 to D15) is in `PHASE_9_PLAN.md`. No code before the user answers its section 9.
 
 ## 7. Cross-cutting risks
 

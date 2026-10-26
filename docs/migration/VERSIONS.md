@@ -2,6 +2,18 @@
 
 The user asked for **released versions while a phase is in progress, even half-made ones**. So every meaningful chunk of work ends in a numbered release: a zip of the whole repo (`lt-repo_phase<N>_v<K>.zip`) plus an entry below. An entry always says what is done, what is NOT done, and what was NOT run, so a half-made version is never mistaken for a finished one. A phase is only "done" when HANDOFF.md says so and the user approves it; versions are the steps on the way.
 
+## Phase 9: Redesign beyond parity
+
+### v0  (2026-10-26)  plan only, docs only, no code
+
+**Done (new or changed files):**
+- `docs/migration/PHASE_9_PLAN.md` (new): the full redesign plan (see PHASE_NOTES.md Phase 9).
+- Docs updated: `HANDOFF.md` (status row, D7 changed, D8 to D15 added, next step), `PLAN.md` (Phase 9 pointer), `PHASE_NOTES.md` (Phase 9 planning entry), `VERSIONS.md` (this entry).
+
+**NOT done:** any code, any decision (D8 to D15 are the user's), the baseline Qt screenshots (planned for 9a as `tools/qt_screenshots.py`).
+
+**NOT run:** the test suite (nothing but documents changed).
+
 ## Phase 8: Packaging, CI and cutover
 
 ### v1  (2026-10-26)  PyInstaller & Inno Setup cutover, pre-release isolation, CI pytest, and release notes complete

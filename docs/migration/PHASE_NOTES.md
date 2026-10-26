@@ -14,6 +14,16 @@ Entry template (copy it for each phase):
 **Next:** the exact next step.
 ```
 
+## Phase 9: Redesign beyond parity  (2026-10-26, PLANNING ONLY, no tag)
+**Done:** `docs/migration/PHASE_9_PLAN.md` written: what the current app looks like (rendered offscreen at 1020x910 and 900x560, contrast ratios computed from `core/palette.py`), guardrails, technical limits, 50 or so ideas in 9 groups (design system, shell, Search, Plan, Timeline, Queue, Options, dialogs, accessibility), what is deliberately NOT proposed, eight versions (9a to 9h), test strategy, risks and decisions D8 to D15. HANDOFF.md (status row, D7 to D15, next step), PLAN.md (Phase 9 pointer) and VERSIONS.md updated.
+**Definition of Done:** not applicable yet (no code). The plan is done when the user has answered D8 to D15 (at least D8, D9, D10 before 9a).
+**Divergences from the tkinter app:** none (no app code changed).
+**What I read / ran:** all of `docs/migration/` (PLAN, HANDOFF, VERSIONS, MIGRATION_LOG, PHASE_NOTES, SETTINGS_KEYS, RELEASE_NOTES_QT, PARITY headings), `REDESIGN_PROGRESS.md`, `qt_ui/theme.py`, `core/palette.py`, `qt_ui/main_window.py` (layout), `qt_ui/queue_model.py`, `qt_ui/widgets.py` (class list), `README.md`, parts of the engine (`choose_strategy`, `make_plan`). I rendered the Qt app offscreen with PySide6 6.12.0 on Linux (throw-away script, not delivered) to look at every page; fonts there are DejaVu, not Windows fonts.
+**NOT run:** the test suite, anything on Windows or macOS. Numbers in the plan about space (for example the page height at 900x560) come from the offscreen renders and need confirming on Windows in 9a.
+**Known issues / left for later:** the plan's claims about data the UI could show (login name, first storyboard frame as VOD thumbnail, ETA and speed in the progress text, whether `QueueRunner` can reorder) are marked "checked in 9b/9c"; none was verified in this session.
+**Tests:** none changed.
+**Next:** the user answers D8 to D15, then version 9a.
+
 ## Phase 8: Packaging, CI and cutover  (2026-10-26, tag migration-phase-8, approved)
 **Done (version 1, see VERSIONS.md):**
 - **PyInstaller & Inno Setup (`build_windows.bat`, `build_mac.sh`, `installer.iss`, `requirements.txt`):** cut over the packaged entry point from `luckytwitch_downloader.py` to `luckytwitch_qt.py`; added `PySide6==6.12.0` to `requirements.txt`; bundled `build/version.txt` so the frozen app knows its build version; collected `core` and `qt_ui` submodules; excluded `tkinter` and all unused `PySide6.Qt*` modules (`QtWebEngine*`, `QtQml`, `QtQuick*`, `QtMultimedia*`, `Qt3D*`, `QtCharts`, `QtPdf*`, `QtSql`, `QtNetwork*`, `QtSvg*`, `QtOpenGL*`, `QtPrintSupport`, `QtDesigner`, `QtHelp`, `QtUiTools`, `QtXml`, `QtTest`, etc.); preserved macOS `CFBundleURLTypes` (`luckytwitch://`) registration before `codesign`.

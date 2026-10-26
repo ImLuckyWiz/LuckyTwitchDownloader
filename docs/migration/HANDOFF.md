@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 8 approved by the user, see VERSIONS.md: Phase 8 v1). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9 PLAN written, no code: see `PHASE_9_PLAN.md` and VERSIONS.md: Phase 9 v0). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -23,7 +23,7 @@ Last updated: 2026-10-26 (Phase 8 approved by the user, see VERSIONS.md: Phase 8
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
 | 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
 | 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
-| 9 | Redesign beyond parity | optional, not started | | |
+| 9 | Redesign beyond parity | planning (plan written in `PHASE_9_PLAN.md`, waiting for the user's decisions D8 to D15, no code) | | |
 
 States: not started, in progress, done (waiting for approval), approved.
 
@@ -44,7 +44,8 @@ Confirmed by the user on 2026-10-19 (all as recommended in PLAN.md section 5):
 - **D6** Ship Qt alongside tkinter for at least one release before deleting tkinter.
 
 Still open:
-- **D7** What Phase 9 (redesign) should look like: the user provides references. Not needed before Phase 9.
+- **D7** (changed 2026-10-26) The user asked the agent to propose the Phase 9 redesign and plan it before any code, so references are no longer required (the user may still send some, D15). The plan is `PHASE_9_PLAN.md`.
+- **D8 to D15** Phase 9 decisions waiting for the user (navigation, which new features, icons, font, presets, motion, release order, references): `PHASE_9_PLAN.md` section 9, each with a recommended answer.
 
 Decided in Phase 1 (by the agent, not contested): `core/` modules read their file paths from `core.paths` when called, so tests monkeypatch `core.paths.SETTINGS_PATH` and friends. `_read_config`/`_write_config` became `read_config`/`write_config` in `core/config.py`. One `Bridge` signal per message kind, typed; "no value" is `""`. Qt tests run on the offscreen platform (`tests/conftest.py`). Palette tokens live in `core/palette.py`; `qt_ui/theme.py` generates the QSS from them. Phase 1 settings handling only reads: the SettingsBinder (Phase 5) and the save on close (Phase 3) do the writing.
 
@@ -152,7 +153,7 @@ Phase 8 (Packaging, CI and cutover, version 1) is complete and its tests pass on
 1. Run `python -m pytest tests -q` on Windows to confirm the entire suite is green.
 2. Optionally run `build_windows.bat v0.8.0-beta.1` (or `build_windows.bat v2.0.0`) locally and `python tools/measure_build.py` to inspect the portable folder and Windows installer size.
 3. Commit Phase 8, tag `migration-phase-8`, push `qt-migration` to trigger the GitHub Actions CI build on Windows and macOS, and tag `v0.8.0-beta.1` (side-by-side beta pre-release) or `v2.0.0` (full cutover release).
-4. Phase 9 (Redesign beyond parity) is optional and user-led if the user later wants layout or visual changes beyond parity.
+4. Phase 9 (Redesign beyond parity): the plan is written (`PHASE_9_PLAN.md`, docs only, no code). Next for the user: read it, answer D8 to D15 (section 9 there; the recommended answers are listed first). Next for the agent, only after that: version 9a (design foundation, no layout change), delivered as `phase-9-a-v1.zip`. Do not write code for Phase 9 before the user has answered D8, D9 and D10 at least.
 
 ## 8. Update checklist (end of every phase)
 
