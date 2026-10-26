@@ -2,6 +2,26 @@
 
 The user asked for **released versions while a phase is in progress, even half-made ones**. So every meaningful chunk of work ends in a numbered release: a zip of the whole repo (`lt-repo_phase<N>_v<K>.zip`) plus an entry below. An entry always says what is done, what is NOT done, and what was NOT run, so a half-made version is never mistaken for a finished one. A phase is only "done" when HANDOFF.md says so and the user approves it; versions are the steps on the way.
 
+## Phase 6: Plan tab (no timeline), Get info, links
+
+### v1  (2026-10-26)  Phase 6 code and tests complete, targeted Qt tests green on Windows
+
+**Done (new or changed files):**
+- `qt_ui/tabs/plan.py`: full `PlanTab(ScrollPage)`, `ClipModel(QAbstractTableModel)`, and `TimelinePlaceholder(QWidget)` (stand-in for the Phase 7 custom QPainter timeline strip).
+- `qt_ui/background_jobs.py`: `InfoRunner` (`get_source_info` + `fetch_clips_for_vod`) and `FramesRunner` (`load_storyboard_frames`), reporting via `Bridge.info_ok`, `Bridge.error`, and `Bridge.frames`.
+- `qt_ui/main_window.py`: wired `PlanTab`, `on_get_info` (with 350 ms dot animation and indeterminate progress), `on_info_ok`, `on_info_error`, `add_to_queue`, `download_clips`, `start_link_listener`, `poll_links`, `bring_to_front`, `open_link`, `_retry_link`, and Options <-> Plan signals.
+- `luckytwitch_qt.py`: `LuckyApplication(QApplication)` handling macOS `QFileOpenEvent`, command-line `luckytwitch://` link detection and single-instance `weblink.hand_off`.
+- `qt_ui/theme.py`: `QLabel[role="err"]`, `QPlainTextEdit#cutPoints`, `QPlainTextEdit#planPreview`, `QWidget#timelineWell`.
+- `tests/test_qt_plan_tab.py`: 55 test functions (59 test cases) porting `test_gui_plan_tab.py` (31), `test_gui_plan_redesign.py` (10), `test_gui_weblink.py` (16), and the Plan-tab tests of `test_gui_final_pass.py` (5).
+- `tests/test_qt_main_window.py` & `tests/test_qt_queue_tab.py`: updated `test_all_four_tabs_are_populated`, the `LuckyApplication` monkeypatch, and `test_closing_without_a_heartbeat_file_is_fine` (since `MainWindow` now starts the link listener and writes `BEAT_PATH` on init).
+- Docs updated: `HANDOFF.md` (Working modes note added, Phases 4 & 5 marked `approved`, Phase 6 marked `done (waiting for approval)`), `PHASE_NOTES.md`, `VERSIONS.md`, `PARITY.md` (62 boxes ticked), `MIGRATION_LOG.md` (no. 12 updated, no. 16–17 added), `SETTINGS_KEYS.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `python -m pytest tests/test_qt_plan_tab.py tests/test_qt_main_window.py -q` -> 71 passed in 17.52s.
+
+**NOT done:** the real custom QPainter timeline strip (belongs to Phase 7); the user's hands-on check of the Plan tab on Windows.
+
+**NOT run:** the full test suite (`python -m pytest tests -q`), hands-on interactive run of `python luckytwitch_qt.py`.
+
 ## Phase 5: Options tab
 
 ### v1  (2026-10-26)  code written, Qt tests NOT run

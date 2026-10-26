@@ -54,6 +54,7 @@ QPushButton[variant="ghost"]:disabled { background-color: ${BG}; color: ${DISABL
 QLabel { background: transparent; color: ${FG}; }
 QLabel:disabled { color: ${DISABLED}; }
 QLabel[role="muted"] { color: ${MUTED}; }
+QLabel[role="err"] { color: ${ERR}; }
 QLabel[role="title"] { font-size: 15pt; font-weight: bold; }
 QLabel[role="heading"] { font-size: 11pt; font-weight: bold; }
 QLabel[role="rowtitle"] { font-weight: bold; }
@@ -134,9 +135,12 @@ QScrollBar::handle:pressed { background: ${PRESSED}; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; background: none; border: none; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
 
-/* ---- the log (Queue & log tab) ---- */
-QPlainTextEdit#logView { background-color: ${BG}; border: none; padding: 6px 8px; }
-QPlainTextEdit#logView:hover, QPlainTextEdit#logView:focus { border: none; }
+/* ---- the log (Queue & log tab) and the Plan tab's cut points ---- */
+QPlainTextEdit#logView, QPlainTextEdit#cutPoints { background-color: ${BG}; border: none; padding: 6px 8px; }
+QPlainTextEdit#logView:hover, QPlainTextEdit#logView:focus, QPlainTextEdit#cutPoints:hover, QPlainTextEdit#cutPoints:focus { border: none; }
+QPlainTextEdit#planPreview { background-color: ${BG2}; border: none; padding: 2px; }
+QPlainTextEdit#planPreview:hover, QPlainTextEdit#planPreview:focus { border: none; }
+QWidget#timelineWell { background-color: ${BG}; }
 
 /* ---- widget kit (Phase 2) ---- */
 QFrame#card { background-color: ${BG2}; border: 1px solid ${BORDER}; }

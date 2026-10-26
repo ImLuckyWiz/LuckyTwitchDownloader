@@ -2,9 +2,13 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 4 done, waiting for approval; Phase 5 done, waiting for approval, see VERSIONS.md: v3). Last completed phase: 3 (approved by the user, tag `migration-phase-3`).
+Last updated: 2026-10-26 (Phase 6 done, waiting for approval, see VERSIONS.md: v1). Last completed phase: 5 (approved by the user, tag `migration-phase-5`; Phase 4 also approved, tag `migration-phase-4`).
 
-**Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
+**Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
+
+**Working modes (the user switches between them, so this file must keep working in both):**
+- **Claude on the web:** no access to the repository. Sections 3 and 4 below apply as written (uploaded zip, delivered zip of changed files, PowerShell block).
+- **Antigravity:** edits the project files directly in the repository (`git status` and `git diff` allowed; never commit, push, tag, merge, switch branches or touch `.git`). Ignore the zip rules in sections 3 and 4 during an Antigravity session (do not delete or rewrite them); at the end of each version give the created/changed/deleted files, the exact `git add` paths (never `git add -A`), the commit message (`Phase N (version K): ...`), and any `git rm` commands. Every other rule is the same in both modes.
 
 ## 1. Status
 
@@ -14,9 +18,9 @@ Last updated: 2026-10-26 (Phase 4 done, waiting for approval; Phase 5 done, wait
 | 1 | Skeleton and plumbing | approved | migration-phase-1 | |
 | 2 | Widget kit | approved | migration-phase-2 | |
 | 3 | Queue and log tab | approved | migration-phase-3 | |
-| 4 | Search tab and Twitch sign-in | done (waiting for approval; Windows tests clean, hands-on check open) | | |
-| 5 | Options tab | done (waiting for approval; Windows tests clean incl. golden test, hands-on check open) | | |
-| 6 | Plan tab (no timeline), Get info, links | not started | | |
+| 4 | Search tab and Twitch sign-in | approved | migration-phase-4 | |
+| 5 | Options tab | approved | migration-phase-5 | |
+| 6 | Plan tab (no timeline), Get info, links | done (waiting for approval; v1 delivered, targeted Qt tests green on Windows) | | |
 | 7 | Timeline (7a to 7e) | not started | | |
 | 8 | Packaging, CI, cutover | not started | | |
 | 9 | Redesign beyond parity | optional, not started | | |
@@ -140,9 +144,11 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 - Tests: 798 in total, all passing (Phase 0 baseline, `baseline/TEST_BASELINE.md`). 235 need a real Tk and display: nine `tests/test_gui_*.py` files (232) and 3 in `tests/test_muted_audio.py`. (Earlier text said 197; that was out of date.)
 - CI: `.github/workflows/build.yml` builds Windows, macOS arm64 and macOS Intel on Python 3.12, tests and packages the two Premiere plugins, and publishes a release for every tag `v*`.
 
+- **Plan tab, Get info and links (Phase 6).** `qt_ui/tabs/plan.py` (`PlanTab`, `ClipModel`, `TimelinePlaceholder`), `qt_ui/background_jobs.py` (`InfoRunner`, `FramesRunner`), `qt_ui/main_window.py` (`on_get_info`, `add_to_queue`, `download_clips`, `start_link_listener`, `poll_links`, `open_link`), `luckytwitch_qt.py` (`LuckyApplication` for macOS `QFileOpenEvent`, command-line `weblink.hand_off`). All 38 settings keys are now bound (33 on Options, 5 on Plan). Phase 7 replaces `TimelinePlaceholder` in `PlanTab._build_timeline_card` with the real custom `QWidget` timeline strip (`qt_ui/timeline.py`) keeping the same methods (`set_source`, `set_frames`, `set_ranges`, `set_clip_marks`, `set_muted`, toolbar buttons `btn_out`/`btn_in`/`btn_fit`/`btn_undo`, `muted_box`, `canvas`, `hbar`, `hint_label`).
+
 ## 7. Next step
 
-Phase 5 is built and its tests are clean on Windows (Python 3.14, 2026-10-26: golden test 25, Options 60, core options 13, queue and main window 82, full suite 1206 passed, 31 skipped). It waits for the user's hands-on check of the Options tab (PHASE_NOTES.md, Phase 5) and approval; then the user tags `migration-phase-5`. Phase 4 also still waits for its hands-on check and tag. After both are approved, the user says when to start Phase 6 (Plan tab without the timeline, Get info, links; PLAN.md section 6); do not start it before that.
+Phase 6 (version 1) is built and its targeted Qt tests pass on Windows (`test_qt_plan_tab.py` 59 passed, `test_qt_main_window.py` 12 passed). It waits for the user's test runs and hands-on check of the Plan tab, «Get info», «Add to queue» / «Add & start» and `luckytwitch://` links on Windows (PHASE_NOTES.md, Phase 6), then approval and tag `migration-phase-6` (and pre-release `v0.1.0-alpha.1` if desired). After Phase 6 is approved, the user says when to start Phase 7 (Timeline 7a to 7e; PLAN.md section 6).
 
 ## 8. Update checklist (end of every phase)
 

@@ -145,114 +145,116 @@ Extra Qt tests beyond the 18 (all in `test_qt_search_tab.py` unless noted): a se
 
 #### `test_gui_plan_tab.py` (31 tests)
 
-- [ ] app uses the plan tab mixin  
-  `test_gui_plan_tab.py::test_app_uses_the_plan_tab_mixin`
-- [ ] tabs are in the expected order  
-  `test_gui_plan_tab.py::test_tabs_are_in_the_expected_order`
-- [ ] plan tab has its widgets  
-  `test_gui_plan_tab.py::test_plan_tab_has_its_widgets`
-- [ ] preview empty hint  
-  `test_gui_plan_tab.py::test_preview_empty_hint`
-- [ ] preview end needs get info  
-  `test_gui_plan_tab.py::test_preview_end_needs_get_info`
-- [ ] preview lists the parts  
-  `test_gui_plan_tab.py::test_preview_lists_the_parts`
-- [ ] preview picks sections for small coverage  
-  `test_gui_plan_tab.py::test_preview_picks_sections_for_small_coverage`
-- [ ] preview follows the strategy option  
-  `test_gui_plan_tab.py::test_preview_follows_the_strategy_option`
-- [ ] preview shows errors  
-  `test_gui_plan_tab.py::test_preview_shows_errors`
-- [ ] typing in the box updates the preview  
-  `test_gui_plan_tab.py::test_typing_in_the_box_updates_the_preview`
-- [ ] build options reads the cut text from the tab  
-  `test_gui_plan_tab.py::test_build_options_reads_the_cut_text_from_the_tab`
-- [ ] clips table rows and label  
-  `test_gui_plan_tab.py::test_clips_table_rows_and_label`
-- [ ] clips table follows the filter and chapters switch  
-  `test_gui_plan_tab.py::test_clips_table_follows_the_filter_and_chapters_switch`
-- [ ] clips table empty messages  
-  `test_gui_plan_tab.py::test_clips_table_empty_messages`
-- [ ] double click target opens the clip url  
-  `test_gui_plan_tab.py::test_double_click_target_opens_the_clip_url`
-- [ ] split needs a selection  
-  `test_gui_plan_tab.py::test_split_needs_a_selection`
-- [ ] split needs exactly one clip  
-  `test_gui_plan_tab.py::test_split_needs_exactly_one_clip`
-- [ ] split needs a loaded vod  
-  `test_gui_plan_tab.py::test_split_needs_a_loaded_vod`
-- [ ] split needs a clip with a position  
-  `test_gui_plan_tab.py::test_split_needs_a_clip_with_a_position`
-- [ ] split inserts a cut point before the clip and refreshes the preview  
-  `test_gui_plan_tab.py::test_split_inserts_a_cut_point_before_the_clip_and_refreshes_the_preview`
-- [ ] split with empty text starts from the whole vod  
-  `test_gui_plan_tab.py::test_split_with_empty_text_starts_from_the_whole_vod`
-- [ ] split outside every part explains why  
-  `test_gui_plan_tab.py::test_split_outside_every_part_explains_why`
-- [ ] split respects the lead in setting  
-  `test_gui_plan_tab.py::test_split_respects_the_lead_in_setting`
-- [ ] splitting twice at the same clip keeps a valid plan  
-  `test_gui_plan_tab.py::test_splitting_twice_at_the_same_clip_keeps_a_valid_plan`
-- [ ] get info result fills the plan tab  
-  `test_gui_plan_tab.py::test_get_info_result_fills_the_plan_tab`
-- [ ] get info keeps cut points the user already typed  
-  `test_gui_plan_tab.py::test_get_info_keeps_cut_points_the_user_already_typed`
-- [ ] download selected clips queues one job per clip  
-  `test_gui_plan_tab.py::test_download_selected_clips_queues_one_job_per_clip`
+**Ported in Phase 6** (`tests/test_qt_plan_tab.py`; the tkinter test names below map one-to-one onto Qt tests with the same names, plus extra tests for `Get info` running in a worker with animation, preview text colours, muted stretch overlap notes, and `Add to queue` / `Add & start`).
+
+- [x] app uses the plan tab mixin  
+  `test_gui_plan_tab.py::test_app_uses_the_plan_tab_mixin` -> `test_qt_plan_tab.py::test_window_has_the_plan_tab`
+- [x] tabs are in the expected order  
+  `test_gui_plan_tab.py::test_tabs_are_in_the_expected_order` -> same name in `test_qt_plan_tab.py`
+- [x] plan tab has its widgets  
+  `test_gui_plan_tab.py::test_plan_tab_has_its_widgets` -> same name in `test_qt_plan_tab.py`
+- [x] preview empty hint  
+  `test_gui_plan_tab.py::test_preview_empty_hint` -> same name in `test_qt_plan_tab.py`
+- [x] preview end needs get info  
+  `test_gui_plan_tab.py::test_preview_end_needs_get_info` -> same name in `test_qt_plan_tab.py`
+- [x] preview lists the parts  
+  `test_gui_plan_tab.py::test_preview_lists_the_parts` -> same name in `test_qt_plan_tab.py`
+- [x] preview picks sections for small coverage  
+  `test_gui_plan_tab.py::test_preview_picks_sections_for_small_coverage` -> same name in `test_qt_plan_tab.py`
+- [x] preview follows the strategy option  
+  `test_gui_plan_tab.py::test_preview_follows_the_strategy_option` -> same name in `test_qt_plan_tab.py`
+- [x] preview shows errors  
+  `test_gui_plan_tab.py::test_preview_shows_errors` -> same name in `test_qt_plan_tab.py`
+- [x] typing in the box updates the preview  
+  `test_gui_plan_tab.py::test_typing_in_the_box_updates_the_preview` -> same name in `test_qt_plan_tab.py`
+- [x] build options reads the cut text from the tab  
+  `test_gui_plan_tab.py::test_build_options_reads_the_cut_text_from_the_tab` -> same name in `test_qt_plan_tab.py`
+- [x] clips table rows and label  
+  `test_gui_plan_tab.py::test_clips_table_rows_and_label` -> same name in `test_qt_plan_tab.py`
+- [x] clips table follows the filter and chapters switch  
+  `test_gui_plan_tab.py::test_clips_table_follows_the_filter_and_chapters_switch` -> same name in `test_qt_plan_tab.py`
+- [x] clips table empty messages  
+  `test_gui_plan_tab.py::test_clips_table_empty_messages` -> same name in `test_qt_plan_tab.py`
+- [x] double click target opens the clip url  
+  `test_gui_plan_tab.py::test_double_click_target_opens_the_clip_url` -> same name in `test_qt_plan_tab.py`
+- [x] split needs a selection  
+  `test_gui_plan_tab.py::test_split_needs_a_selection` -> same name in `test_qt_plan_tab.py`
+- [x] split needs exactly one clip  
+  `test_gui_plan_tab.py::test_split_needs_exactly_one_clip` -> same name in `test_qt_plan_tab.py`
+- [x] split needs a loaded vod  
+  `test_gui_plan_tab.py::test_split_needs_a_loaded_vod` -> same name in `test_qt_plan_tab.py`
+- [x] split needs a clip with a position  
+  `test_gui_plan_tab.py::test_split_needs_a_clip_with_a_position` -> same name in `test_qt_plan_tab.py`
+- [x] split inserts a cut point before the clip and refreshes the preview  
+  `test_gui_plan_tab.py::test_split_inserts_a_cut_point_before_the_clip_and_refreshes_the_preview` -> same name in `test_qt_plan_tab.py`
+- [x] split with empty text starts from the whole vod  
+  `test_gui_plan_tab.py::test_split_with_empty_text_starts_from_the_whole_vod` -> same name in `test_qt_plan_tab.py`
+- [x] split outside every part explains why  
+  `test_gui_plan_tab.py::test_split_outside_every_part_explains_why` -> same name in `test_qt_plan_tab.py`
+- [x] split respects the lead in setting  
+  `test_gui_plan_tab.py::test_split_respects_the_lead_in_setting` -> same name in `test_qt_plan_tab.py`
+- [x] splitting twice at the same clip keeps a valid plan  
+  `test_gui_plan_tab.py::test_splitting_twice_at_the_same_clip_keeps_a_valid_plan` -> same name in `test_qt_plan_tab.py`
+- [x] get info result fills the plan tab  
+  `test_gui_plan_tab.py::test_get_info_result_fills_the_plan_tab` -> same name in `test_qt_plan_tab.py`
+- [x] get info keeps cut points the user already typed  
+  `test_gui_plan_tab.py::test_get_info_keeps_cut_points_the_user_already_typed` -> same name in `test_qt_plan_tab.py`
+- [x] download selected clips queues one job per clip  
+  `test_gui_plan_tab.py::test_download_selected_clips_queues_one_job_per_clip` -> same name in `test_qt_plan_tab.py`
 
 #### `test_gui_plan_redesign.py` (10 tests)
 
-- [ ] the plan tab is a scroll page with a footer  
-  `test_gui_plan_redesign.py::test_the_plan_tab_is_a_scroll_page_with_a_footer`
-- [ ] the footer stays visible when the page scrolls  
-  `test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls`
-- [ ] the three sections are cards  
-  `test_gui_plan_redesign.py::test_the_three_sections_are_cards`
-- [ ] the chapters switch drives the clips table  
-  `test_gui_plan_redesign.py::test_the_chapters_switch_drives_the_clips_table`
-- [ ] the footer summary follows the cut points  
-  `test_gui_plan_redesign.py::test_the_footer_summary_follows_the_cut_points`
-- [ ] the summary is red only while the cuts are wrong  
-  `test_gui_plan_redesign.py::test_the_summary_is_red_only_while_the_cuts_are_wrong`
-- [ ] table headings line up with their columns  
-  `test_gui_plan_redesign.py::test_table_headings_line_up_with_their_columns`
-- [ ] the chapter column is wide enough for its title  
-  `test_gui_plan_redesign.py::test_the_chapter_column_is_wide_enough_for_its_title`
-- [ ] hints wrap to the width of their card  
-  `test_gui_plan_redesign.py::test_hints_wrap_to_the_width_of_their_card`
-- [ ] nothing on the plan tab is wider than the page  
-  `test_gui_plan_redesign.py::test_nothing_on_the_plan_tab_is_wider_than_the_page`
+- [x] the plan tab is a scroll page with a footer  
+  `test_gui_plan_redesign.py::test_the_plan_tab_is_a_scroll_page_with_a_footer` -> same name in `test_qt_plan_tab.py`
+- [x] the footer stays visible when the page scrolls  
+  `test_gui_plan_redesign.py::test_the_footer_stays_visible_when_the_page_scrolls` -> same name in `test_qt_plan_tab.py`
+- [x] the three sections are cards  
+  `test_gui_plan_redesign.py::test_the_three_sections_are_cards` -> same name in `test_qt_plan_tab.py`
+- [x] the chapters switch drives the clips table  
+  `test_gui_plan_redesign.py::test_the_chapters_switch_drives_the_clips_table` -> same name in `test_qt_plan_tab.py`
+- [x] the footer summary follows the cut points  
+  `test_gui_plan_redesign.py::test_the_footer_summary_follows_the_cut_points` -> same name in `test_qt_plan_tab.py`
+- [x] the summary is red only while the cuts are wrong  
+  `test_gui_plan_redesign.py::test_the_summary_is_red_only_while_the_cuts_are_wrong` -> same name in `test_qt_plan_tab.py`
+- [x] table headings line up with their columns  
+  `test_gui_plan_redesign.py::test_table_headings_line_up_with_their_columns` -> same name in `test_qt_plan_tab.py`
+- [x] the chapter column is wide enough for its title  
+  `test_gui_plan_redesign.py::test_the_chapter_column_is_wide_enough_for_its_title` -> same name in `test_qt_plan_tab.py`
+- [x] hints wrap to the width of their card  
+  `test_gui_plan_redesign.py::test_hints_wrap_to_the_width_of_their_card` -> same name in `test_qt_plan_tab.py`
+- [x] nothing on the plan tab is wider than the page  
+  `test_gui_plan_redesign.py::test_nothing_on_the_plan_tab_is_wider_than_the_page` -> same name in `test_qt_plan_tab.py`
 
 #### `test_gui_weblink.py` (16 tests)
 
-- [ ] a link fills the plan tab and reads the vod  
-  `test_gui_weblink.py::test_a_link_fills_the_plan_tab_and_reads_the_vod`
-- [ ] without cut points the default is the whole vod  
-  `test_gui_weblink.py::test_without_cut_points_the_default_is_the_whole_vod`
-- [ ] a link replaces the cut points that were there  
-  `test_gui_weblink.py::test_a_link_replaces_the_cut_points_that_were_there`
-- [ ] a link never adds to the queue or starts a download  
-  `test_gui_weblink.py::test_a_link_never_adds_to_the_queue_or_starts_a_download`
-- [ ] the previous vod is forgotten so its cuts cannot be reused  
-  `test_gui_weblink.py::test_the_previous_vod_is_forgotten_so_its_cuts_cannot_be_reused`
-- [ ] a bad link says why and changes nothing  
-  `test_gui_weblink.py::test_a_bad_link_says_why_and_changes_nothing`
-- [ ] a link waits while the tools are being prepared  
-  `test_gui_weblink.py::test_a_link_waits_while_the_tools_are_being_prepared`
-- [ ] a link left in the folder is picked up by the window  
-  `test_gui_weblink.py::test_a_link_left_in_the_folder_is_picked_up_by_the_window`
-- [ ] the window says it is alive and stops saying so when it closes  
-  `test_gui_weblink.py::test_the_window_says_it_is_alive_and_stops_saying_so_when_it_closes`
-- [ ] a second launch hands its link to the open window  
-  `test_gui_weblink.py::test_a_second_launch_hands_its_link_to_the_open_window`
-- [ ] the tools card shows the state of the links  
-  `test_gui_weblink.py::test_the_tools_card_shows_the_state_of_the_links`
-- [ ] pressing the button registers and updates the card  
-  `test_gui_weblink.py::test_pressing_the_button_registers_and_updates_the_card`
-- [ ] a refusal from the system is shown  
-  `test_gui_weblink.py::test_a_refusal_from_the_system_is_shown`
-- [ ] where the app cannot set itself up there is no button  
-  `test_gui_weblink.py::test_where_the_app_cannot_set_itself_up_there_is_no_button`
+- [x] a link fills the plan tab and reads the vod  
+  `test_gui_weblink.py::test_a_link_fills_the_plan_tab_and_reads_the_vod` -> same name in `test_qt_plan_tab.py`
+- [x] without cut points the default is the whole vod  
+  `test_gui_weblink.py::test_without_cut_points_the_default_is_the_whole_vod` -> same name in `test_qt_plan_tab.py`
+- [x] a link replaces the cut points that were there  
+  `test_gui_weblink.py::test_a_link_replaces_the_cut_points_that_were_there` -> same name in `test_qt_plan_tab.py`
+- [x] a link never adds to the queue or starts a download  
+  `test_gui_weblink.py::test_a_link_never_adds_to_the_queue_or_starts_a_download` -> same name in `test_qt_plan_tab.py`
+- [x] the previous vod is forgotten so its cuts cannot be reused  
+  `test_gui_weblink.py::test_the_previous_vod_is_forgotten_so_its_cuts_cannot_be_reused` -> same name in `test_qt_plan_tab.py`
+- [x] a bad link says why and changes nothing  
+  `test_gui_weblink.py::test_a_bad_link_says_why_and_changes_nothing` -> same name in `test_qt_plan_tab.py`
+- [x] a link waits while the tools are being prepared  
+  `test_gui_weblink.py::test_a_link_waits_while_the_tools_are_being_prepared` -> same name in `test_qt_plan_tab.py`
+- [x] a link left in the folder is picked up by the window  
+  `test_gui_weblink.py::test_a_link_left_in_the_folder_is_picked_up_by_the_window` -> same name in `test_qt_plan_tab.py`
+- [x] the window says it is alive and stops saying so when it closes  
+  `test_gui_weblink.py::test_the_window_says_it_is_alive_and_stops_saying_so_when_it_closes` -> same name in `test_qt_plan_tab.py`
+- [x] a second launch hands its link to the open window  
+  `test_gui_weblink.py::test_a_second_launch_hands_its_link_to_the_open_window` -> same name in `test_qt_plan_tab.py`
+- [x] the tools card shows the state of the links  
+  `test_gui_weblink.py::test_the_tools_card_shows_the_state_of_the_links` -> `test_qt_options_tab.py::test_the_tools_card_shows_the_state_of_the_links` (Phase 5)
+- [x] pressing the button registers and updates the card  
+  `test_gui_weblink.py::test_pressing_the_button_registers_and_updates_the_card` -> `test_qt_options_tab.py::test_pressing_the_links_button_registers_and_updates_the_card` (Phase 5)
+- [x] a refusal from the system is shown  
+  `test_gui_weblink.py::test_a_refusal_from_the_system_is_shown` -> `test_qt_options_tab.py::test_a_refusal_from_the_system_is_shown` (Phase 5)
+- [x] where the app cannot set itself up there is no button  
+  `test_gui_weblink.py::test_where_the_app_cannot_set_itself_up_there_is_no_button` -> `test_qt_options_tab.py::test_where_the_app_cannot_set_itself_up_there_is_no_button` (Phase 5)
 
 ## Timeline  (Phase 7 (7a to 7e))
 
@@ -555,15 +557,15 @@ Phase 1 covers the frame of this screen in `test_qt_main_window.py`: title, size
 
 #### `test_gui_final_pass.py` (6 tests)
 
-- [ ] plan tab footer buttons are the last stops left to right  
-  `test_gui_final_pass.py::test_plan_tab_footer_buttons_are_the_last_stops_left_to_right`
-- [ ] plan tab shift tab is the exact reverse  
-  `test_gui_final_pass.py::test_plan_tab_shift_tab_is_the_exact_reverse`
-- [ ] plan tab footer is still packed at the bottom  
-  `test_gui_final_pass.py::test_plan_tab_footer_is_still_packed_at_the_bottom`
-- [ ] tab order of search queue and options has nothing decorative  
-  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative` -> Search: `test_qt_search_tab.py::test_keyboard_order_has_nothing_decorative`; Queue: `test_qt_queue_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 4); Options: `test_qt_options_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 5, v2); the box stays open until the Windows run passes
-- [ ] timeline hint wraps to the width of the strip  
-  `test_gui_final_pass.py::test_timeline_hint_wraps_to_the_width_of_the_strip`
+- [x] plan tab footer buttons are the last stops left to right  
+  `test_gui_final_pass.py::test_plan_tab_footer_buttons_are_the_last_stops_left_to_right` -> same name in `test_qt_plan_tab.py` (Phase 6)
+- [x] plan tab shift tab is the exact reverse  
+  `test_gui_final_pass.py::test_plan_tab_shift_tab_is_the_exact_reverse` -> same name in `test_qt_plan_tab.py` (Phase 6)
+- [x] plan tab footer is still packed at the bottom  
+  `test_gui_final_pass.py::test_plan_tab_footer_is_still_packed_at_the_bottom` -> same name in `test_qt_plan_tab.py` (Phase 6)
+- [x] tab order of search queue and options has nothing decorative  
+  `test_gui_final_pass.py::test_tab_order_of_search_queue_and_options_has_nothing_decorative` -> Search: `test_qt_search_tab.py::test_keyboard_order_has_nothing_decorative`; Queue: `test_qt_queue_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 4); Options: `test_qt_options_tab.py::test_the_tab_order_has_nothing_decorative` (Phase 5); Plan: `test_qt_plan_tab.py::test_plan_tab_order_has_nothing_decorative` (Phase 6)
+- [x] timeline hint wraps to the width of the strip  
+  `test_gui_final_pass.py::test_timeline_hint_wraps_to_the_width_of_the_strip` -> same name in `test_qt_plan_tab.py` (Phase 6)
 - [x] search type list is never squeezed by a long title  
   `test_gui_final_pass.py::test_search_type_list_is_never_squeezed_by_a_long_title` -> same name in `test_qt_search_tab.py` (Phase 4)

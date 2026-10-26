@@ -571,6 +571,7 @@ def test_closing_saves_the_settings_and_removes_the_heartbeat_file(win):
 
 
 def test_closing_without_a_heartbeat_file_is_fine(win):
+    paths.BEAT_PATH.unlink(missing_ok=True)
     assert not paths.BEAT_PATH.exists()
     assert win.close()
 

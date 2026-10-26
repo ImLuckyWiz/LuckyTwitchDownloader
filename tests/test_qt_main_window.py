@@ -51,10 +51,9 @@ def test_the_four_tabs_have_the_same_names_in_the_same_order(win):
     assert win.tabs.tabText(3) == "Queue && log"
 
 
-def test_the_tabs_that_are_not_built_yet_are_empty(win):
-    for i in (1,):  # Plan (Queue & log was built in Phase 3, Search in Phase 4, Options in Phase 5)
-        assert win.tabs.widget(i).findChildren(QLabel) == []
-        assert win.tabs.widget(i).children() == []
+def test_all_four_tabs_are_populated(win):
+    for i in range(4):  # Queue & log (Phase 3), Search (Phase 4), Options (Phase 5), Plan (Phase 6)
+        assert win.tabs.widget(i).findChildren(QLabel) != []
 
 
 def test_top_bar_texts_and_widgets(win):
@@ -157,7 +156,7 @@ def test_main_builds_the_window_from_the_saved_settings_and_saves_them_on_close(
         def __new__(cls, argv):
             return app
 
-    monkeypatch.setattr(luckytwitch_qt, "QApplication", FakeApp)
+    monkeypatch.setattr(luckytwitch_qt, "LuckyApplication", FakeApp)
     monkeypatch.setattr(type(app), "exec", lambda self: 0)
     monkeypatch.setattr(mw.MainWindow, "__init__", spy)
     tools = []

@@ -1,10 +1,11 @@
-"""The two background jobs of the Options tab: the tools setup and the overlay of a saved chat.
+"""Background jobs: the tools setup, the overlay of a saved chat, «Get info» and the timeline frames.
 
-Ports of ``App.start_tools_setup`` and ``App.start_saved_chat_render``. Each starts ONE daemon thread that reports
-only through the Bridge (``log``, ``progress``, ``tools_info``, ``tools_done``, ``saved_chat_done``); nothing here
-touches a widget. The engine functions are looked up in this module when the thread runs, so tests replace
-``qt_ui.background_jobs.ensure_tools`` / ``describe_tools`` / ``ensure_tdcli`` / ``render_existing_chat`` with fakes
-(nothing is downloaded).
+Ports of ``App.start_tools_setup``, ``App.start_saved_chat_render``, ``App.on_get_info`` and ``App._load_frames``. Each
+starts ONE daemon thread that reports only through the Bridge (``log``, ``progress``, ``tools_info``, ``tools_done``,
+``saved_chat_done``, ``info_ok``, ``error``, ``frames``); nothing here touches a widget. The engine functions are looked
+up in this module when the thread runs, so tests replace ``qt_ui.background_jobs.ensure_tools`` / ``describe_tools`` /
+``ensure_tdcli`` / ``render_existing_chat`` / ``get_source_info`` / ``fetch_clips_for_vod`` / ``load_storyboard_frames``
+with fakes (nothing is downloaded).
 
 ``tools_done`` and ``saved_chat_done`` carry ``""`` where the tkinter message carried ``None``.
 """
@@ -16,7 +17,8 @@ import threading
 from pathlib import Path
 
 from luckytwitch_engine import (
-    Cancelled, Ctx, JobOptions, describe_tools, ensure_tdcli, ensure_tools, render_existing_chat,
+    Cancelled, Ctx, JobOptions, describe_tools, ensure_tdcli, ensure_tools, fetch_clips_for_vod, get_source_info,
+    load_storyboard_frames, render_existing_chat,
 )
 from qt_ui.bridge import Bridge
 
@@ -93,3 +95,57 @@ class SavedChatRunner:
         self.thread = threading.Thread(target=work, daemon=True)
         self.thread.start()
         return ctx
+
+
+class InfoRunner:
+    """Read the VOD info (and its Twitch clips when signed in) in the background (``App.on_get_info``)."""
+
+    def __init__(self, bridge: Bridge):
+        self.bridge = bridge
+        self.thread: threading.Thread | None = None
+
+    def start(self, text: str, client=None) -> None:
+        bridge = self.bridge
+
+        def work():
+            try:
+                info = get_source_info(text)
+                clips, warn, loaded = [], "", False
+                if info.twitch_vod_id and client:
+                    try:
+                        clips = fetch_clips_for_vod(client, info.twitch_vod_id)
+                        loaded = True
+                    except Exception as e:  # noqa: BLE001
+                        warn = f"Could not fetch clips: {e}"
+                elif info.twitch_vod_id:
+                    warn = "Not signed in to Twitch: clips are not available (optional, see the Twitch API… button)."
+                _emit("info_ok", bridge, info, clips, loaded, warn)
+            except Exception as e:  # noqa: BLE001
+                _emit("error", bridge, str(e))
+
+        self.thread = threading.Thread(target=work, daemon=True)
+        self.thread.start()
+
+
+class FramesRunner:
+    """Download the storyboard preview frames of a VOD in the background (``App._load_frames``)."""
+
+    def __init__(self, bridge: Bridge):
+        self.bridge = bridge
+        self.thread: threading.Thread | None = None
+
+    def start(self, src) -> None:
+        sb = getattr(src, "storyboard", None)
+        if sb is None:
+            return
+        bridge = self.bridge
+
+        def work():
+            try:
+                frames = load_storyboard_frames(sb)
+            except Exception:  # noqa: BLE001 (the timeline works without thumbnails)
+                frames = None
+            _emit("frames", bridge, src, frames)
+
+        self.thread = threading.Thread(target=work, daemon=True)
+        self.thread.start()

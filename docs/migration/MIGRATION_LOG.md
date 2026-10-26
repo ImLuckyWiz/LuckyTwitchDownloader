@@ -69,10 +69,10 @@ No entries for Phase 0 (it changed no behaviour).
 **Qt:** `open()` makes it modal for the main window only. There is one other window, so nothing visible changes. Like the tkinter version, `ask_credentials()` returns at once and does not wait for the dialog.
 **Why:** how a modal `QDialog` is opened without blocking. Decided by the agent.
 
-## 12. «Use this VOD» does not load the VOD yet  (Phase 4, until Phase 6)
+## 12. «Use this VOD» did not load the VOD in Phases 4–5 (resolved in Phase 6)
 **tkinter:** puts the link in the entry, selects the Plan tab and runs «Get info».
-**Qt:** puts the link in the entry and selects the Plan tab; «Get info» is still the Phase 1 stub (`MainWindow.on_get_info`), so nothing is loaded until Phase 6 builds it. The Search tab sends the link through its `vod_chosen` signal; `MainWindow.use_vod` calls `on_get_info()`, so Phase 6 only has to fill that method.
-**Why:** the Get info flow belongs to Phase 6 (PLAN.md). Temporary.
+**Qt:** in Phases 4 and 5 `MainWindow.on_get_info` was still the Phase 1 stub; Phase 6 implemented `on_get_info()`, so «Use this VOD» now loads the VOD on the Plan tab just like tkinter.
+**Why:** the Get info flow belonged to Phase 6 (PLAN.md). Resolved.
 
 ## 13. Number fields only take whole numbers inside their range  (Phase 5)
 **tkinter:** the `Spinbox` fields were plain text boxes: anything could be typed (`abc`, `7.5`, `999999`), it was stored as typed and only read tolerantly when used (`App.num`).
@@ -88,3 +88,13 @@ No entries for Phase 0 (it changed no behaviour).
 **tkinter:** `on_close` only cancelled the tools setup and the queue; a saved-chat overlay thread was left to die with the process (it could leave TwitchDownloaderCLI or ffmpeg running).
 **Qt:** `closeEvent` cancels it too.
 **Why:** no orphan processes. Decided by the agent; the user can veto it.
+
+## 16. The timeline strip is a placeholder widget until Phase 7  (Phase 6, until Phase 7)
+**tkinter:** `PlanTabMixin` embeds the interactive `Timeline` canvas widget (`ui/timeline.py`).
+**Qt:** `PlanTab` embeds `TimelinePlaceholder` (`qt_ui/tabs/plan.py`), which provides the toolbar buttons (`−`, `+`, `Fit`, `Undo`), the `Show muted` switch and stretch summary, the 135 px canvas area, the horizontal scrollbar, the wrapping idle hint, and the `set_source` / `set_frames` / `set_ranges` / `set_clip_marks` / `set_muted` API that `PlanTab` and `FramesRunner` call. Phase 7 replaces it with the custom `QPainter` `Timeline` widget.
+**Why:** PLAN.md splits the Plan tab (Phase 6) from the custom-painted Timeline widget (Phase 7). Temporary.
+
+## 17. macOS URL launch events and bringing the window to the front use Qt APIs  (Phase 6)
+**tkinter:** registered `::tk::mac::OpenDocument` via `root.createcommand`, and raised the window with `deiconify()` + `lift()` + temporary `-topmost True`.
+**Qt:** `LuckyApplication(QApplication)` intercepts `QEvent.Type.FileOpen` (`QFileOpenEvent.url().toString()`) and emits `link_opened` to `MainWindow.open_link`; `MainWindow.bring_to_front()` clears `Qt.WindowState.WindowMinimized` and calls `show()`, `raise_()` and `activateWindow()`.
+**Why:** the native Qt equivalents of those Tk window-system hooks. Decided by the agent.
