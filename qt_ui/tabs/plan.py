@@ -816,7 +816,7 @@ class PlanTab(ScrollPage):
                     or flag(self.settings, "premiere_plugin")):
                 msg += "  [chapters are OFF]"
         self.clips_label.setText(msg)
-        self.timeline.set_clip_marks(self._clip_times())
+        self._push_clip_marks()
 
     def _on_clip_selection_changed(self, *_args) -> None:
         self._update_clip_action_buttons()
@@ -894,6 +894,20 @@ class PlanTab(ScrollPage):
     def _clip_times(self) -> list[float]:
         return [t for t in (clip_start(c) for c in self.clips) if t is not None]
 
+    def _push_clip_marks(self) -> None:
+        """Give the timeline the clip moments (flags and snap points) with the tooltip text of each (E5)."""
+        details: dict[float, str] = {}
+        for c in self.clips:
+            t = clip_start(c)
+            if t is None:
+                continue
+            parts = [str(c.get("title", "")).strip() or "Untitled clip"]
+            if c.get("creator_name"):
+                parts.append(f"by {c.get('creator_name')}")
+            parts.append(f"{c.get('view_count', 0)} views")
+            details[float(t)] = " \u00b7 ".join(parts)
+        self.timeline.set_clip_marks(self._clip_times(), details)
+
     def sync_timeline(self) -> None:
         """Show the current VOD and the parts the cut text describes (called after every change of either)."""
         src = self.source
@@ -906,7 +920,7 @@ class PlanTab(ScrollPage):
                 self.timeline.set_source(src.duration, src.segments, src.storyboard)
                 self.timeline.set_muted(src.muted)
                 self._load_frames(src)
-            self.timeline.set_clip_marks(self._clip_times())
+            self._push_clip_marks()
         text = self.cut_text()
         if not text or src is None:
             self.timeline.set_ranges([] if src is not None else None)

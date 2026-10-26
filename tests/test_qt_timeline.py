@@ -525,10 +525,22 @@ def preview_of(win) -> tuple[str, str]:
     return win.tab_plan.preview_text(), win.tab_plan.preview_kind
 
 
+def _cards_in_order(layout) -> list:
+    """The cards of a layout in reading order, looking inside nested layouts (the lower workspace of the Plan page
+    holds Cut points and Clips side by side since Phase 9e)."""
+    out = []
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        if item.widget() is not None:
+            out.append(item.widget())
+        elif item.layout() is not None:
+            out.extend(_cards_in_order(item.layout()))
+    return out
+
+
 def test_the_timeline_sits_above_the_cut_points(win):
     page = win.tab_plan
-    cards = [page.body_layout.itemAt(i).widget() for i in range(page.body_layout.count())]
-    cards = [c for c in cards if isinstance(c, Card)]
+    cards = [c for c in _cards_in_order(page.body_layout) if isinstance(c, Card)]
     titles = [c.title_label.text() for c in cards]
     assert titles.index("Timeline") < titles.index("Cut points") < titles.index("Clips \u2192 chapters")
 
@@ -680,6 +692,182 @@ def test_refreshing_the_clips_updates_the_marks_without_a_vod_change(win, monkey
     win.clips_loaded = True
     win.refresh_clips()
     assert tl.clip_marks == [pytest.approx(600.4), 3600]
+    assert len(tl.clip_details) == 2
+    assert any("Epic fail" in d for d in tl.clip_details.values())
     win.clips = []
     win.refresh_clips()
     assert tl.clip_marks == []
+    assert tl.clip_details == {}
+
+
+# ---------------------------------------------------------------------------
+# Phase 9f: Visual polish, keyboard editing, redo, minimap, legend, flags,
+# zoom readout, context menu, and snap feedback (E1-E9)
+# ---------------------------------------------------------------------------
+
+
+def test_core_timeline_helpers_for_gaps_clustering_totals_snap_and_minimap():
+    # gaps_of
+    assert core_tl.gaps_of([(0, 1800), (3600, 7200)], 7200) == [(1800.0, 3600.0)]
+    assert core_tl.gaps_of([(600, 3000)], 3600) == [(0.0, 600.0), (3000.0, 3600.0)]
+    # game_totals sorted descending
+    totals = core_tl.game_totals(SEGMENTS)
+    assert [title for title, _ in totals] == ["Just Chatting", "Elden Ring"]
+    assert totals[0][1] == pytest.approx(4800.0)
+    assert totals[1][1] == pytest.approx(2400.0)
+    # cluster_marks merges marks within min_px
+    groups = core_tl.cluster_marks([100.0, 104.0, 250.0], px_per_sec=1.0, min_px=9.0)
+    assert len(groups) == 2
+    assert groups[0][1] == 2
+    assert groups[1][1] == 1
+    # snap_target and build_snap_kinds
+    pts = core_tl.build_snap_points(7200, SEGMENTS, [1200.0], [(2000.0, 2100.0)])
+    kinds = core_tl.build_snap_kinds(7200, SEGMENTS, [1200.0], [(2000.0, 2100.0)])
+    t_game = core_tl.snap_target(3005.0, pts, px_per_sec=0.1)
+    assert t_game == 3000.0 and kinds[t_game] == core_tl.SNAP_GAME
+    t_clip = core_tl.snap_target(1203.0, pts, px_per_sec=0.1)
+    assert t_clip == 1200.0 and kinds[t_clip] == core_tl.SNAP_CLIP
+    assert core_tl.snap_target(4000.0, pts, px_per_sec=0.1) is None
+    # minimap_lens
+    lx0, lx1 = core_tl.minimap_lens(1800.0, 3600.0, 7200.0, 720.0)
+    assert 0 <= lx0 < lx1 <= 720
+
+
+def test_skipped_sections_draw_hatched_rects_and_parts_use_rounded_pills(qtbot):
+    r = Rig(qtbot)
+    r.load([(0, 1800), (3600, 7200)])
+    assert len(r.tl.drawn_skipped_rects) == 1
+    x0, _y0, x1, _y1 = r.tl.drawn_skipped_rects[0]
+    assert x0 == pytest.approx(r.x(1800), abs=1.5)
+    assert x1 == pytest.approx(r.x(3600), abs=1.5)
+    assert any("Part 1" in t or "P1" in t for t in r.tl.drawn_texts)
+
+
+def test_keyboard_editing_cut_delete_nudge_home_end_zoom_and_redo(qtbot):
+    from PySide6.QtGui import QKeyEvent
+
+    def press_key(tl, key, mods=Qt.KeyboardModifier.NoModifier, text=""):
+        ev = QKeyEvent(QEvent.Type.KeyPress, key, mods, text)
+        QApplication.sendEvent(tl.canvas, ev)
+
+    r = Rig(qtbot)
+    r.load([(0, 7200)])
+    # Hover at 1800s and press S to split
+    r.hover(1800, "thumbs")
+    press_key(r.tl, Qt.Key.Key_S, text="s")
+    assert len(r.tl.ranges) == 2
+    cut_t = r.tl.ranges[0][1]
+    assert abs(cut_t - 1800) <= 20
+
+    # Nudge cut right by 1s (Right arrow), then +10s (Shift+Right)
+    press_key(r.tl, Qt.Key.Key_Right)
+    assert r.tl.ranges[0][1] == cut_t + 1
+    press_key(r.tl, Qt.Key.Key_Right, Qt.KeyboardModifier.ShiftModifier)
+    assert r.tl.ranges[0][1] == cut_t + 11
+
+    # Undo reverses the coalesced nudge burst and then the cut; Redo restores them
+    assert r.tl.btn_undo.isEnabled()
+    r.tl.undo()
+    assert r.tl.ranges[0][1] == cut_t
+    assert r.tl.btn_redo.isEnabled()
+    r.tl.redo()
+    assert r.tl.ranges[0][1] == cut_t + 11
+
+    # Delete removes the selected cut
+    press_key(r.tl, Qt.Key.Key_Delete)
+    assert r.tl.ranges == [(0, 7200)]
+
+    # Zoom keys (+, -, Home, End, 0)
+    press_key(r.tl, Qt.Key.Key_Plus, text="+")
+    assert r.tl.vp.zoomed
+    press_key(r.tl, Qt.Key.Key_End)
+    assert r.tl.vp.start + r.tl.vp.span == pytest.approx(7200)
+    press_key(r.tl, Qt.Key.Key_Home)
+    assert r.tl.vp.start == pytest.approx(0)
+    press_key(r.tl, Qt.Key.Key_0, text="0")
+    assert not r.tl.vp.zoomed
+
+
+def test_minimap_appears_when_zoomed_and_pans_viewport_on_drag(qtbot):
+    r = Rig(qtbot)
+    r.load([(0, 3600), (3600, 7200)])
+    assert not r.tl.minimap.isVisible()
+    r.tl.zoom_in()
+    r.tl.zoom_in()
+    r.tl.redraw()
+    assert r.tl.minimap.isVisible()
+    assert r.tl.minimap.drawn_lens is not None
+    # Click near the right side of the minimap to pan toward the end of the VOD
+    w = max(r.tl.minimap.width(), 400)
+    send_mouse(r.tl.minimap, QEvent.Type.MouseButtonPress, w - 30, 6,
+               Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton)
+    send_mouse(r.tl.minimap, QEvent.Type.MouseButtonRelease, w - 30, 6,
+               Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton)
+    assert r.tl.vp.start > 3600
+    r.tl.zoom_fit()
+    assert not r.tl.minimap.isVisible()
+
+
+def test_game_legend_chips_isolate_and_highlight_games_and_zoom_label_updates(qtbot):
+    r = Rig(qtbot)
+    r.load([(0, 7200)], segments=SEGMENTS)
+    assert not r.tl.legend_box.isHidden()
+    assert len(r.tl.legend_chips) == 2
+    assert r.tl.legend_chips[0].title == "Just Chatting"
+    assert r.tl.legend_chips[1].title == "Elden Ring"
+    assert "Showing the whole VOD" in r.tl.zoom_label.text()
+    r.tl.zoom_in()
+    assert "Showing " in r.tl.zoom_label.text() and " of 2:00:00" in r.tl.zoom_label.text()
+
+    # Clicking the Elden Ring chip isolates Elden Ring into its own part
+    r.tl.isolate_game("Elden Ring", only=True)
+    assert r.tl.ranges == [(3000, 5400)]
+
+
+def test_clip_flags_cluster_when_close_and_show_hover_details(qtbot):
+    r = Rig(qtbot)
+    r.load([(0, 7200)])
+    details = {
+        600.0: "First clip \u00b7 by alice \u00b7 500 views",
+        610.0: "Second clip \u00b7 by bob \u00b7 120 views",
+        5000.0: "Far clip \u00b7 by carol \u00b7 40 views",
+    }
+    r.tl.set_clip_marks([600.0, 610.0, 5000.0], details)
+    r.tl.redraw()
+    # 600s and 610s are within 9 px on a 2-hour VOD so they cluster into count=2
+    counts = [cnt for _fx, cnt in r.tl.drawn_flags]
+    assert counts == [2, 1]
+    # Hover over the far clip flag on the ruler
+    r.hover(5000.0, "ruler")
+    assert "Far clip" in r.tl.canvas.toolTip()
+    assert "carol" in r.tl.canvas.toolTip()
+
+
+def test_right_click_on_empty_space_populates_context_menu_and_drag_shows_snap_feedback(qtbot):
+    r = Rig(qtbot)
+    r.load([(0, 7200)], segments=SEGMENTS)
+    # Right-click in the middle of thumbnails (not on a cut line) opens context menu
+    x = r.x(1500)
+    y = core_tl.y_of("thumbs")
+    send_mouse(r.tl.canvas, QEvent.Type.MouseButtonPress, x, y,
+               Qt.MouseButton.RightButton, Qt.MouseButton.RightButton)
+    actions = [a.text() for a in r.tl._context_menu.actions() if not a.isSeparator()]
+    assert any("Cut here" in a for a in actions)
+    assert any("Isolate" in a for a in actions)
+    r.tl._context_menu.hide()
+
+    # Dragging a cut near a game boundary at 3000s records snap feedback ("Game change")
+    r.click(1800, "thumbs")
+    assert len(r.tl.ranges) == 2
+    x_cut = r.x(r.tl.ranges[0][1])
+    send_mouse(r.tl.canvas, QEvent.Type.MouseButtonPress, x_cut, y,
+               Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton)
+    send_mouse(r.tl.canvas, QEvent.Type.MouseMove, r.x(3005), y,
+               Qt.MouseButton.NoButton, Qt.MouseButton.LeftButton)
+    r.tl.redraw()
+    assert r.tl._snap_feedback is not None
+    assert r.tl._snap_feedback[1] == core_tl.SNAP_GAME
+    assert any("snaps to: Game change" in t for t in r.tl.drawn_texts)
+    send_mouse(r.tl.canvas, QEvent.Type.MouseButtonRelease, r.x(3005), y,
+               Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton)
+

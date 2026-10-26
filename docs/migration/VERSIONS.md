@@ -1,5 +1,30 @@
 ## Phase 9: UI redesign beyond parity
 
+### 9f v1  (2026-10-26)  The Timeline: rounded part pills & hatched skipped sections, keyboard editing & Redo, overview minimap, game legend chips, clustered clip flags, icon toolbar & zoom readout, context menu, snap feedback, and loading shimmer
+
+**Done (new or changed files):**
+- `core/timeline.py`: added Phase 9f pure helpers `SNAP_GAME`, `SNAP_CLIP`, `SNAP_MUTED`, `SNAP_EDGE`, `build_snap_kinds`, `snap_target`, `cluster_marks`, `game_key`, `game_totals`, `gaps_of`, and `minimap_lens`.
+- `qt_ui/timeline.py`:
+  - E1 Visual Part Styling: rounded part pills (`PART_RADIUS = 6.0`, squared at viewport-clipped edges) with `1 px` hover lift (`ACCENT_HOVER`), and diagonal hatching (`Qt.BrushStyle.BDiagPattern`, recorded in `drawn_skipped_rects`) across skipped sections (`gaps_of`).
+  - E2 Keyboard Editing & Redo: `S` (`cut_at_hover`), `Delete`/`Backspace` (`remove_selected_cut`), `Left`/`Right` arrow nudging (`1 s`, `Shift` `10 s`, `Alt` `1 s`, coalesced within `0.8 s`), `Home`/`End` jump, `+`/`-`/`0` zoom, and `Ctrl+Y`/`Ctrl+Shift+Z` (`redo()`, `_future` stack, `btn_redo`).
+  - E3 Overview Minimap (`TimelineMinimap`): 12 px full-VOD overview strip shown when zoomed in, with game colours, parts, cut lines, and a draggable/clickable lens (`drawn_lens`).
+  - E4 Interactive Game Legend (`_FlowLayout`, `_LegendChip`): wrapping row of game colour chips sorted by total duration (`game_totals`); click isolates that game (`Shift+click` keeps only that game); hover highlights that game on the strip.
+  - E5 Clips as Flags & Clustered Counter: green clip flags (`drawn_flags`) with hover tooltips (`clip_details`: title, creator, views) and automatic count badge clustering (`cluster_marks` when `< 9 px` apart).
+  - E6 Icon Toolbar & Zoom Readout: vector icons (`minus`, `plus`, `fit`, `undo`, `redo`) from `qt_ui/icons.py` and live `zoom_label` (`Showing H:MM:SS of H:MM:SS` / `Showing the whole VOD · H:MM:SS`).
+  - E7 & E8 Context Menu & Snap Feedback: non-blocking right-click `QMenu` on empty timeline (`Cut here`, `Skip this part`/`Keep this section`, `Isolate this game`, `Undo`, `Redo`), and visual snap guide line + pill (`snaps to: Game change` / `Clip` / `Muted edge` / `VOD edge`).
+  - E9 States: loading shimmer (`_draw_shimmer`, respecting `Motion.enabled()`), striped placeholder when no storyboard is available, and pill backdrop behind status text.
+- `qt_ui/tabs/plan.py`: added `_push_clip_marks()` passing formatted clip tooltip details (`title · by creator · N views`) to `self.timeline.set_clip_marks(...)`.
+- `tests/test_qt_timeline.py`: updated card-order helper for Phase 9e's nested `lower_layout` and added 7 new Phase 9f test functions covering E1–E9 (**69 passed** in `test_qt_timeline.py`).
+- Docs updated: `MIGRATION_LOG.md` (no. 26), `PHASE_NOTES.md`, `VERSIONS.md`, `HANDOFF.md`.
+
+**Checked here (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):**
+- `python -m pytest tests/test_qt_timeline.py -q` -> **69 passed** in 8.13s.
+- `python -m pytest tests/test_qt_plan_tab.py -q` -> **64 passed**.
+
+**NOT done:** Phases 9g (Search & Twitch sign-in) and 9h (final polish & docs).
+
+**NOT run:** live interactive window inspection on Windows (`python luckytwitch_qt.py`).
+
 ### 9e v2  (2026-10-26)  Plan page polish: filter squishing fix (2x2 grid), 1100 px breakpoint, auto-looping MarqueeLabel, interactive column resizing & Duration header
 
 **Done (new or changed files):**

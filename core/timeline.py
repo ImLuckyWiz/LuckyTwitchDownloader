@@ -129,3 +129,88 @@ def snap_time(t: float, snap_points: Sequence[float], px_per_sec: float, snap_px
     if best is not None and abs(best - t) <= tol:
         return round(best)
     return round(t)
+
+
+# --- Phase 9f helpers: snap feedback, clip flags, game legend, skipped sections, minimap --- #
+SNAP_GAME, SNAP_CLIP, SNAP_MUTED, SNAP_EDGE = "Game change", "Clip", "Muted edge", "VOD edge"
+
+
+def build_snap_kinds(duration: float, segments: Iterable[GameSegment] = (),
+                     clip_marks: Iterable[float] = (), muted: Iterable[Range] = (),
+                     show_muted: bool = True) -> dict[float, str]:
+    """What each snap point is (same points as ``build_snap_points``). Where two kinds meet the stronger one wins:
+    VOD edge > game change > clip > muted edge."""
+    kinds: dict[float, str] = {}
+    if show_muted:
+        for s, e in muted:
+            kinds[float(s)] = kinds[float(e)] = SNAP_MUTED
+    for t in clip_marks:
+        kinds[float(t)] = SNAP_CLIP
+    for g in segments:
+        kinds[float(g.start)] = kinds[float(g.end)] = SNAP_GAME
+    kinds[0.0] = kinds[float(duration)] = SNAP_EDGE
+    return kinds
+
+
+def snap_target(t: float, snap_points: Sequence[float], px_per_sec: float, snap_px: float = SNAP_PX) -> float | None:
+    """The snap point ``snap_time`` would use for ``t`` (None when nothing is within ``snap_px`` pixels)."""
+    tol = snap_px / px_per_sec
+    best = min(snap_points, key=lambda p: abs(p - t), default=None)
+    return best if best is not None and abs(best - t) <= tol else None
+
+
+def cluster_marks(times: Sequence[float], px_per_sec: float, min_px: float = 9.0) -> list[tuple[float, int, float, float]]:
+    """Group sorted moments that would sit closer than ``min_px`` pixels to the first of their group.
+    Returns ``(centre_time, count, first_time, last_time)`` per group (count 1 = a lone flag)."""
+    out: list[tuple[float, int, float, float]] = []
+    group: list[float] = []
+    for t in sorted(times):
+        if group and (t - group[0]) * px_per_sec >= min_px:
+            out.append((sum(group) / len(group), len(group), group[0], group[-1]))
+            group = []
+        group.append(t)
+    if group:
+        out.append((sum(group) / len(group), len(group), group[0], group[-1]))
+    return out
+
+
+def game_key(title: str) -> str:
+    return title.strip().lower()
+
+
+def game_totals(segments: Iterable[GameSegment]) -> list[tuple[str, float]]:
+    """``(title, seconds)`` per game (a game seen twice is summed), longest first; segments without a title are left out."""
+    names: dict[str, str] = {}
+    totals: dict[str, float] = {}
+    for g in segments:
+        key = game_key(g.title or "")
+        if not key:
+            continue
+        names.setdefault(key, g.title.strip())
+        totals[key] = totals.get(key, 0.0) + max(0.0, float(g.end) - float(g.start))
+    return sorted(((names[k], v) for k, v in totals.items()), key=lambda kv: -kv[1])
+
+
+def gaps_of(ranges: Sequence[Range], duration: float) -> list[Range]:
+    """The skipped sections: what lies between the parts (and before the first / after the last)."""
+    out: list[Range] = []
+    cursor = 0.0
+    for s, e in sorted(ranges):
+        if s > cursor + 1e-6:
+            out.append((cursor, float(s)))
+        cursor = max(cursor, float(e))
+    if duration > cursor + 1e-6:
+        out.append((cursor, float(duration)))
+    return out
+
+
+def minimap_lens(start: float, span: float, duration: float, width: float, pad: float = PADX,
+                 min_w: float = 8.0) -> tuple[float, float]:
+    """Left and right x of the lens that shows the visible window on a minimap ``width`` px wide."""
+    inner = max(width - 2 * pad, 1.0)
+    dur = max(duration, 1.0)
+    x0 = pad + inner * (start / dur)
+    x1 = pad + inner * ((start + span) / dur)
+    if x1 - x0 < min_w:
+        x1 = x0 + min_w
+    return x0, min(x1, pad + inner)

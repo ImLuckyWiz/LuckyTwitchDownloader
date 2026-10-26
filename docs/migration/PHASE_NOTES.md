@@ -1,3 +1,18 @@
+## Phase 9f: The Timeline  (2026-10-26, version 1 delivered)
+**Done (9f v1, see VERSIONS.md):**
+- **E1 — Visual Part Styling (`core/timeline.py`, `qt_ui/timeline.py`):** rounded part pills (`PART_RADIUS = 6.0`, squared at viewport-clipped ends) with `1 px` hover lift (`ACCENT_HOVER`), and diagonal hatching (`Qt.BrushStyle.BDiagPattern`, recorded in `drawn_skipped_rects`) across skipped sections (`gaps_of`).
+- **E2 — Keyboard Editing & Redo (`qt_ui/timeline.py`):** `S` (`cut_at_hover`), `Delete`/`Backspace` (`remove_selected_cut`), `Left`/`Right` arrow nudging (`1 s` default, `Shift` `10 s`, `Alt` `1 s`, coalesced within `0.8 s`), `Home`/`End` jump, `+`/`-`/`0` zoom, and `Ctrl+Y`/`Ctrl+Shift+Z` (`redo()`, `_future` stack, `btn_redo`).
+- **E3 — Overview Minimap (`TimelineMinimap` in `qt_ui/timeline.py`, `minimap_lens` in `core/timeline.py`):** 12 px full-VOD overview strip shown when zoomed in, displaying game colours, kept parts, cut lines, and a draggable/clickable lens (`drawn_lens`).
+- **E4 — Interactive Game Legend (`_FlowLayout`, `_LegendChip` in `qt_ui/timeline.py`, `game_totals` in `core/timeline.py`):** wrapping row of game colour chips below the strip sorted by total duration; clicking isolates that game (`Shift+click` keeps only that game); hovering highlights that game on the strip.
+- **E5 — Clips as Flags & Clustered Counter (`qt_ui/timeline.py`, `qt_ui/tabs/plan.py`, `cluster_marks` in `core/timeline.py`):** green clip flags (`drawn_flags`) with hover tooltips (`clip_details`: title, creator, views) fed by `PlanTab._push_clip_marks()`, clustering into a count badge when closer than `9 px`.
+- **E6 — Icon Toolbar & Zoom Readout (`qt_ui/timeline.py`):** vector icons (`minus`, `plus`, `fit`, `undo`, `redo`) from `qt_ui/icons.py` and live `zoom_label` (`Showing H:MM:SS of H:MM:SS` / `Showing the whole VOD · H:MM:SS`).
+- **E7 & E8 — Context Menu & Snap Feedback (`qt_ui/timeline.py`, `build_snap_kinds` & `snap_target` in `core/timeline.py`):** non-blocking right-click `QMenu` on empty timeline (`Cut here`, `Skip this part`/`Keep this section`, `Isolate this game`, `Undo`, `Redo`), and visual snap guide line + pill (`snaps to: Game change` / `Clip` / `Muted edge` / `VOD edge`).
+- **E9 — States (`qt_ui/timeline.py`):** loading shimmer (`_draw_shimmer`, respecting `Motion.enabled()`), neutral striped placeholder when no storyboard is available, and pill backdrop behind status text.
+- **New tests (`tests/test_qt_timeline.py`):** 7 new Phase 9f test functions (69 total in `test_qt_timeline.py`, all passing).
+**Divergences from the tkinter app:** MIGRATION_LOG.md no. 26.
+**What I ran (Windows, Python 3.14.7, PySide6 6.12.0, offscreen):** `test_qt_timeline.py` -> **69 passed** in 8.13s; `test_qt_plan_tab.py` -> **64 passed**.
+**Still open:** Phases 9g (Search & Twitch sign-in) and 9h (final polish & release).
+
 ## Phase 9e: The Plan Page  (2026-10-26, version 2 delivered)
 **Done (9e v2, see VERSIONS.md):**
 - **D1 — Wide 2-Column Responsive Layout (`qt_ui/tabs/plan.py`):** below the full-width `Timeline` card, `self.lower_layout` (`QBoxLayout`) arranges `Cut points` (left) and `Clips → chapters` (right) side-by-side at window widths `>= 1100 px` (`WIDE_BREAKPOINT = 1100`), and stacks them vertically (`TopToBottom`) at `< 1100 px` so nothing clips.

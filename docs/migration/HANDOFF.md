@@ -2,7 +2,7 @@
 
 **Living file.** The agent updates it at the end of every phase, in the same commit as the phase. A new session reads this file first, then PLAN.md (the full plan), then the Phase section it is about to do. If this file and the code disagree, say so to the user before doing anything.
 
-Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, Phase 9d v1, and Phase 9e v2 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
+Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, Phase 9d v1, Phase 9e v2, and Phase 9f v1 delivered: see `PHASE_9_PLAN.md`, `PHASE_NOTES.md`, and `VERSIONS.md`). Last completed phase: 8 (approved by the user, tag `migration-phase-8`; Phases 0 through 8 all approved).
 
 **Release rule (asked by the user):** release a numbered version (zip + an entry in `VERSIONS.md`, or direct edits + `VERSIONS.md` entry in Antigravity mode) every time a meaningful chunk is done, even when it is half made or untested. Never end a session without having released one. Every entry says honestly what is done, what is NOT done and what was NOT run.
 
@@ -30,7 +30,7 @@ Last updated: 2026-10-26 (Phase 9a v1-v2 + A5 icons, Phase 9b v1, Phase 9c v1, P
 | 6 | Plan tab (no timeline), Get info, links | approved | migration-phase-6 | |
 | 7 | Timeline (7a to 7e) | approved | migration-phase-7 | |
 | 8 | Packaging, CI, cutover | approved | migration-phase-8 | |
-| 9 | Redesign beyond parity | in progress (9a v1–v2 + A5 icons, 9b v1, 9c v1, 9d v1, and 9e v2 delivered) | | |
+| 9 | Redesign beyond parity | in progress (9a v1–v2 + A5 icons, 9b v1, 9c v1, 9d v1, 9e v2, and 9f v1 delivered) | | |
 
 States: not started, in progress, done (waiting for approval), approved.
 
@@ -156,14 +156,16 @@ The user can ask for, and the agent can offer, a delivery before a phase is fini
 
 ## 7. Next step
 
-Phase 9a (v1-v2 + A5 icons), Phase 9b (The Shell), Phase 9c (The Queue Page), Phase 9d (The Options Page), and Phase 9e (The Plan Page) are built and all Qt tests pass on Windows.
+Phase 9a (v1-v2 + A5 icons), Phase 9b (The Shell), Phase 9c (The Queue Page), Phase 9d (The Options Page), Phase 9e (The Plan Page), and Phase 9f (The Timeline) are built and all Qt tests pass on Windows.
 Next:
-1. **User check on Windows:** launch `python luckytwitch_qt.py` to inspect the Plan tab:
-   - Wide 2-column responsive workspace (`>= 1000 px` puts `Cut points` and `Clips → chapters` side-by-side below `Timeline`; `< 1000 px` stacks them vertically) (D1).
-   - Visual `PartCard` chips (`P1 · 0:00:00 → 0:30:00 · (0:30:00)`) with game-colour stripes, muted-audio warnings, and `✕` skip buttons (D2).
-   - Strategy segmented control (`Auto`, `Full VOD + split`, `Only the parts`) synced with Options + coverage bar and `100% of VOD` badge (D3).
-   - Clip multi-select toolbar (`Select all`, `Invert`, `Clear`), dynamic `Download N clips` CTA, and proportional view-count bars (D4, D5).
-2. **Phase 9f (The Timeline):** rounded part pills & hatched skipped parts (E1), keyboard editing & redo (E2), overview minimap when zoomed (E3), game legend chips (E4), clustered clip flags (E5), icon toolbar with zoom readout (E6), right-click context menu (E7), and snap feedback (E8).
+1. **User check on Windows:** launch `python luckytwitch_qt.py`, load a VOD with chapters/clips, and inspect the Timeline on the Plan tab:
+   - Rounded part pills with hover lift and diagonal hatching across skipped sections (E1).
+   - Keyboard editing on the timeline canvas: `S` to cut at hover, `Delete`/`Backspace` to remove cut, `Left`/`Right` (`Shift` for 10 s) to nudge, `Home`/`End`, `+`/`-`/`0`, and `Ctrl+Y`/`Ctrl+Shift+Z` Redo (E2).
+   - 12 px overview minimap with draggable lens when zoomed in, plus live `Showing H:MM:SS of H:MM:SS` readout and vector toolbar icons (E3, E6).
+   - Interactive game legend chips below the timeline (click to isolate game, hover to highlight on the strip) (E4).
+   - Green clip flags with hover tooltips (title, creator, views) and count badge clustering when zoomed out (E5).
+   - Right-click context menu on empty timeline space and green `snaps to: …` guide pill when dragging/cutting near a snap point (E7, E8).
+2. **Phase 9g (Search & Twitch Sign-In):** streamer list avatars/initials & LIVE badge, VOD card/table view switcher with thumbnail grid, duration/game/date quick filters, and polished Twitch device-code sign-in card (`PHASE_9_PLAN.md` Section 4 C & H).
 
 ## 8. Update checklist (end of every phase)
 
