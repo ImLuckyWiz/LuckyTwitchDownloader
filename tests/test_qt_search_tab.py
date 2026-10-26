@@ -963,3 +963,18 @@ def test_infinite_scroll_loads_next_page_at_bottom(qtbot, tab, session, monkeypa
     else:
         tab._on_vod_scroll(bar.maximum())
     qtbot.waitUntil(lambda: tab.vod_model.rowCount() == 15, timeout=3000)
+
+
+
+def test_channel_model_renders_real_avatar_pixmap_when_set(qtbot, tab, tmp_path):
+    tab.results_model.set_channels([dict(id="123", login="vexoria", name="Vexoria")])
+    avatar_file = png(tmp_path / "vex.png", colour="#9933cc", size=(64, 64))
+    pix = search_models.load_thumb(avatar_file)
+    assert pix is not None
+    tab.results_model.set_avatar("123", pix)
+    assert not tab.results_model.index(0, 0).data(search_models.AVATAR_ROLE).isNull()
+    tab.results_view.viewport().repaint()
+    img = tab.results_view.viewport().grab().toImage()
+    rect = tab.results_view.visualRect(tab.results_model.index(0, 0))
+    # Probe inside circular avatar area
+    assert img.pixelColor(rect.left() + 20, rect.center().y()) == QColor("#9933cc")

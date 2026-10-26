@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from core.recent import load_recent, save_recent
 from core.paths import MAX_RECENT
 from core.search import VIDEO_KINDS
-from luckytwitch_engine import fetch_videos, search_channels
+from luckytwitch_engine import fetch_thumbnail, fetch_videos, search_channels
 from qt_ui import dialogs
 from qt_ui.bridge import Bridge
 from qt_ui.icons import icon
@@ -454,6 +454,7 @@ class SearchTab(QWidget):
         self.status_message.emit(f"{len(results)} streamer(s) found. Pick one to see their VODs.")
         if results[0]["login"].lower() == query.lstrip("@").lower():
             self.select_channel(self.results_view, 0)  # exact match: open it straight away
+        self._spawn_avatar_fetch(results, for_results=True)
 
     def on_search_err(self, msg: str) -> None:
         self.search_btn.setEnabled(bool(self.client))
@@ -615,6 +616,57 @@ class SearchTab(QWidget):
             return
         self.vod_chosen.emit(video["url"])
 
+
+    def _spawn_avatar_fetch(self, channels: list[dict], for_results: bool = True) -> None:
+        if not self.client or not channels:
+            return
+        client = self.client
+        gen = self.sv_gen
+
+        def on_avatar(cid: str, path: str):
+            # Delivered to main/GUI thread via QTimer
+            from PySide6.QtCore import QTimer
+            from qt_ui.search_models import load_thumb
+            def apply():
+                if self.sv_gen != gen:
+                    return
+                pix = load_thumb(path)
+                if pix is not None and not pix.isNull():
+                    if for_results:
+                        self.results_model.set_avatar(cid, pix)
+                    else:
+                        self.recent_model.set_avatar(cid, pix)
+            QTimer.singleShot(0, apply)
+
+        threading.Thread(target=_fetch_channel_avatars,
+                         args=(client, list(channels), on_avatar, lambda: self.sv_gen, gen),
+                         daemon=True).start()
+
     def shutdown(self) -> None:
         """The window is closing: the thumbnail threads end."""
         self.thumbs.stop()
+
+
+def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, gen_fn, current_gen) -> None:
+    """Background worker: fetches Twitch profile pictures for channels and invokes on_avatar_cb(cid, pixmap)."""
+    if not client or not channels:
+        return
+    uids = [str(c.get("id")) for c in channels if c.get("id")]
+    if not uids:
+        return
+    try:
+        # Twitch Helix /users endpoint accepts multiple id params: ?id=1&id=2...
+        params = [("id", uid) for uid in uids[:50]]
+        # client.get expects a dict or params tuple list
+        data = client.get("users", dict(params)).get("data", [])
+        for u in data:
+            if gen_fn() != current_gen:
+                return
+            uid = str(u.get("id", ""))
+            pic_url = u.get("profile_image_url")
+            if uid and pic_url:
+                path = fetch_thumbnail(pic_url)
+                if path and gen_fn() == current_gen:
+                    on_avatar_cb(uid, str(path))
+    except Exception:
+        pass

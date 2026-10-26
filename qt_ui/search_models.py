@@ -22,6 +22,7 @@ from core.search import THUMB_GAP, THUMB_SIZE
 from luckytwitch_engine import fmt_hms
 
 CHANNEL_ROLE = Qt.ItemDataRole.UserRole + 1  # the streamer dict of a row: {id, login, name, live}
+AVATAR_ROLE = Qt.ItemDataRole.UserRole + 2  # QPixmap of streamer avatar (or None)
 VIDEO_ROLE = Qt.ItemDataRole.UserRole + 1  # the VOD dict of a row
 THUMB_ROLE = Qt.ItemDataRole.UserRole + 2  # the QPixmap of a row (or None)
 THUMB_MARGIN = 6  # space to the left of a thumbnail
@@ -91,6 +92,7 @@ class ChannelModel(QAbstractListModel):
         super().__init__(parent)
         self.live_marker = live_marker
         self.channels: list[dict] = []
+        self._avatars: dict[str, QPixmap] = {}
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self.channels)
@@ -103,12 +105,23 @@ class ChannelModel(QAbstractListModel):
             return ("● " if self.live_marker and ch.get("live") else "") + str(ch.get("name", ""))
         if role == CHANNEL_ROLE:
             return ch
+        if role == AVATAR_ROLE:
+            cid = str(ch.get("id") or "")
+            return self._avatars.get(cid)
         return None
 
     def set_channels(self, channels: list[dict]) -> None:
         self.beginResetModel()
         self.channels = list(channels)
         self.endResetModel()
+
+    def set_avatar(self, channel_id: str, pix: QPixmap) -> None:
+        cid = str(channel_id)
+        self._avatars[cid] = pix
+        for row, ch in enumerate(self.channels):
+            if str(ch.get("id")) == cid:
+                idx = self.index(row, 0)
+                self.dataChanged.emit(idx, idx, [AVATAR_ROLE])
 
 
 class VodModel(QAbstractTableModel):
@@ -340,19 +353,30 @@ class ChannelDelegate(QStyledItemDelegate):
         cy = rect.top() + (rect.height() - size) / 2.0
         avatar_rect = QRectF(rect.left() + pad_x, cy, size, size)
 
-        col = QColor(channel_avatar_colour(clean_name))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(col)
-        painter.drawEllipse(avatar_rect)
+        pix = index.data(AVATAR_ROLE)
+        if pix is not None and not pix.isNull():
+            from PySide6.QtGui import QPainterPath
+            path = QPainterPath()
+            path.addEllipse(avatar_rect)
+            painter.save()
+            painter.setClipPath(path)
+            scaled = pix.scaled(int(avatar_rect.width()), int(avatar_rect.height()),
+                                Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            painter.drawPixmap(avatar_rect.topLeft().toPoint(), scaled)
+            painter.restore()
+        else:
+            col = QColor(channel_avatar_colour(clean_name))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(col)
+            painter.drawEllipse(avatar_rect)
 
-        # Initial letter
-        initial = (clean_name[:1] or "?").upper()
-        font_init = QFont(option.font)
-        font_init.setPointSize(10)
-        font_init.setBold(True)
-        painter.setFont(font_init)
-        painter.setPen(QColor(WHITE))
-        painter.drawText(avatar_rect, int(Qt.AlignmentFlag.AlignCenter), initial)
+            initial = (clean_name[:1] or "?").upper()
+            font_init = QFont(option.font)
+            font_init.setPointSize(10)
+            font_init.setBold(True)
+            painter.setFont(font_init)
+            painter.setPen(QColor(WHITE))
+            painter.drawText(avatar_rect, int(Qt.AlignmentFlag.AlignCenter), initial)
 
         # Streamer name
         name_x = rect.left() + pad_x + size + 8.0
