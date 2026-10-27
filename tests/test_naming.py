@@ -4,7 +4,18 @@ from pathlib import Path
 
 import pytest
 
-from luckytwitch_engine import JobOptions, Part, SourceInfo, part_stem, safe_name, stream_dir, unique_path
+from luckytwitch_engine import (
+    Ctx,
+    JobOptions,
+    Part,
+    SourceInfo,
+    clean_title,
+    finalize_part,
+    part_stem,
+    safe_name,
+    stream_dir,
+    unique_path,
+)
 
 
 def make_src(**kw):
@@ -81,7 +92,15 @@ def test_part_stem_unknown_token_survives_as_plain_text():
 
 @pytest.mark.parametrize("template", ["{n", "{0}"])
 def test_part_stem_broken_template_falls_back(template):
-    assert part_stem(make_src(), make_opts(name_template=template), Part(1, 0, 1), 1) == "123 - part1"
+    assert part_stem(make_src(), make_opts(name_template=template), Part(1, 0, 1), 1) == "123"
+    assert part_stem(make_src(), make_opts(name_template=template), Part(1, 0, 1), 2) == "123 - part1"
+
+
+def test_part_stem_omits_part_on_single_part():
+    stem_single = part_stem(make_src(), make_opts(), Part(1, 0, 600), 1)
+    assert stem_single == "Streamer - 2026-10-01 - 123"
+    stem_multi = part_stem(make_src(), make_opts(), Part(1, 0, 600), 2)
+    assert stem_multi == "Streamer - 2026-10-01 - 123 - part1"
 
 
 def test_part_stem_empty_name_becomes_partN():
@@ -145,3 +164,29 @@ def test_stream_dir_long_names_are_truncated():
     p = stream_dir(src, make_opts())
     assert len(p.parts[-2]) == 60
     assert len(p.name) <= 100
+
+
+# --------------------------------------------------------------------------- clean_title
+def test_clean_title_removes_bot_commands_and_promos():
+    raw = "🐍 Pretty face, tragic reactions. BIG ANNOUNCEMENT! 🐍 !gsupps !links !clash"
+    assert clean_title(raw) == "Pretty face, tragic reactions. BIG ANNOUNCEMENT!"
+
+
+def test_clean_title_removes_hashtags_and_trailing_separators():
+    raw = "🔴 Chill stream | !discord !specs | #ad - "
+    assert clean_title(raw) == "Chill stream"
+
+
+def test_clean_title_keeps_normal_title_intact():
+    raw = "Playing Elden Ring with friends! Having lots of fun."
+    assert clean_title(raw) == "Playing Elden Ring with friends! Having lots of fun."
+
+
+# --------------------------------------------------------------------------- finalize_part dot safety
+def test_finalize_part_preserves_dots_in_title(tmp_path):
+    src_file = tmp_path / "temp.mp4"
+    src_file.write_text("video_data")
+    dest_stem = tmp_path / "Vexoria - Pretty face tragic reactions. BIG ANNOUNCEMENT - part1"
+    ctx = Ctx(log=lambda m: None, progress=lambda *a: None)
+    out = finalize_part(ctx, src_file, dest_stem, "mp4", [], {}, 10.0, copy_instead_of_move=True)
+    assert out.name == "Vexoria - Pretty face tragic reactions. BIG ANNOUNCEMENT - part1.mp4"

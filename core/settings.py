@@ -47,6 +47,7 @@ DEFAULTS = {
     "chat_render_fps": "Like the video",
     "chat_render_smooth": False,
     "subfolders": True,
+    "clean_title": True,
     "folder_template": "{date} - {title} - {id}",
     "clip_name_template": "{clip_title}",
     "clip_pad_before": "3",

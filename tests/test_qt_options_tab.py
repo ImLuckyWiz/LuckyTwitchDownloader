@@ -30,7 +30,7 @@ from qt_ui.widgets import Collapsible, ComboBox, SpinBox, Toggle  # noqa: E402
 
 # every setting the Options tab edits (the other five of the 38 belong to the Plan tab)
 OPTIONS_KEYS = {
-    "out_dir", "container", "threads", "strategy", "threshold", "name_template", "subfolders", "folder_template",
+    "out_dir", "container", "threads", "strategy", "threshold", "name_template", "clean_title", "subfolders", "folder_template",
     "exact", "keep_full", "title_tpl", "pad_after", "gap_title", "sidecar", "premiere_xml", "premiere_plugin",
     "game_markers", "muted_markers", "clip_name_template", "clip_pad_before", "clip_pad_after", "chat", "chat_format",
     "chat_embed", "auto_update",
@@ -38,7 +38,7 @@ OPTIONS_KEYS = {
     "chat_render_font_size", "chat_render_fps", "chat_render_smooth",
 }
 PLAN_KEYS = {"chapters", "min_views", "min_duration", "top_n", "pad_before"}
-SWITCHES = {"exact", "keep_full", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml",
+SWITCHES = {"exact", "keep_full", "clean_title", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml",
             "sidecar", "chat", "chat_embed", "chat_render", "chat_render_smooth", "auto_update"}
 
 
@@ -792,6 +792,10 @@ def test_files_will_be_saved_as_preview_card_and_disk_space(tab):
 
     tab.binder.set("container", "mkv")
     assert tab.save_preview_path.text().endswith(".mkv")
+    assert not tab.save_preview_path.text().endswith(".mkv.mkv")
+    tab.binder.set("container", "mp4")
+    assert tab.save_preview_path.text().endswith(".mp4")
+    assert not tab.save_preview_path.text().endswith(".mp4.mp4")
 
 
 def test_tools_status_rows_show_individual_versions(tab):

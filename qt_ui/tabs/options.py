@@ -276,10 +276,11 @@ class OptionsTab(QWidget):
         folder_tpl = self.example_for("folder_template")
         name_tpl = self.example_for("name_template")
         subfolders = flag(self.settings, "subfolders")
+        file_name = name_tpl if name_tpl.endswith(f".{container}") else f"{name_tpl}.{container}"
         if subfolders and folder_tpl and not folder_tpl.startswith("("):
-            full_path = Path(out_dir) / folder_tpl / f"{name_tpl}.{container}"
+            full_path = Path(out_dir) / folder_tpl / file_name
         else:
-            full_path = Path(out_dir) / f"{name_tpl}.{container}"
+            full_path = Path(out_dir) / file_name
         self.save_preview_path.setText(str(full_path))
 
         try:
@@ -408,6 +409,10 @@ class OptionsTab(QWidget):
             info="{n} is the part number, {total} how many parts there are, {start} and {end} the part's "
                  "time range in the VOD (like 01h02m03s). {id} is the VOD's Twitch id.",
             section_key="output", card=card, adv=adv)
+
+        row = adv.add_row("Auto-clean titles", "Strip bot commands (!links, !gsupps) and promo tags from stream titles.")
+        self._register_setting(row, "clean_title", "output", card, adv)
+        self._switch(row, "clean_title")
 
         row = adv.add_row("Organize in subfolders", "Folder / Streamer / Stream / parts.")
         self._register_setting(row, "subfolders", "output", card, adv)

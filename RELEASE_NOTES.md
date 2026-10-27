@@ -1,3 +1,15 @@
+## v2.1.1
+
+LuckyTwitch Downloader **v2.1.1** introduces intelligent title cleaning and manual title editing, smarter single-part file naming, and critical fixes for filename truncation and path previews.
+
+### What's new in 2.1.1:
+- **Clean Single-Part Naming:** File names now automatically omit ` - part1`, `_part1`, or `1of1` when a download only has a single part. MP4 video metadata title tags also write the clean title directly without adding redundant `(part 1/1)` tags.
+- **Auto-Clean Stream Titles:** Automatically strips noisy Twitch chat bot commands (such as `!gsupps`, `!links`, `!clash`, `!merch`, `!discord`, `!drops`), promotional hashtags (`#ad`, `#sponsored`), and trailing delimiters left behind by streamers. Unicode emojis and pictographs are cleanly separated so words no longer merge together.
+- **Auto-Clean Toggle Setting:** Added an **Auto-clean titles** toggle switch in **Options → Output**. Keep it enabled for clean file names, or switch it off anytime if you prefer raw Twitch stream titles verbatim.
+- **Manual Title Editing in Plan Tab:** The stream title can now be edited directly from the **Plan tab** before queuing a download. Typing in the title field updates the loaded VOD strip, header info, and destination previews in real time. A **Reset** button allows restoring the original Twitch title in one click.
+- **Fixed Filename Truncation on Titles with Periods:** Resolved a Python `pathlib.with_suffix()` bug where periods inside stream titles (e.g. `reactions. BIG ANNOUNCEMENT`) caused the downloader to treat the rest of the title as a file extension and discard it.
+- **Fixed Destination Preview Extension:** Fixed a preview bug in the Options tab where container extensions were appended twice, causing `.mp4.mp4` in sample paths.
+
 ## v2.1.0
 
 LuckyTwitch Downloader **v2.1.0** introduces a guided **First-Run Welcome & Quick Setup** experience alongside a comprehensive **60 FPS Motion System Upgrade** across the entire Qt 6 interface.

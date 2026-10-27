@@ -1347,6 +1347,7 @@ class JobOptions:
     subfolders: bool = True  # out_dir/<streamer>/<stream>/parts
     folder_template: str = "{date} - {title} - {id}"  # name of the per-stream folder
     clip_name_template: str = "{clip_title}"  # file name when a single clip is downloaded
+    clean_title: bool = True  # strip bot commands (!links, !gsupps) and promo tags from stream titles
     premiere_xml: bool = False  # also write a Premiere Pro XML (clips as markers) next to each part
     game_markers: bool = False  # also put the game / category changes into that XML as markers ("GAME: ...")
     premiere_plugin: bool = False  # also write a .markers.json for the LuckyTwitch Premiere Pro plugin (colors, details)
@@ -2438,8 +2439,29 @@ def download_section_aligned(
 # --------------------------------------------------------------------------- #
 # Splitting / finalizing
 # --------------------------------------------------------------------------- #
+def clean_title(title: str) -> str:
+    """Clean chat bot commands (!gsupps, !links, !clash), promo tags (#ad),
+    emojis without word smushing, and dangling trailing delimiters from a stream title.
+    """
+    if not title:
+        return ""
+    # 1. Replace 4-byte Unicode characters (emojis / pictographs) with a space so adjacent words don't smush
+    cleaned = re.sub(r"[\U00010000-\U0010ffff]", " ", title)
+    # 2. Strip chat bot commands that start with ! (e.g. !gsupps, !links, !clash, !discord, !merch, !drops)
+    cleaned = re.sub(r"(?<!\w)!\w+", "", cleaned)
+    # 3. Strip promotional hashtags / bracketed tags (e.g. #ad, #sponsored, #partner, [DROPS])
+    cleaned = re.sub(r"(?<!\w)#(?:ad|sponsored|partner|drops|promo)\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\[(?:drops|drops enabled|!drops)\]", "", cleaned, flags=re.IGNORECASE)
+    # 4. Collapse whitespace
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    # 5. Clean up dangling trailing separators left behind (e.g. trailing " - ", " | ", " · ", " : ")
+    cleaned = re.sub(r"[\s\-_|/·•:,]+$", "", cleaned).strip()
+    return cleaned or title.strip()
+
+
 def safe_name(text: str) -> str:
     """Strip emojis / illegal characters so the name is safe everywhere."""
+    text = re.sub(r"[\U00010000-\U0010ffff]", " ", text)
     text = re.sub(r"[^\w\s\-\.\(\)\[\]]", "", text, flags=re.UNICODE)
     return re.sub(r"\s+", " ", text).strip(" .")
 
@@ -2483,11 +2505,21 @@ def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int, clip: d
     try:
         name = template.format_map(data)
     except (ValueError, IndexError):
-        name = data["clip_title"] if clip else f"{data['id']} - part{part.index}"
+        name = data["clip_title"] if clip else (f"{data['id']}" if total == 1 else f"{data['id']} - part{part.index}")
     name = safe_name(name)
     if clip:
         name = name[:150].strip(" .")
         return name or f"clip {data['clip_id']}".strip()
+
+    if total == 1:
+        cleaned = re.sub(r"(?i)[\s\-_]+part\s*1\b", "", name)
+        cleaned = re.sub(r"(?i)\bpart\s*1[\s\-_]*", "", cleaned)
+        cleaned = re.sub(r"(?i)[\s\-_]+1\s*of\s*1\b", "", cleaned)
+        cleaned = re.sub(r"(?i)\b1\s*of\s*1[\s\-_]*", "", cleaned)
+        cleaned = safe_name(cleaned)
+        if cleaned:
+            name = cleaned
+
     return name or f"part{part.index}"
 
 
@@ -2522,7 +2554,7 @@ def finalize_part(
     copy_instead_of_move: bool = False,
 ) -> Path:
     """Put the part in its final place: add chapters / remux / rename."""
-    dest = unique_path(dest_stem.with_suffix("." + container))
+    dest = unique_path(dest_stem.parent / f"{dest_stem.name}.{container}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     if chapters:
         meta = src_file.with_suffix(".ffmeta")
@@ -3288,8 +3320,10 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if job.single_clip:
             t["title"] = job.single_clip.get("title") or src.title
             t["comment"] = job.single_clip.get("url") or src.url
-        else:
+        elif total_parts > 1:
             t["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
+        else:
+            t["title"] = src.title.strip()
         dest = finalize_part(ctx, file, stem, opts.container, chs, t, real_end - real_start, copy)
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
@@ -3343,7 +3377,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if opts.keep_full and full.exists():
             final_dir.mkdir(parents=True, exist_ok=True)
             stem = final_dir / safe_name(f"{src.uploader} - {src.date} - {src.twitch_vod_id or src.id} - FULL")
-            kept = unique_path(stem.with_suffix(full.suffix))
+            kept = unique_path(stem.parent / f"{stem.name}{full.suffix}")
             shutil.move(str(full), str(kept))
             ctx.log(f"Kept full VOD: {kept.name}")
     else:

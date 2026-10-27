@@ -56,13 +56,13 @@ def test_resource_path_points_into_the_project():
 # ------------------------------------------------------------------ settings
 def test_defaults_are_the_38_documented_keys_with_the_documented_types():
     d = settings.DEFAULTS
-    assert len(d) == 38
-    assert sum(isinstance(v, bool) for v in d.values()) == 14
+    assert len(d) == 39
+    assert sum(isinstance(v, bool) for v in d.values()) == 15
     assert sum(isinstance(v, str) for v in d.values()) == 24
     expected_bools = {
         "exact", "keep_full", "chapters", "sidecar", "premiere_xml",
         "premiere_plugin", "game_markers", "muted_markers", "chat",
-        "chat_embed", "chat_render", "chat_render_smooth", "subfolders", "auto_update",
+        "chat_embed", "chat_render", "chat_render_smooth", "subfolders", "auto_update", "clean_title",
     }
     assert {k for k, v in d.items() if isinstance(v, bool)} == expected_bools
     for k, v in d.items():
@@ -94,17 +94,23 @@ def test_settings_file_written_by_the_tkinter_app_loads_with_every_value(data_di
     """tests/fixtures/settings_written_by_tk.json was written by the real tkinter App (v1.16.0) with a value that
     differs from the default in every one of the 38 keys."""
     raw = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    assert set(raw) == set(settings.DEFAULTS)
+    assert set(raw).issubset(set(settings.DEFAULTS))
     assert all(raw[k] != settings.DEFAULTS[k] for k in raw)
     paths.SETTINGS_PATH.write_bytes(FIXTURE.read_bytes())
-    assert settings.load_settings() == raw
-    assert settings.load_settings()["gap_title"] == "Charla ñandú"  # non-ASCII survives the JSON escapes
+    loaded = settings.load_settings()
+    for k in raw:
+        assert loaded[k] == raw[k]
+    assert loaded["clean_title"] is True
+    assert loaded["gap_title"] == "Charla ñandú"  # non-ASCII survives the JSON escapes
 
 
 def test_a_settings_file_with_windows_line_endings_loads_too(data_dir):
     crlf = FIXTURE.read_bytes().replace(b"\n", b"\r\n")  # the tkinter app writes CRLF on Windows
     paths.SETTINGS_PATH.write_bytes(crlf)
-    assert settings.load_settings() == json.loads(FIXTURE.read_text(encoding="utf-8"))
+    loaded = settings.load_settings()
+    for k, v in json.loads(FIXTURE.read_text(encoding="utf-8")).items():
+        assert loaded[k] == v
+    assert loaded["clean_title"] is True
 
 
 def test_settings_round_trip_keeps_every_key_and_type(data_dir):

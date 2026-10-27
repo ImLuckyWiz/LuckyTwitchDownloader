@@ -23,7 +23,7 @@ from core.config import make_client
 from core.options import build_filter, build_options, flag, num
 from core.settings import save_settings
 from core.ui_state import UIState, load_ui_state, save_ui_state
-from luckytwitch_engine import EngineError, Job, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
+from luckytwitch_engine import EngineError, Job, clean_title, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
 from qt_ui import dialogs, notify
 from qt_ui.background_jobs import InfoRunner, SavedChatRunner, ToolsRunner
 from qt_ui.bridge import Bridge
@@ -269,6 +269,7 @@ class MainWindow(QMainWindow):
         plan.search_requested.connect(self.show_search_tab)
         plan.paste_requested.connect(self.paste_vod_from_clipboard)
         plan.strategy_changed.connect(self._on_plan_strategy_changed)
+        plan.title_changed.connect(self._on_plan_title_changed)
         self.bridge.info_ok.connect(self.on_info_ok)
         self.bridge.error.connect(self.on_info_error)
         self.bridge.frames.connect(self._on_frames_for_strip)
@@ -642,12 +643,21 @@ class MainWindow(QMainWindow):
     def clear_vod(self) -> None:
         """Clear the currently loaded VOD from the strip and Plan tab (Phase 9b, B3)."""
         self.source, self.clips, self.clips_loaded = None, [], False
+        self.tab_plan.set_title("", raw_title="")
         self.info_label.setText(NO_VOD_TEXT)
         self.vod_strip.clear()
         self.update_preview()
         self.refresh_clips()
         self.tab_options.refresh_name_examples()
         self.set_status(READY_TEXT)
+
+    def _on_plan_title_changed(self, new_title: str) -> None:
+        if self.source:
+            self.source.title = new_title
+            extra = f" \u00b7 {len(self.clips)} clips" if self.clips_loaded else ""
+            self.info_label.setText(f"{self.source.uploader} \u00b7 {new_title} \u00b7 {fmt_hms(self.source.duration)} \u00b7 {self.source.date}{extra}")
+            self.vod_strip.title_label.setText(new_title or f"VOD {getattr(self.source, 'vod_id', '')}")
+            self.tab_options.refresh_name_examples()
 
     def _on_frames_for_strip(self, src, frames) -> None:
         if src is self.source and frames:
@@ -851,7 +861,12 @@ class MainWindow(QMainWindow):
 
     def on_info_ok(self, info, clips, loaded: bool, warn: str) -> None:
         self.set_info_busy(False)
+        raw_title = info.title
+        if flag(self.settings, "clean_title"):
+            info.title = clean_title(info.title)
+        info.raw_title = raw_title
         self.source, self.clips, self.clips_loaded = info, list(clips), bool(loaded)
+        self.tab_plan.set_title(info.title, raw_title=raw_title)
         extra = f" \u00b7 {len(self.clips)} clips" if loaded else ""
         self.info_label.setText(f"{info.uploader} \u00b7 {info.title} \u00b7 {fmt_hms(info.duration)} \u00b7 {info.date}{extra}")
         self.vod_strip.set_vod(info, self.clips if loaded else [], warn)

@@ -753,3 +753,48 @@ def test_clips_table_duration_header_and_tooltips(win):
         assert head.sectionResizeMode(col) == head.ResizeMode.Interactive
 
 
+def test_plan_tab_title_editing_and_reset(win, qtbot):
+    page = win.tab_plan
+    assert page.title_entry.text() == ""
+    assert not page.title_entry.isEnabled()
+    assert not page.reset_title_btn.isEnabled()
+
+    from luckytwitch_engine import SourceInfo
+    src = SourceInfo("https://twitch.tv/videos/1", "1", "Original Title", "Streamer", 3600.0, "2026-10-01", "1")
+    page.source = src
+    page.set_title("Original Title", "Original Title")
+    assert page.title_entry.isEnabled()
+    assert page.title_entry.text() == "Original Title"
+
+    # User edits title
+    signals = []
+    page.title_changed.connect(signals.append)
+    page.title_entry.setText("Custom Stream Title")
+    assert signals == ["Custom Stream Title"]
+    assert src.title == "Custom Stream Title"
+
+    # Reset title
+    page.reset_title()
+    assert page.title_entry.text() == "Original Title"
+    assert src.title == "Original Title"
+
+
+def test_main_window_auto_clean_title_setting(win, qtbot):
+    from luckytwitch_engine import SourceInfo
+    raw_title = "🐍 Pretty face, tragic reactions. BIG ANNOUNCEMENT! 🐍 !gsupps !links !clash"
+    src = SourceInfo("https://twitch.tv/videos/1", "1", raw_title, "Streamer", 3600.0, "2026-10-01", "1")
+
+    # With clean_title = True (default)
+    win.settings["clean_title"] = True
+    win.on_info_ok(src, [], False, "")
+    assert win.tab_plan.title_entry.text() == "Pretty face, tragic reactions. BIG ANNOUNCEMENT!"
+    assert win.source.title == "Pretty face, tragic reactions. BIG ANNOUNCEMENT!"
+
+    # With clean_title = False
+    win.settings["clean_title"] = False
+    src2 = SourceInfo("https://twitch.tv/videos/2", "2", raw_title, "Streamer", 3600.0, "2026-10-01", "2")
+    win.on_info_ok(src2, [], False, "")
+    assert win.tab_plan.title_entry.text() == raw_title
+    assert win.source.title == raw_title
+
+

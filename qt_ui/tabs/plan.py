@@ -17,8 +17,8 @@ from typing import Callable, Sequence
 from PySide6.QtCore import QAbstractTableModel, QItemSelectionModel, QModelIndex, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QTextCharFormat, QTextCursor, QTextOption
 from PySide6.QtWidgets import (
-    QAbstractItemView, QBoxLayout, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QPlainTextEdit, QProgressBar,
-    QPushButton, QScrollBar, QSizePolicy, QStyledItemDelegate, QTableView, QVBoxLayout, QWidget,
+    QAbstractItemView, QBoxLayout, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPlainTextEdit,
+    QProgressBar, QPushButton, QScrollBar, QSizePolicy, QStyledItemDelegate, QTableView, QVBoxLayout, QWidget,
 )
 
 from core.options import STRATEGIES, build_filter, build_options, flag
@@ -26,8 +26,8 @@ from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, ERR, 
 from core.settings import DEFAULTS
 from core.timeline import game_colour
 from luckytwitch_engine import (
-    EngineError, GameSegment, Range, Storyboard, clip_start, fmt_hms, insert_cut_point, make_chapters, make_plan,
-    muted_overlap, ranges_of, ranges_to_text, toggle_part,
+    EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, fmt_hms, insert_cut_point, make_chapters,
+    make_plan, muted_overlap, ranges_of, ranges_to_text, toggle_part,
 )
 from qt_ui import dialogs
 from qt_ui import timeline as timeline_module
@@ -249,6 +249,7 @@ class PlanTab(ScrollPage):
     search_requested = Signal()
     paste_requested = Signal()
     strategy_changed = Signal(str)
+    title_changed = Signal(str)
 
     def __init__(self, settings: dict | None = None, bridge: Bridge | None = None, parent: QWidget | None = None):
         super().__init__(8, parent)
@@ -261,6 +262,7 @@ class PlanTab(ScrollPage):
         self.body_layout.setSpacing(10)
 
         self.source = None
+        self._raw_title: str = ""
         self.clips: list[dict] = []
         self.clips_loaded = False
         self._timeline_src = None
@@ -356,6 +358,31 @@ class PlanTab(ScrollPage):
         self.cuts_card = Card("Cut points")
         self.cuts_card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lower_layout.addWidget(self.cuts_card, 1)
+
+        # Stream title row
+        self.title_row = QWidget()
+        trlay = QHBoxLayout(self.title_row)
+        trlay.setContentsMargins(0, 0, 0, 6)
+        trlay.setSpacing(6)
+        title_lbl = QLabel("Title:")
+        title_lbl.setProperty("role", "muted")
+        trlay.addWidget(title_lbl)
+
+        self.title_entry = QLineEdit(self.title_row)
+        self.title_entry.setPlaceholderText("Stream title…")
+        self.title_entry.setEnabled(False)
+        self.title_entry.textChanged.connect(self._on_title_edited)
+        trlay.addWidget(self.title_entry, 1)
+
+        self.reset_title_btn = QPushButton("Reset", self.title_row)
+        self.reset_title_btn.setProperty("variant", "ghost")
+        self.reset_title_btn.setToolTip("Reset to original Twitch title")
+        self.reset_title_btn.setEnabled(False)
+        self.reset_title_btn.clicked.connect(self.reset_title)
+        trlay.addWidget(self.reset_title_btn)
+
+        self.cuts_card.add_widget(self.title_row)
+
         self.cuts = QPlainTextEdit()
         self.cuts.setObjectName("cutPoints")
         font = mono_font()
@@ -716,6 +743,37 @@ class PlanTab(ScrollPage):
     # ---------------------------- cut points & preview ---------------------------- #
     def cut_text(self) -> str:
         return self.cuts.toPlainText().strip()
+
+    def set_title(self, title: str, raw_title: str | None = None) -> None:
+        if raw_title is not None:
+            self._raw_title = raw_title
+        elif not getattr(self, "_raw_title", ""):
+            self._raw_title = title
+        has_val = bool(title or self._raw_title)
+        self.title_entry.setEnabled(has_val)
+        self.reset_title_btn.setEnabled(has_val)
+        self.title_entry.blockSignals(True)
+        self.title_entry.setText(title)
+        self.title_entry.blockSignals(False)
+
+    def _on_title_edited(self, text: str) -> None:
+        clean = text.strip()
+        if self.source:
+            self.source.title = clean
+        self.title_changed.emit(clean)
+
+    def reset_title(self) -> None:
+        raw = getattr(self, "_raw_title", "")
+        if not raw:
+            return
+        if flag(self.settings, "clean_title"):
+            new_title = clean_title(raw)
+        else:
+            new_title = raw
+        self.set_title(new_title)
+        if self.source:
+            self.source.title = new_title
+        self.title_changed.emit(new_title)
 
     def set_cut_text(self, text: str) -> None:
         """Replace the cut points box without firing ``update_preview`` twice when callers follow with their own call."""
