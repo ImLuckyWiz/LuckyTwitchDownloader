@@ -32,7 +32,7 @@ import tarfile
 import threading
 import time
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Callable
@@ -1052,6 +1052,31 @@ class Storyboard:
         return sheet, (x, y, x + self.tile_w, y + self.tile_h)
 
 
+QUALITY_BEST = "best"    # the highest quality there is
+QUALITY_AUDIO = "audio"  # the audio-only quality
+
+
+@dataclass(frozen=True)
+class VideoFormat:
+    """One quality Twitch offers for a VOD (one entry of yt-dlp's "formats")."""
+    format_id: str           # what yt-dlp calls it: "1080p60", "720p60", "480p", "Audio_Only"
+    height: int = 0          # 0 for audio only
+    fps: float = 0.0
+    tbr: float = 0.0         # kbit/s as Twitch declares it (0 = unknown)
+    audio_only: bool = False
+    source: bool = False     # Twitch's own "Source" quality (format_note == "Source")
+
+    @property
+    def label(self) -> str:  # what the person reads
+        if self.audio_only:
+            return "Audio only"
+        return f"{self.format_id} (Source)" if self.source else self.format_id
+
+    @property
+    def tag(self) -> str:    # for file names (Phase 7)
+        return "audio" if self.audio_only else self.format_id
+
+
 @dataclass
 class SourceInfo:
     url: str
@@ -1065,6 +1090,7 @@ class SourceInfo:
     storyboard: Storyboard | None = None  # None when the site has no preview thumbnails
     # Stretches Twitch silenced, in VOD seconds. [] = checked, none; None = not checked or could not be told.
     muted: list[Range] | None = None
+    formats: list[VideoFormat] = field(default_factory=list)
 
 
 def normalize_url(text: str) -> str:
@@ -1086,6 +1112,8 @@ def get_source_info(text: str) -> SourceInfo:
     url = normalize_url(text)
     if not url:
         raise EngineError("Paste a VOD URL or ID.")
+    if "\n" in url or "\r" in url:
+        raise EngineError("Paste a single VOD URL or ID (not multi-line text).")
     ytdlp = find_tool("yt-dlp")
     if not ytdlp:
         raise EngineError(YTDLP_MISSING)
@@ -1134,6 +1162,7 @@ def parse_source_info(info: dict, url: str) -> SourceInfo:
         twitch_vod_id=twitch_vod_id(url),
         segments=parse_game_segments(info.get("chapters"), duration),
         storyboard=parse_storyboard(info.get("formats"), duration),
+        formats=parse_formats(info.get("formats")) if twitch_vod_id(url) else [],
     )
 
 
@@ -1190,6 +1219,120 @@ def parse_storyboard(formats, duration: float, prefer: str = "low") -> Storyboar
         if best is None or (key > best[0] if prefer == "high" else key < best[0]):
             best = (key, sb)
     return best[1] if best else None
+
+
+def parse_formats(formats) -> list[VideoFormat]:
+    """Turn yt-dlp's "formats" list into our sorted list of VideoFormat objects."""
+    if not isinstance(formats, list):
+        return []
+    seen = set()
+    result: list[VideoFormat] = []
+    for f in formats:
+        if not isinstance(f, dict):
+            continue
+        if f.get("format_note") == "storyboard":
+            continue
+        fid = f.get("format_id")
+        if not fid or not isinstance(fid, str) or fid.strip() == "":
+            continue
+        fid = fid.strip()
+        if fid in seen:
+            continue
+        url = f.get("url")
+        if not isinstance(url, str):
+            continue
+        base_url = url.split("?")[0]
+        if ".m3u8" not in base_url:
+            continue
+        seen.add(fid)
+        audio_only = f.get("vcodec") == "none"
+        try:
+            h = int(f.get("height") or 0)
+        except (ValueError, TypeError):
+            h = 0
+        try:
+            fps = float(f.get("fps") or 0.0)
+        except (ValueError, TypeError):
+            fps = 0.0
+        try:
+            tbr = float(f.get("tbr") or 0.0)
+        except (ValueError, TypeError):
+            tbr = 0.0
+        is_source = f.get("format_note") == "Source"
+        result.append(
+            VideoFormat(
+                format_id=fid,
+                height=max(0, h),
+                fps=max(0.0, fps),
+                tbr=max(0.0, tbr),
+                audio_only=audio_only,
+                source=is_source,
+            )
+        )
+    # Sort: video first, then by height desc, fps desc, tbr desc; audio-only last
+    result.sort(key=lambda vf: (not vf.audio_only, vf.height, vf.fps, vf.tbr), reverse=True)
+    return result
+
+
+def resolve_format(formats: list[VideoFormat], wanted: str = QUALITY_BEST) -> VideoFormat | None:
+    """Pick the format from ``formats`` that best matches the ``wanted`` string."""
+    if not formats:
+        return None
+    w = (wanted or "").strip().lower()
+
+    # 1. "audio" -> audio-only; fallback to best video
+    if w == QUALITY_AUDIO:
+        for vf in formats:
+            if vf.audio_only:
+                return vf
+        return resolve_format(formats, QUALITY_BEST)
+
+    # 2. "best" / empty / unknown
+    if w in ("", QUALITY_BEST):
+        videos = [vf for vf in formats if not vf.audio_only]
+        if videos:
+            return max(videos, key=lambda vf: (vf.height, vf.fps, vf.tbr))
+        return formats[0]
+
+    # 3. Exact format_id match (case-insensitive)
+    for vf in formats:
+        if vf.format_id.lower() == w:
+            return vf
+
+    # 4. Height cap like "720p"
+    m = re.search(r"(\d{3,4})p", w)
+    if m:
+        cap = int(m.group(1))
+        videos = [vf for vf in formats if not vf.audio_only and vf.height > 0]
+        under = [vf for vf in videos if vf.height <= cap]
+        if under:
+            return max(under, key=lambda vf: (vf.height, vf.fps, vf.tbr))
+        if videos:
+            # Lowest video format
+            return min(videos, key=lambda vf: (vf.height, vf.fps, vf.tbr))
+
+    # 5. Fallback to best
+    return resolve_format(formats, QUALITY_BEST)
+
+
+def describe_quality(fmt: VideoFormat, asked: str = QUALITY_BEST) -> str:
+    """Human-readable description of the resolved format, noting differences if what was asked was not exact."""
+    a = (asked or "").strip().lower()
+    base = f"Quality: {fmt.label}"
+    if a in ("", QUALITY_BEST):
+        return base
+    if a == fmt.format_id.lower():
+        return base
+    if a == QUALITY_AUDIO and fmt.audio_only:
+        return base
+    return f"{base} (asked for {asked})"
+
+
+def estimate_bytes(fmt: VideoFormat | None, seconds: float) -> int:
+    """Estimated download size in bytes based on Twitch's declared bitrate (tbr in kbit/s)."""
+    if fmt is None or fmt.tbr <= 0 or seconds <= 0:
+        return 0
+    return int(round(fmt.tbr * 1000 / 8 * seconds))
 
 
 # --------------------------------------------------------------------------- #
@@ -1363,6 +1506,8 @@ class JobOptions:
     chat_render_font_size: int = 18
     chat_render_fps: int = 0  # 0 = like the video (60 if it has 60 fps, else 30)
     chat_render_smooth: bool = False  # redraw on every frame (smooth scrolling, slower) instead of 5 times a second
+    quality: str = QUALITY_BEST  # quality to download (Twitch VODs): "best", "720p60", "audio", etc.
+    audio_format: str = "m4a"  # audio container when quality is audio-only: "m4a" | "mp3"
 
 
 @dataclass
@@ -1916,6 +2061,21 @@ def mp4_flags(container: str) -> list[str]:
     return ["-movie_timescale", str(MP4_MOVIE_TIMESCALE)] if container.lower().lstrip(".") == "mp4" else []
 
 
+def audio_out_container(opts: "JobOptions") -> str:
+    return opts.audio_format if opts.audio_format in AUDIO_FORMATS else "m4a"
+
+
+def audio_codec_args(container: str) -> list[str]:
+    """m4a: Twitch's AAC copied as it is. mp3: converted."""
+    return ["-c:a", "libmp3lame", "-b:a", "192k"] if container == "mp3" else ["-c:a", "copy"]
+
+
+def audio_only_options(opts: "JobOptions") -> tuple["JobOptions", list[str]]:
+    """The options with every video-only extra switched off, and the names of the ones that were on."""
+    skipped = [label for key, label in AUDIO_SKIPPED if getattr(opts, key)]
+    return replace(opts, **{key: False for key, _ in AUDIO_SKIPPED}), skipped
+
+
 def mp4_movie_timescale(path: Path) -> int | None:
     """Movie timescale (mvhd) of an MP4 / MOV file, read from its header only. None if it cannot be read."""
     try:
@@ -2104,6 +2264,7 @@ def run_ytdlp(
     threads: int,
     total_secs: float | None = None,
     watch_dir: Path | None = None,
+    format_id: str | None = None,
 ) -> None:
     """
     Run the yt-dlp binary, forwarding progress to ctx. Cancel kills the whole process tree.
@@ -2113,9 +2274,10 @@ def run_ytdlp(
     ytdlp = find_tool("yt-dlp")
     if not ytdlp:
         raise EngineError(YTDLP_MISSING)
+    quality_args = ["-f", format_id] if format_id else ["-S", "res,fps,tbr"]
     cmd = [
         ytdlp,
-        "-S", "res,fps,tbr",
+        *quality_args,
         "--concurrent-fragments", str(max(1, threads)),
         "--retries", "10",
         "--fragment-retries", "10",
@@ -2181,7 +2343,16 @@ def run_ytdlp(
         raise EngineError("Download failed:\n" + "\n".join(tail[-8:]))
 
 
-MEDIA_EXTS = {".mp4", ".mkv", ".ts", ".webm", ".mov", ".m4v"}
+AUDIO_FORMATS = ("m4a", "mp3")
+MEDIA_EXTS = {".mp4", ".mkv", ".ts", ".webm", ".mov", ".m4v", ".m4a", ".mp3"}
+AUDIO_SKIPPED = (  # settings that need a video track -> what the log calls them
+    ("exact", "frame-exact cuts"),
+    ("premiere_xml", "Premiere XML markers"),
+    ("premiere_plugin", "Premiere plugin markers"),
+    ("game_markers", "game markers"),
+    ("muted_markers", "muted markers"),
+    ("chat_render", "chat overlay video"),
+)
 
 
 def _find_media(folder: Path) -> Path | None:
@@ -2189,14 +2360,15 @@ def _find_media(folder: Path) -> Path | None:
     return max(files, key=lambda p: p.stat().st_size) if files else None
 
 
-def download_full(ctx: Ctx, url: str, workdir: Path, threads: int) -> Path:
+def download_full(ctx: Ctx, url: str, workdir: Path, threads: int, format_id: str | None = None) -> Path:
     workdir.mkdir(parents=True, exist_ok=True)
     done = workdir / "full.done"
     existing = _find_media(workdir)
     if done.exists() and existing:
         ctx.log("Full VOD already downloaded in the work folder, reusing it.")
         return existing
-    run_ytdlp(ctx, ["-o", _out_template(workdir, "full"), url], threads)
+    kw = {"format_id": format_id} if format_id is not None else {}
+    run_ytdlp(ctx, ["-o", _out_template(workdir, "full"), url], threads, **kw)
     media = _find_media(workdir)
     if not media:
         raise EngineError("yt-dlp finished but no video file was found.")
@@ -2204,7 +2376,9 @@ def download_full(ctx: Ctx, url: str, workdir: Path, threads: int) -> Path:
     return media
 
 
-def download_section(ctx: Ctx, url: str, part: Part, workdir: Path, threads: int, exact: bool) -> Path:
+def download_section(
+    ctx: Ctx, url: str, part: Part, workdir: Path, threads: int, exact: bool, format_id: str | None = None
+) -> Path:
     pdir = workdir / f"part{part.index}"
     if pdir.exists():
         shutil.rmtree(pdir)
@@ -2212,7 +2386,8 @@ def download_section(ctx: Ctx, url: str, part: Part, workdir: Path, threads: int
     args = ["-o", _out_template(pdir, "part"), "--download-sections", f"*{part.start:.3f}-{part.end:.3f}"]
     if exact:
         args.append("--force-keyframes-at-cuts")
-    run_ytdlp(ctx, args + [url], threads, total_secs=part.duration, watch_dir=pdir)
+    kw = {"format_id": format_id} if format_id is not None else {}
+    run_ytdlp(ctx, args + [url], threads, total_secs=part.duration, watch_dir=pdir, **kw)
     media = _find_media(pdir)
     if not media or media.stat().st_size < 4096:
         raise EngineError(
@@ -2366,15 +2541,16 @@ def write_local_playlist(segments: list[Segment], dest: Path) -> None:
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def get_playlist_url(ctx: Ctx, url: str) -> str:
+def get_playlist_url(ctx: Ctx, url: str, format_id: str | None = None) -> str:
     """The media playlist (.m3u8) yt-dlp would download, chosen with the same quality flags."""
     ytdlp = find_tool("yt-dlp")
     if not ytdlp:
         raise EngineError(YTDLP_MISSING)
     ctx.check_cancel()
+    quality_args = ["-f", format_id] if format_id else ["-S", "res,fps,tbr"]
     try:
         proc = subprocess.run(
-            [ytdlp, "-g", "-S", "res,fps,tbr", "--no-warnings", url],
+            [ytdlp, "-g", *quality_args, "--no-warnings", url],
             stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", errors="replace",
             env=_tool_env(), creationflags=_NO_WINDOW, timeout=120,
         )
@@ -2390,7 +2566,7 @@ def get_playlist_url(ctx: Ctx, url: str) -> str:
 
 
 def download_section_aligned(
-    ctx: Ctx, url: str, part: Part, workdir: Path
+    ctx: Ctx, url: str, part: Part, workdir: Path, format_id: str | None = None, audio_only: bool = False
 ) -> tuple[Path, float, float] | None:
     """
     Download [part.start, part.end] as whole HLS segments with a single ffmpeg stream copy and NO -ss.
@@ -2399,7 +2575,8 @@ def download_section_aligned(
     Returns None when this method cannot be used (the caller then uses the old method).
     """
     try:
-        playlist_url = get_playlist_url(ctx, url)
+        kw = {"format_id": format_id} if format_id is not None else {}
+        playlist_url = get_playlist_url(ctx, url, **kw)
         resp = requests.get(playlist_url, headers={"User-Agent": HLS_USER_AGENT}, timeout=30)
         resp.raise_for_status()
         segments = parse_hls_playlist(resp.text, playlist_url)
@@ -2413,13 +2590,14 @@ def download_section_aligned(
         pdir.mkdir(parents=True)
         local = pdir / "part.m3u8"
         write_local_playlist(chosen, local)
-        out = pdir / "part.mp4"
+        out = pdir / ("part.m4a" if audio_only else "part.mp4")
+        map_args = ["-map", "0:a:0"] if audio_only else ["-map", "0:v:0", "-map", "0:a?"]
         run_ffmpeg(
             ctx,
             [
                 "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
                 "-i", str(local),
-                "-map", "0:v:0", "-map", "0:a?",
+                *map_args,
                 "-c", "copy", *mp4_flags("mp4"), "-f", "mp4", str(out),
             ],
             total=real_end - real_start,
@@ -2482,6 +2660,9 @@ def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int, clip: d
         s = int(t)
         return f"{s // 3600:02d}h{s % 3600 // 60:02d}m{s % 60:02d}s"
 
+    resolved_q = resolve_format(src.formats, getattr(opts, "quality", QUALITY_BEST)) if getattr(src, "formats", None) else None
+    q_tag = resolved_q.tag if resolved_q else ""
+
     data = _SafeDict(
         streamer=src.uploader or "vod",
         date=src.date or "",
@@ -2491,6 +2672,7 @@ def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int, clip: d
         total=total,
         start=tag(part.start),
         end=tag(part.end),
+        quality=q_tag,
     )
     template = opts.name_template
     if clip:  # single clip download: the clip's own name instead of the stream's
@@ -2576,6 +2758,34 @@ def finalize_part(
             (shutil.copy2 if copy_instead_of_move else shutil.move)(str(src_file), str(dest))
     else:
         run_ffmpeg(ctx, ["-i", str(src_file), "-map", "0", "-c", "copy", *mp4_flags(container), str(dest)], total=total)
+    return dest
+
+
+def finalize_audio_part(
+    ctx: Ctx,
+    src_file: Path,
+    dest_stem: Path,
+    container: str,
+    chapters: list[Chapter],
+    tags: dict[str, str],
+    total: float,
+    copy_instead_of_move: bool = False,
+) -> Path:
+    """Put an audio-only part in its final place as .m4a (copy) or .mp3 (convert)."""
+    dest = unique_path(dest_stem.parent / f"{dest_stem.name}.{container}")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not chapters and container == "m4a" and src_file.suffix.lower() == ".m4a":
+        (shutil.copy2 if copy_instead_of_move else shutil.move)(str(src_file), str(dest))
+        return dest
+    args = ["-i", str(src_file)]
+    if chapters:
+        meta = src_file.with_suffix(".ffmeta")
+        meta.write_text(ffmetadata(chapters, tags), encoding="utf-8")
+        args += ["-i", str(meta), "-map_metadata", "1", "-map_chapters", "1"]
+    args += ["-map", "0:a:0", *audio_codec_args(container)]
+    if container == "mp3":
+        args += ["-id3v2_version", "3"]
+    run_ffmpeg(ctx, args + [str(dest)], total=total)
     return dest
 
 
@@ -3162,7 +3372,9 @@ def chat_files_for_part(ctx: "Ctx", tool: str, src: "SourceInfo", opts: "JobOpti
             chat_json.unlink(missing_ok=True)
 
 
-def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, container: str, workdir: Path) -> dict[int, tuple[Path, float, float]]:
+def split_copy(
+    ctx: Ctx, full: Path, parts: list[Part], duration: float, container: str, workdir: Path, audio_only: bool = False
+) -> dict[int, tuple[Path, float, float]]:
     """
     Single ffmpeg pass (stream copy) that cuts the full file at every boundary.
     Returns {part.index: (segment_file, real_start, real_end)} in VOD time.
@@ -3182,14 +3394,16 @@ def split_copy(ctx: Ctx, full: Path, parts: list[Part], duration: float, contain
     seg_dir.mkdir(parents=True)
     listing = seg_dir / "list.csv"
     times = ",".join(f"{t:.3f}" for t in inner)
+    map_args = ["-map", "0:a:0"] if audio_only else ["-map", "0:v:0", "-map", "0:a?"]
     run_ffmpeg(
         ctx,
         [
             "-i", str(full),
-            "-map", "0:v:0", "-map", "0:a?",
+            *map_args,
             "-c", "copy",
             "-f", "segment",
             *(["-segment_format_options", f"movie_timescale={MP4_MOVIE_TIMESCALE}"] if mp4_flags(container) else []),
+            *(["-segment_format", "mp4"] if audio_only else []),
             "-segment_times", times,
             "-segment_list", str(listing),
             "-segment_list_type", "csv",
@@ -3282,6 +3496,21 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         f"{len(plan.parts)} part(s), coverage {plan.coverage * 100:.0f}% → "
         + ("download full VOD, then split" if plan.strategy == "full" else "download only the parts")
     )
+    fmt = resolve_format(src.formats, opts.quality)
+    fmt_kw = {"format_id": fmt.format_id} if fmt else {}
+    if fmt:
+        ctx.log(describe_quality(fmt, opts.quality))
+    elif (opts.quality or "").strip().lower() not in ("", QUALITY_BEST):
+        ctx.log("Quality: this video offers no choice, using the best one.")
+
+    audio_only = bool(fmt and fmt.audio_only)
+    dl_kw = {**fmt_kw, **({"audio_only": True} if audio_only else {})}
+    out_container = audio_out_container(opts) if audio_only else opts.container
+    if audio_only:
+        opts, skipped = audio_only_options(opts)
+        job = replace(job, opts=opts)  # _load_chapters reads job.opts
+        if skipped:
+            ctx.log("Audio only: skipped " + ", ".join(skipped) + " (they need a video track).")
     chapters_all = _load_chapters(ctx, job)
     games_all = game_chapters(src.segments) if opts.game_markers and not job.single_clip else []
     muted_all = _load_muted(ctx, job)
@@ -3301,7 +3530,10 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     out_dir = Path(opts.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     final_dir = stream_dir(src, opts)
-    workdir = out_dir / f".luckytwitch_{src.twitch_vod_id or src.id}"
+    workdir = out_dir / (
+        f".luckytwitch_{src.twitch_vod_id or src.id}"
+        + (f"_{fmt.format_id}" if fmt else "")
+    )
     tags = {
         "title": src.title,
         "artist": src.uploader,
@@ -3324,7 +3556,8 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             t["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
         else:
             t["title"] = src.title.strip()
-        dest = finalize_part(ctx, file, stem, opts.container, chs, t, real_end - real_start, copy)
+        finalize_fn = finalize_audio_part if audio_only else finalize_part
+        dest = finalize_fn(ctx, file, stem, out_container, chs, t, real_end - real_start, copy)
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
@@ -3360,7 +3593,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
 
     if plan.strategy == "full":
         ctx.stage(0.0, 0.85, "Downloading VOD")
-        full = download_full(ctx, src.url, workdir, opts.threads)
+        full = download_full(ctx, src.url, workdir, opts.threads, **fmt_kw)
         ctx.stage(0.85, 1.0, "Cutting")
         if opts.exact:
             for i, p in enumerate(plan.parts):
@@ -3368,7 +3601,9 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                 cut = cut_exact(ctx, full, p, opts.container, workdir)
                 finish(p, cut, p.start, p.end)
         else:
-            segs = split_copy(ctx, full, plan.parts, src.duration, opts.container, workdir)
+            split_container = "m4a" if audio_only else opts.container
+            split_kw = {"audio_only": True} if audio_only else {}
+            segs = split_copy(ctx, full, plan.parts, src.duration, split_container, workdir, **split_kw)
             only_full = len(plan.parts) == 1 and segs[plan.parts[0].index][0] == full
             for i, p in enumerate(plan.parts):
                 f, s, e = segs[p.index]
@@ -3377,7 +3612,8 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if opts.keep_full and full.exists():
             final_dir.mkdir(parents=True, exist_ok=True)
             stem = final_dir / safe_name(f"{src.uploader} - {src.date} - {src.twitch_vod_id or src.id} - FULL")
-            kept = unique_path(stem.parent / f"{stem.name}{full.suffix}")
+            full_suffix = ".m4a" if (audio_only and full.suffix.lower() == ".mp4") else full.suffix
+            kept = unique_path(stem.parent / f"{stem.name}{full_suffix}")
             shutil.move(str(full), str(kept))
             ctx.log(f"Kept full VOD: {kept.name}")
     else:
@@ -3385,7 +3621,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             ctx.check_cancel()
             lo, hi = i / total_parts, (i + 1) / total_parts
             ctx.stage(lo, lo + (hi - lo) * 0.9, f"Downloading part {p.index}/{total_parts}")
-            aligned = download_section_aligned(ctx, src.url, p, workdir)
+            aligned = download_section_aligned(ctx, src.url, p, workdir, **dl_kw)
             if aligned:
                 f, real_start, real_end = aligned
                 early = p.start - real_start
@@ -3399,7 +3635,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                     f = cut_exact(ctx, f, p, opts.container, workdir, offset=max(0.0, p.start - real_start))
                     real_start, real_end = p.start, p.end
             else:
-                f = download_section(ctx, src.url, p, workdir, opts.threads, opts.exact)
+                f = download_section(ctx, src.url, p, workdir, opts.threads, opts.exact, **fmt_kw)
                 real_start, real_end = p.start, p.end
             ctx.stage(lo + (hi - lo) * 0.9, hi, f"Finishing part {p.index}/{total_parts}")
             finish(p, f, real_start, real_end)

@@ -2,6 +2,7 @@
 config.json
 luckytwitch_settings.json
 luckytwitch_ui.json
+luckytwitch_recent.json
 links/
 running.beat
 

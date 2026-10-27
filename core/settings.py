@@ -48,6 +48,8 @@ DEFAULTS = {
     "chat_render_smooth": False,
     "subfolders": True,
     "clean_title": True,
+    "default_quality": "Best available",
+    "audio_format": "m4a · keep Twitch's audio",
     "folder_template": "{date} - {title} - {id}",
     "clip_name_template": "{clip_title}",
     "clip_pad_before": "3",

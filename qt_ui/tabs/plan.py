@@ -21,13 +21,13 @@ from PySide6.QtWidgets import (
     QProgressBar, QPushButton, QScrollBar, QSizePolicy, QStyledItemDelegate, QTableView, QVBoxLayout, QWidget,
 )
 
-from core.options import STRATEGIES, build_filter, build_options, flag
+from core.options import QUALITY_CHOICES, STRATEGIES, build_filter, build_options, flag
 from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, ERR, FG, MUTED, OK, WARN
 from core.settings import DEFAULTS
 from core.timeline import game_colour
 from luckytwitch_engine import (
-    EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, fmt_hms, insert_cut_point, make_chapters,
-    make_plan, muted_overlap, ranges_of, ranges_to_text, toggle_part,
+    QUALITY_BEST, EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, estimate_bytes, fmt_hms,
+    insert_cut_point, make_chapters, make_plan, muted_overlap, ranges_of, ranges_to_text, resolve_format, toggle_part,
 )
 from qt_ui import dialogs
 from qt_ui import timeline as timeline_module
@@ -37,7 +37,7 @@ from qt_ui.bridge import Bridge
 from qt_ui.icons import icon
 from qt_ui.theme import mono_font
 from qt_ui.timeline import IDLE_HINT, Timeline
-from qt_ui.widgets import Card, MarqueeLabel, ScrollPage, SpinBox, Toggle, WrapLabel
+from qt_ui.widgets import Card, ComboBox, MarqueeLabel, ScrollPage, SpinBox, Toggle, WrapLabel
 
 HEADER_HEIGHT = 34
 ROW_HEIGHT = 28
@@ -45,6 +45,19 @@ WIDE_BREAKPOINT = 1100
 PREVIEW_COLOURS = {"ok": OK, "err": ERR, "muted": MUTED}
 CUT_HINT = ("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
             "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end")
+
+
+def human_size(n: int) -> str:
+    """Format bytes as human-readable decimal string (e.g. 1.4 GB, 820 MB, 0 B)."""
+    if n <= 0:
+        return "0 B"
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f} GB"
+    if n >= 1_000_000:
+        return f"{int(round(n / 1_000_000))} MB"
+    if n >= 1_000:
+        return f"{int(round(n / 1_000))} KB"
+    return f"{n} B"
 
 STRATEGY_CHOICES = (
     ("auto", "Auto", "Auto"),
@@ -250,6 +263,7 @@ class PlanTab(ScrollPage):
     paste_requested = Signal()
     strategy_changed = Signal(str)
     title_changed = Signal(str)
+    quality_changed = Signal(str)
 
     def __init__(self, settings: dict | None = None, bridge: Bridge | None = None, parent: QWidget | None = None):
         super().__init__(8, parent)
@@ -434,6 +448,25 @@ class PlanTab(ScrollPage):
         self.coverage_badge.setProperty("role", "muted")
         srlay.addWidget(self.coverage_badge)
         self.cuts_card.add_widget(self.strategy_row)
+
+        # Quality row (hidden until a VOD with formats is loaded)
+        self.quality_row = QWidget()
+        self.quality_row.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        qrlay = QHBoxLayout(self.quality_row)
+        qrlay.setContentsMargins(0, 0, 0, 6)
+        qrlay.setSpacing(6)
+        qual_lbl = QLabel("Quality:")
+        qual_lbl.setProperty("role", "muted")
+        qrlay.addWidget(qual_lbl)
+        self.quality_combo = ComboBox(self.quality_row)
+        self.quality_combo.activated.connect(self._on_quality_activated)
+        qrlay.addWidget(self.quality_combo)
+        qrlay.addStretch(1)
+        self.quality_note = QLabel("")
+        self.quality_note.setProperty("role", "muted")
+        qrlay.addWidget(self.quality_note)
+        self.quality_row.setVisible(False)
+        self.cuts_card.add_widget(self.quality_row)
 
         self.coverage_bar = QProgressBar()
         self.coverage_bar.setObjectName("coverageBar")
@@ -783,8 +816,49 @@ class PlanTab(ScrollPage):
         finally:
             self.cuts.blockSignals(False)
 
+    def set_formats(self, formats: list, default_setting: str) -> None:
+        self.quality_combo.blockSignals(True)
+        self.quality_combo.clear()
+        if not formats:
+            self.quality_combo.blockSignals(False)
+            self.quality_row.setVisible(False)
+            return
+
+        best = resolve_format(formats, QUALITY_BEST)
+        best_label = best.label if best else "best"
+        self.quality_combo.addItem(f"Best available ({best_label})", QUALITY_BEST)
+        for fmt in formats:
+            self.quality_combo.addItem(fmt.label, fmt.format_id)
+
+        wanted = QUALITY_CHOICES.get(default_setting, "best")
+        if wanted == "best":
+            self.quality_combo.setCurrentIndex(0)
+        else:
+            chosen = resolve_format(formats, wanted)
+            idx = 0
+            if chosen:
+                for i in range(self.quality_combo.count()):
+                    if self.quality_combo.itemData(i) == chosen.format_id:
+                        idx = i
+                        break
+            self.quality_combo.setCurrentIndex(idx)
+
+        self.quality_combo.blockSignals(False)
+        self.quality_row.setVisible(True)
+        self.update_preview()
+
+    def current_quality(self) -> str:
+        if self.quality_row.isVisible() and self.quality_combo.count() > 0:
+            data = self.quality_combo.currentData()
+            return str(data) if data is not None else QUALITY_BEST
+        return QUALITY_BEST
+
+    def _on_quality_activated(self, _index: int = 0) -> None:
+        self.update_preview()
+        self.quality_changed.emit(self.current_quality())
+
     def build_options(self):
-        return build_options(self.settings, self.cut_text())
+        return build_options(self.settings, self.cut_text(), quality=self.current_quality())
 
     def build_filter(self):
         return build_filter(self.settings)
@@ -842,6 +916,16 @@ class PlanTab(ScrollPage):
             how = ("download the full VOD once, then split it" if plan.strategy == "full"
                    else "download only these parts")
             lines.append(f"\u2192 {how}   (parts cover {plan.coverage * 100:.0f}% of the VOD)")
+        if self.source and getattr(self.source, "formats", None):
+            fmt = resolve_format(self.source.formats, self.current_quality())
+            if fmt:
+                if fmt.audio_only:
+                    lines.append(f"Quality: {fmt.label} \u00b7 Audio only: saved as .m4a or .mp3 (Options). Video-only extras are skipped.")
+                else:
+                    dl_secs = self.source.duration if plan.strategy == "full" else sum(p.duration for p in plan.parts)
+                    est = estimate_bytes(fmt, dl_secs or 0)
+                    size_str = f" \u00b7 about {human_size(est)}" if est > 0 else ""
+                    lines.append(f"Quality: {fmt.label}{size_str}")
         n = len(plan.parts)
         total_muted = sum(muted_overlap(muted, p.start, p.end) for p in plan.parts)
         summary_str = (

@@ -114,3 +114,21 @@ def test_clip_and_chapter_examples():
     assert examples.example_chapter(s()) == "Epic fail (viewer1, 500 views)"
     assert examples.example_chapter(s(title_tpl="{title} - {nope}")) == "Epic fail - {nope}"
     assert examples.example_chapter(s(title_tpl="{title")) == "(the template has an unfinished {…})"
+
+
+def test_quality_and_audio_format_resolution():
+    # Defaults
+    o = options.build_options(s())
+    assert o.quality == "best"
+    assert o.audio_format == "m4a"
+
+    # Settings mapping
+    assert options.build_options(s(default_quality="720p")).quality == "720p"
+    assert options.build_options(s(default_quality="Audio only")).quality == "audio"
+    assert options.build_options(s(default_quality="unknown")).quality == "best"
+    assert options.build_options(s(audio_format="mp3 · converted")).audio_format == "mp3"
+    assert options.build_options(s(audio_format="unknown")).audio_format == "m4a"
+
+    # Explicit quality argument overrides settings
+    assert options.build_options(s(default_quality="720p"), quality="480p").quality == "480p"
+    assert options.build_options(s(default_quality="720p"), quality="best").quality == "best"

@@ -1,3 +1,15 @@
+## v2.2.0
+
+LuckyTwitch Downloader **v2.2.0** brings full stream quality selection, lossless audio-only extraction (.m4a / .mp3), real-time download size estimation, `{quality}` naming token support, and robust URL/input validation.
+
+### What's new in 2.2.0:
+- **Stream Quality Selector:** Choose any stream quality provided by Twitch (such as `1080p60 (Source)`, `720p60`, `480p`, etc.) or **Audio only** directly from the Plan tab's quality picker.
+- **Real-Time Download Size Estimates:** The Plan tab preview now calculates and displays the estimated download size (e.g. `Quality: 720p60 · about 1.4 GB`) based on Twitch's declared stream bitrate.
+- **Audio-Only Mode:** Extract and download audio directly without downloading the video stream. Audio can be saved as `.m4a` (lossless direct AAC stream copy with zero re-encoding) or converted to `.mp3` (192 kbps with ffmpeg for universal player compatibility). Chapters are preserved in both audio formats.
+- **Default Quality & Audio Preferences:** Configure your preferred default quality and audio format in **Options → Output → Quality**. Each loaded VOD adopts your default quality automatically while remaining adjustable per VOD on the Plan tab.
+- **`{quality}` File Name Token:** Added `{quality}` to the customizable file naming template chips in Options (e.g. `{streamer} - {date} - {id} - {quality} - part{n}`), making it easy to archive and distinguish different quality downloads of the same stream.
+- **Intelligent URL & Drag-and-Drop Validation:** The app now validates pasted and dropped inputs before invoking yt-dlp. Accidental drags of multiline log text or invalid text now trigger a friendly warning instead of a yt-dlp crash dialog, and channel names are seamlessly redirected to the Search tab.
+
 ## v2.1.1
 
 LuckyTwitch Downloader **v2.1.1** introduces intelligent title cleaning and manual title editing, smarter single-part file naming, and critical fixes for filename truncation and path previews.

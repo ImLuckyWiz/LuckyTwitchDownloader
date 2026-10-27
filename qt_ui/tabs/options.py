@@ -34,7 +34,8 @@ import weblink
 from core import examples
 from core.files import open_in_file_manager
 from core.options import (
-    CHAT_RENDER_FPS_NAMES, CHAT_RENDER_LOOK_NAMES, CHAT_RENDER_TYPE_NAMES, STRATEGY_NAMES, flag,
+    AUDIO_FORMAT_NAMES, CHAT_RENDER_FPS_NAMES, CHAT_RENDER_LOOK_NAMES, CHAT_RENDER_TYPE_NAMES, QUALITY_NAMES,
+    STRATEGY_NAMES, flag,
 )
 from core.settings import DEFAULTS
 from luckytwitch_engine import APP_DIR, CHAT_FORMATS, TOOLS_DIR
@@ -405,7 +406,7 @@ class OptionsTab(QWidget):
 
         self._template_row(
             adv, "File name", "How each part is called. Click a token to add it.", "name_template",
-            ["streamer", "date", "id", "title", "n", "total", "start", "end"],
+            ["streamer", "date", "id", "title", "quality", "n", "total", "start", "end"],
             info="{n} is the part number, {total} how many parts there are, {start} and {end} the part's "
                  "time range in the VOD (like 01h02m03s). {id} is the VOD's Twitch id.",
             section_key="output", card=card, adv=adv)
@@ -422,6 +423,20 @@ class OptionsTab(QWidget):
             adv, "Stream folder name", "Name of the folder that holds one stream's files.", "folder_template",
             ["streamer", "date", "id", "title"], divider=False, per_row=4,
             section_key="output", card=card, adv=adv)
+
+        qcard = self._card(f, "Quality", "What to download when a VOD offers several qualities (Twitch VODs).")
+        row = qcard.add_row(
+            "Default quality", "Used when you load a VOD. You can change it for each VOD on the Plan tab.",
+            info="Best available is the highest quality Twitch offers. If a VOD does not have the chosen quality, the "
+                 "closest lower one is used. Audio only downloads just the sound.")
+        self._register_setting(row, "default_quality", "output", qcard)
+        row.add_control(self._combo("default_quality", QUALITY_NAMES, 16))
+        row = qcard.add_row(
+            "Audio-only file", "How the sound is saved when the quality is Audio only.", divider=False,
+            info="m4a keeps Twitch's own audio exactly as it is (no re-encoding). mp3 converts it with ffmpeg "
+                 "(192 kbit/s) and plays everywhere.")
+        self._register_setting(row, "audio_format", "output", qcard)
+        row.add_control(self._combo("audio_format", AUDIO_FORMAT_NAMES, 26))
 
     # ------------------------------------------------------------------ Cuts
     def _section_cuts(self, f: QWidget) -> None:

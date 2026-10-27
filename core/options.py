@@ -22,6 +22,11 @@ STRATEGIES = {
     "Download full VOD, then split": "full",
     "Download only the parts": "sections",
 }
+QUALITY_CHOICES = {          # what the person reads -> what the engine uses
+    "Best available": "best", "1080p": "1080p", "720p": "720p", "480p": "480p",
+    "360p": "360p", "160p": "160p", "Audio only": "audio",
+}
+AUDIO_FORMAT_CHOICES = {"m4a · keep Twitch's audio": "m4a", "mp3 · converted": "mp3"}
 CHAT_RENDER_TYPES = {
     "Transparent · Animation (.mov, small)": "transparent",
     "Transparent · ProRes 4444 (.mov, very big)": "prores",
@@ -34,6 +39,8 @@ CHAT_RENDER_LOOK_TYPES = {
 CHAT_RENDER_FPS_NAMES = ["Like the video", "30", "60"]
 
 STRATEGY_NAMES = list(STRATEGIES)
+QUALITY_NAMES = list(QUALITY_CHOICES)
+AUDIO_FORMAT_NAMES = list(AUDIO_FORMAT_CHOICES)
 CHAT_RENDER_TYPE_NAMES = list(CHAT_RENDER_TYPES)
 CHAT_RENDER_LOOK_NAMES = list(CHAT_RENDER_LOOK_TYPES)
 
@@ -78,7 +85,7 @@ def build_filter(settings: dict) -> ClipFilter:
     )
 
 
-def build_options(settings: dict, cut_text: str = "") -> JobOptions:
+def build_options(settings: dict, cut_text: str = "", quality: str | None = None) -> JobOptions:
     """``cut_text`` is the text of the Plan tab's cut points box (empty until the Plan tab exists, Phase 6)."""
     s = settings
     chat_format = text(s, "chat_format")
@@ -115,4 +122,6 @@ def build_options(settings: dict, cut_text: str = "") -> JobOptions:
         folder_template=text(s, "folder_template").strip() or DEFAULTS["folder_template"],
         clip_name_template=text(s, "clip_name_template").strip() or DEFAULTS["clip_name_template"],
         clean_title=flag(s, "clean_title") if "clean_title" in s else True,
+        quality=quality or QUALITY_CHOICES.get(text(s, "default_quality"), "best"),
+        audio_format=AUDIO_FORMAT_CHOICES.get(text(s, "audio_format"), "m4a"),
     )

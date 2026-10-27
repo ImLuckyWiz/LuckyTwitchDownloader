@@ -54,11 +54,11 @@ def test_resource_path_points_into_the_project():
 
 
 # ------------------------------------------------------------------ settings
-def test_defaults_are_the_38_documented_keys_with_the_documented_types():
+def test_defaults_are_the_41_documented_keys_with_the_documented_types():
     d = settings.DEFAULTS
-    assert len(d) == 39
+    assert len(d) == 41
     assert sum(isinstance(v, bool) for v in d.values()) == 15
-    assert sum(isinstance(v, str) for v in d.values()) == 24
+    assert sum(isinstance(v, str) for v in d.values()) == 26
     expected_bools = {
         "exact", "keep_full", "chapters", "sidecar", "premiere_xml",
         "premiere_plugin", "game_markers", "muted_markers", "chat",
@@ -92,7 +92,7 @@ def test_load_settings_overlays_known_keys_and_drops_unknown_ones(data_dir):
 
 def test_settings_file_written_by_the_tkinter_app_loads_with_every_value(data_dir):
     """tests/fixtures/settings_written_by_tk.json was written by the real tkinter App (v1.16.0) with a value that
-    differs from the default in every one of the 38 keys."""
+    differs from the default in every one of the 38 keys (default_quality and audio_format were added by hand)."""
     raw = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert set(raw).issubset(set(settings.DEFAULTS))
     assert all(raw[k] != settings.DEFAULTS[k] for k in raw)
@@ -101,6 +101,8 @@ def test_settings_file_written_by_the_tkinter_app_loads_with_every_value(data_di
     for k in raw:
         assert loaded[k] == raw[k]
     assert loaded["clean_title"] is True
+    assert loaded["default_quality"] == "720p"
+    assert loaded["audio_format"] == "mp3 · converted"
     assert loaded["gap_title"] == "Charla ñandú"  # non-ASCII survives the JSON escapes
 
 

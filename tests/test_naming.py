@@ -15,6 +15,7 @@ from luckytwitch_engine import (
     safe_name,
     stream_dir,
     unique_path,
+    VideoFormat,
 )
 
 
@@ -190,3 +191,28 @@ def test_finalize_part_preserves_dots_in_title(tmp_path):
     ctx = Ctx(log=lambda m: None, progress=lambda *a: None)
     out = finalize_part(ctx, src_file, dest_stem, "mp4", [], {}, 10.0, copy_instead_of_move=True)
     assert out.name == "Vexoria - Pretty face tragic reactions. BIG ANNOUNCEMENT - part1.mp4"
+
+
+# --------------------------------------------------------------------------- {quality} token
+def test_part_stem_quality_token():
+    fmts = [
+        VideoFormat("1080p60", 1080, 60, 6000, False, True),
+        VideoFormat("720p60", 720, 60, 3000, False, False),
+        VideoFormat("Audio_Only", 0, 0, 160, True, False),
+    ]
+    src_with_fmts = make_src(formats=fmts)
+    src_no_fmts = make_src()
+
+    opts_720 = make_opts(name_template="{streamer} - {id} - {quality} - part{n}", quality="720p")
+    assert part_stem(src_with_fmts, opts_720, Part(1, 0, 60), 2) == "Streamer - 123 - 720p60 - part1"
+
+    opts_audio = make_opts(name_template="{streamer} - {id} - {quality} - part{n}", quality="audio")
+    assert part_stem(src_with_fmts, opts_audio, Part(1, 0, 60), 2) == "Streamer - 123 - audio - part1"
+
+    # No formats in source -> {quality} is empty
+    opts_no_fmts = make_opts(name_template="{streamer} - {id}{quality} - part{n}", quality="720p")
+    assert part_stem(src_no_fmts, opts_no_fmts, Part(1, 0, 60), 2) == "Streamer - 123 - part1"
+
+    # Old template without {quality} is unchanged
+    opts_old = make_opts(name_template="{streamer} - {id} - part{n}", quality="720p")
+    assert part_stem(src_with_fmts, opts_old, Part(1, 0, 60), 2) == "Streamer - 123 - part1"

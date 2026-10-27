@@ -1,15 +1,18 @@
 """The Qt main window (Phase 1: the frame only). Smoke tests with pytest-qt; no display needed (offscreen)."""
 
+import types
 import pytest
 
 pytest.importorskip("PySide6")
 pytest.importorskip("pytestqt")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QProgressBar, QPushButton, QTabBar  # noqa: E402
 
 import luckytwitch_qt  # noqa: E402
 from core import paths  # noqa: E402
 from core.settings import DEFAULTS  # noqa: E402
+from qt_ui import dialogs  # noqa: E402
 from qt_ui import main_window as mw  # noqa: E402
 from qt_ui import theme  # noqa: E402
 from qt_ui.bridge import Bridge  # noqa: E402
@@ -28,7 +31,15 @@ def themed(qtbot):
 
 
 @pytest.fixture()
-def win(qtbot, themed):
+def boxes(monkeypatch):
+    calls = types.SimpleNamespace(log=[])
+    for name in ("info", "warning", "error"):
+        monkeypatch.setattr(dialogs, name, lambda parent, title, text, _n=name: calls.log.append((_n, title, text)))
+    return calls
+
+
+@pytest.fixture()
+def win(qtbot, themed, boxes):
     w = mw.MainWindow(settings=dict(DEFAULTS), client=object())  # signed in: starts on the first tab
     qtbot.addWidget(w)
     w.show()
@@ -198,4 +209,45 @@ def test_extract_channel_input_handles_urls_and_handles():
     assert extract_channel_input("https://twitch.tv/illojuan?test=1") == "illojuan"
     assert extract_channel_input("2281234567") is None
     assert extract_channel_input("https://www.twitch.tv/videos/2281234567") is None
+
+
+def test_is_valid_url():
+    from qt_ui.main_window import is_valid_url
+    assert is_valid_url("https://www.twitch.tv/videos/123456789")
+    assert is_valid_url("twitch.tv/videos/123456789")
+    assert is_valid_url("123456789")
+    assert is_valid_url("https://youtu.be/xyz")
+    assert is_valid_url("luckytwitch://videos/12345")
+    assert not is_valid_url("downloading part 1/1: 10%\ndownload complete")
+    assert not is_valid_url("some words not a url")
+    assert not is_valid_url("")
+
+
+def test_on_get_info_with_invalid_input_shows_warning(win, boxes):
+    win.vod_entry.setText("Downloading part 1/1: 10% · 63 MiB")
+    win.on_get_info()
+
+    assert not win._info_busy
+    assert any("Please enter a valid video URL" in text for _n, _t, text in boxes.log)
+    assert "Please enter a valid video URL" in win.status_label.text()
+
+
+def test_drop_event_with_multiline_log_shows_warning_and_does_not_fetch(win, boxes):
+    from PySide6.QtCore import QMimeData, QPointF
+    from PySide6.QtGui import QDropEvent
+
+    mime = QMimeData()
+    mime.setText("ality: 480p\n[20:09:06] Downloading part 1/1: 2% · 15 MiB\n[20:09:23] Downloading part 1/1: 10% · 63 MiB")
+    event = QDropEvent(
+        QPointF(10, 10),
+        Qt.DropAction.CopyAction,
+        mime,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    win.dropEvent(event)
+
+    assert win.vod_entry.text() == ""
+    assert not win._info_busy
+    assert any("The dropped text is not a valid video URL" in text for _n, _t, text in boxes.log)
 

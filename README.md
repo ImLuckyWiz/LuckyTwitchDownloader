@@ -25,15 +25,29 @@ Get the latest version from the [Releases](../../releases) page:
 
 ## Using it
 
-1. Paste a VOD URL or ID and press **Get info**.
+1. Paste a VOD URL or ID (or drag and drop a link into the window) and press **Get info**.
 2. Write the cut points, for example `0:00 - 30:00 - 1:30:00 - end` (consecutive parts). Use `;` or a new line to skip gaps: `0:00 - 30:00 ; 2:00:00 - end`. Times can be `H:MM:SS`, `MM:SS`, seconds or `1h30m`. Or use the **Timeline** above the text box: click the thumbnails to cut, drag a cut line to move it, right-click it to remove it, click a part to skip it, double-click a game bar to make that game its own part. The mouse wheel zooms, **Undo** takes back the last edit. The text and the timeline always match.
 3. Choose the download strategy (**Auto** picks whichever is cheaper: full VOD then split, or only the parts), then start the job.
 
 ### Finding a VOD (Search tab)
 
-Instead of pasting a link you can search for a streamer: open the **Search** tab, type a name and press Enter. Pick a channel to see its VODs with thumbnails (past broadcasts, highlights or uploads), then double-click one (or press **Use this VOD**) and it is loaded in the Plan tab. The streamers you open are remembered under **Recent streamers**. Searching needs the Twitch sign-in described below; if you are not signed in, the tab shows a **Sign in…** button.
+Instead of pasting a link you can search for a streamer: open the **Search** tab, type a name and press Enter (or enter/drop a streamer name directly into the URL bar on the Plan tab to jump straight to search). Pick a channel to see its VODs with thumbnails (past broadcasts, highlights or uploads), then double-click one (or press **Use this VOD**) and it is loaded in the Plan tab. The streamers you open are remembered under **Recent streamers**. Searching needs the Twitch sign-in described below; if you are not signed in, the tab shows a **Sign in…** button.
 
-Other options include exact cuts, file and folder name templates, keeping the full VOD, and a queue of jobs. Cancelling stops everything and keeps the partial download so it can resume.
+Other options include exact cuts, keeping the full VOD, and a queue of jobs. Cancelling stops everything and keeps the partial download so it can resume.
+
+- **Editing stream titles:** You can edit the stream title directly on the **Plan tab** before queuing a download. A **Reset** button restores Twitch's original title at any time.
+- **Auto-clean titles:** In **Options → Output**, *Auto-clean titles* automatically strips bot commands (`!links`, `!gsupps`), promo hashtags (`#ad`), and emojis so your files have clean names. You can toggle this off if you prefer raw titles.
+- **Clean single-part naming:** When a download has only one part, redundant ` - part1` tags are automatically omitted from file names and video metadata.
+
+### Quality and Audio only (Twitch VODs)
+
+When you load a Twitch VOD, a **Quality** picker appears on the Plan tab:
+
+- **Quality choices:** Choose any quality Twitch provides (e.g. `1080p60 (Source)`, `720p60`, `480p`, etc.) or **Audio only**. The preview displays the estimated download size based on declared bitrate.
+- **Default quality:** Configured in **Options → Output → Quality** (`Best available` by default). Each loaded VOD uses this default unless changed on the Plan tab.
+- **Audio-only format:** In Options, choose between `.m4a` (copies Twitch's native AAC audio directly without re-encoding, fast and lossless) or `.mp3` (re-encoded to 192 kbps via ffmpeg for universal playback).
+- **Video-only extras skipped:** When downloading audio only, video-dependent extras (frame-exact cuts, Premiere XML/JSON markers, game markers, and chat video overlays) are automatically skipped.
+- **File naming:** You can add the `{quality}` token to your file name template in Options (e.g. `{streamer} - {date} - {id} - {quality} - part{n}`) to distinguish quality variants.
 
 ### Clip chapters (optional)
 

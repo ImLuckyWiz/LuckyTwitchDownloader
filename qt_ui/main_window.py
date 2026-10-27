@@ -7,6 +7,7 @@ Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, s
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 import weakref
 from dataclasses import replace
 from pathlib import Path
@@ -21,7 +22,7 @@ import weblink
 from core import paths
 from core.config import make_client
 from core.options import build_filter, build_options, flag, num
-from core.settings import save_settings
+from core.settings import DEFAULTS, save_settings
 from core.ui_state import UIState, load_ui_state, save_ui_state
 from luckytwitch_engine import EngineError, Job, clean_title, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
 from qt_ui import dialogs, notify
@@ -39,17 +40,20 @@ TAB_NAMES = ("Search", "Plan", "Options", "Queue & log")
 READY_TEXT = "Ready. Paste a VOD URL or ID and press «Get info»."
 NO_VOD_TEXT = "No VOD loaded."
 
-_VOD_URL_RE = re.compile(r"(?:https?://(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|\w+/v/\d+)|luckytwitch://\S+)", re.I)
+_VOD_URL_RE = re.compile(r"(?:(?:https?://)?(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|\w+/v/\d+)|luckytwitch://\S+)", re.I)
 
 
 def extract_vod_input(text: str) -> str | None:
     """Return a Twitch VOD URL / luckytwitch:// link / numeric VOD ID from ``text``, or None."""
     s = (text or "").strip()
-    if not s:
+    if not s or "\n" in s or "\r" in s:
         return None
     m = _VOD_URL_RE.search(s)
     if m:
-        return m.group(0)
+        url = m.group(0)
+        if url.lower().startswith(("twitch.tv", "www.twitch.tv", "m.twitch.tv")):
+            url = f"https://{url}"
+        return url
     if s.isdigit() and 7 <= len(s) <= 12:
         return s
     return None
@@ -63,7 +67,7 @@ RESERVED_TWITCH = {"videos", "video", "directory", "p", "settings", "inventory",
 def extract_channel_input(text: str) -> str | None:
     """Return a Twitch channel/streamer name if text looks like a handle or channel URL, else None."""
     s = (text or "").strip()
-    if not s or extract_vod_input(s):
+    if not s or "\n" in s or "\r" in s or extract_vod_input(s):
         return None
     m_url = _CHANNEL_URL_RE.match(s)
     if m_url:
@@ -76,6 +80,30 @@ def extract_channel_input(text: str) -> str | None:
         if not user.isdigit():
             return user
     return None
+
+
+def is_valid_url(text: str) -> bool:
+    """Return True if text is a valid web URL or VOD ID, else False."""
+    s = (text or "").strip()
+    if not s or "\n" in s or "\r" in s:
+        return False
+    if s.isdigit():
+        return True
+    if extract_vod_input(s):
+        return True
+    if s.lower().startswith(("http://", "https://", "luckytwitch://")):
+        try:
+            parsed = urlsplit(s)
+            return bool(parsed.scheme and parsed.netloc and " " not in s)
+        except Exception:
+            return False
+    if "." in s and "/" in s and " " not in s:
+        try:
+            parsed = urlsplit(f"https://{s}")
+            return bool(parsed.netloc and "." in parsed.netloc)
+        except Exception:
+            return False
+    return False
 
 
 def _weak(method):
@@ -427,9 +455,25 @@ class MainWindow(QMainWindow):
         if raw.lower().startswith("luckytwitch://"):
             self.open_link(raw)
             return
-        vod = extract_vod_input(raw) or raw
-        self.vod_entry.setText(vod)
-        self.on_get_info()
+
+        vod = extract_vod_input(raw)
+        channel = extract_channel_input(raw)
+        if vod:
+            self.vod_entry.setText(vod)
+            self.on_get_info()
+        elif channel:
+            self.vod_entry.setText(channel)
+            self.on_get_info()
+        elif is_valid_url(raw):
+            self.vod_entry.setText(raw)
+            self.on_get_info()
+        else:
+            self.set_status("Please drop a valid video URL, a VOD ID, or a streamer name.")
+            dialogs.warning(
+                self,
+                "Invalid input",
+                "The dropped text is not a valid video URL, a VOD ID, or a streamer name.",
+            )
 
     def paste_vod_from_clipboard(self) -> None:
         clip = QApplication.clipboard()
@@ -644,6 +688,7 @@ class MainWindow(QMainWindow):
         """Clear the currently loaded VOD from the strip and Plan tab (Phase 9b, B3)."""
         self.source, self.clips, self.clips_loaded = None, [], False
         self.tab_plan.set_title("", raw_title="")
+        self.tab_plan.set_formats([], "")
         self.info_label.setText(NO_VOD_TEXT)
         self.vod_strip.clear()
         self.update_preview()
@@ -674,7 +719,7 @@ class MainWindow(QMainWindow):
 
     def build_options(self):
         """The engine's ``JobOptions`` from the settings and the cut points (``App.build_options``)."""
-        return build_options(self.settings, self.cut_text())
+        return build_options(self.settings, self.cut_text(), quality=self.tab_plan.current_quality())
 
     def build_filter(self):
         return build_filter(self.settings)
@@ -820,6 +865,14 @@ class MainWindow(QMainWindow):
             self.tab_search.search_edit.selectAll()
             self.tab_search.on_search()
             return
+        if not is_valid_url(text):
+            self.set_status("Please enter a valid video URL, a VOD ID, or a streamer name.")
+            dialogs.warning(
+                self,
+                "Invalid input",
+                "Please enter a valid video URL, a VOD ID, or a streamer name.",
+            )
+            return
         if self.tools_busy:
             self.set_status("Still preparing yt-dlp / ffmpeg, one moment…")
             return
@@ -866,6 +919,9 @@ class MainWindow(QMainWindow):
             info.title = clean_title(info.title)
         info.raw_title = raw_title
         self.source, self.clips, self.clips_loaded = info, list(clips), bool(loaded)
+        self.tab_plan.set_formats(
+            getattr(info, "formats", []), str(self.settings.get("default_quality", DEFAULTS["default_quality"]))
+        )
         self.tab_plan.set_title(info.title, raw_title=raw_title)
         extra = f" \u00b7 {len(self.clips)} clips" if loaded else ""
         self.info_label.setText(f"{info.uploader} \u00b7 {info.title} \u00b7 {fmt_hms(info.duration)} \u00b7 {info.date}{extra}")

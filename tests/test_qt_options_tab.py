@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import luckytwitch_engine as eng  # noqa: E402
 from core import examples  # noqa: E402
-from core.options import build_options  # noqa: E402
+from core.options import AUDIO_FORMAT_NAMES, QUALITY_NAMES, build_options  # noqa: E402
 from core.settings import DEFAULTS  # noqa: E402
 from qt_ui import dialogs, theme  # noqa: E402
 from qt_ui import main_window as mw  # noqa: E402
@@ -36,6 +36,7 @@ OPTIONS_KEYS = {
     "chat_embed", "auto_update",
     "chat_render", "chat_render_mode", "chat_render_look", "chat_render_width", "chat_render_height",
     "chat_render_font_size", "chat_render_fps", "chat_render_smooth",
+    "default_quality", "audio_format",
 }
 PLAN_KEYS = {"chapters", "min_views", "min_duration", "top_n", "pad_before"}
 SWITCHES = {"exact", "keep_full", "clean_title", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml",
@@ -160,14 +161,15 @@ def test_booleans_are_switches(tab):
 def test_numbers_are_spin_boxes_and_lists_are_combo_boxes(tab):
     spins = {"threads", "threshold", "pad_after", "clip_pad_before", "clip_pad_after", "chat_render_width",
              "chat_render_height", "chat_render_font_size"}
-    combos = {"container", "strategy", "chat_format", "chat_render_mode", "chat_render_look", "chat_render_fps"}
+    combos = {"container", "strategy", "chat_format", "chat_render_mode", "chat_render_look", "chat_render_fps",
+              "default_quality", "audio_format"}
     assert {k for k, c in tab.binder.controls.items() if isinstance(c, SpinBox)} == spins
     assert {k for k, c in tab.binder.controls.items() if isinstance(c, ComboBox)} == combos
 
 
 # ------------------------------------------------------------------ the approved split
 UP_FRONT = {
-    "output": {"out_dir", "container"},
+    "output": {"out_dir", "container", "default_quality", "audio_format"},
     "cuts": {"strategy", "exact", "keep_full"},
     "premiere": {"premiere_plugin", "game_markers", "muted_markers"},
     "chat": {"chat", "chat_render"},
@@ -398,7 +400,7 @@ def test_a_chip_replaces_the_selected_text(tab):
 
 def test_every_template_field_has_chips_for_its_tokens(tab):
     expected = {
-        "name_template": {"streamer", "date", "id", "title", "n", "total", "start", "end"},
+        "name_template": {"streamer", "date", "id", "title", "quality", "n", "total", "start", "end"},
         "folder_template": {"streamer", "date", "id", "title"},
         "title_tpl": {"title", "creator", "views", "duration"},
         "clip_name_template": {"clip_title", "creator", "views", "clip_id", "clip_duration",
@@ -805,4 +807,51 @@ def test_tools_status_rows_show_individual_versions(tab):
     tab.set_tools_info("yt-dlp 2024.10.22 · ffmpeg 7.0")
     assert "2024.10.22" in tab.ytdlp_status_label.text()
     assert "7.0" in tab.ffmpeg_status_label.text()
+
+
+def test_quality_and_audio_combos_exist_and_bind(tab, qtbot):
+    q_combo = control(tab, "default_quality")
+    a_combo = control(tab, "audio_format")
+    assert isinstance(q_combo, ComboBox)
+    assert isinstance(a_combo, ComboBox)
+    assert [q_combo.itemText(i) for i in range(q_combo.count())] == QUALITY_NAMES
+    assert [a_combo.itemText(i) for i in range(a_combo.count())] == AUDIO_FORMAT_NAMES
+    assert q_combo.currentText() == DEFAULTS["default_quality"]
+    assert a_combo.currentText() == DEFAULTS["audio_format"]
+
+    # Changing selection writes to settings
+    q_combo.setCurrentText("720p")
+    assert tab.settings["default_quality"] == "720p"
+
+    a_combo.setCurrentText("mp3 · converted")
+    assert tab.settings["audio_format"] == "mp3 · converted"
+
+
+def test_quality_and_audio_rows_found_by_search(tab):
+    tab.search_entry.setText("quality")
+    assert tab.match_counter.isVisible()
+    row, _ = tab.rows_by_key["default_quality"]
+    assert row.isVisible()
+
+    tab.search_entry.setText("audio")
+    assert tab.match_counter.isVisible()
+    row, _ = tab.rows_by_key["audio_format"]
+    assert row.isVisible()
+
+    tab.search_entry.setText("")
+
+
+def test_quality_and_audio_changed_marker_and_reset(tab):
+    row, _ = tab.rows_by_key["default_quality"]
+    assert not row.changed_dot.isVisible()
+    assert not row.reset_btn.isVisible()
+
+    tab.binder.set("default_quality", "720p")
+    assert row.changed_dot.isVisible()
+    assert row.reset_btn.isVisible()
+
+    row.reset_btn.click()
+    assert control(tab, "default_quality").currentText() == DEFAULTS["default_quality"]
+    assert tab.settings["default_quality"] == DEFAULTS["default_quality"]
+    assert not row.changed_dot.isVisible()
 
