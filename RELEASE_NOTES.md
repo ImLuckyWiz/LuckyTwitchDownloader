@@ -3,6 +3,7 @@
 LuckyTwitch Downloader **v2.5.0** completes the comprehensive engine modularization (Phase E), splitting the monolithic 3,715-line download engine into decoupled, focused core modules under `core/` with a clean DAG dependency structure while preserving 100% backward compatibility.
 
 ### What's new in 2.5.0:
+- **Cross-Platform Verification:** Verified engine split and POSIX exception handlers across Windows, macOS, and Linux.
 - **Modular Core Architecture:** Decomposed `luckytwitch_engine.py` into 14 cohesive, single-responsibility modules in `core/`:
   - `core/errors.py`: Custom error hierarchy (`EngineError`, `PlanError`, `Cancelled`).
   - `core/timeutil.py`: Time parsing, duration conversions, and HMS formatting.
