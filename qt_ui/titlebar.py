@@ -75,6 +75,29 @@ class CaptionButton(QToolButton):
         self.setIcon(icon(self._icon_name, 12, color))
         self.setIconSize(QSize(12, 12))
 
+    def set_native_state(self, hover: bool, pressed: bool) -> None:
+        """Update visual state when Windows handles mouse over HTMAXBUTTON for Snap Layouts."""
+        if pressed:
+            bg = CLOSE_PRESS_BG if self._is_close else CAPTION_PRESS_BG
+        elif hover:
+            bg = CLOSE_HOVER_BG if self._is_close else CAPTION_HOVER_BG
+        else:
+            bg = "transparent"
+        hover_bg = CLOSE_HOVER_BG if self._is_close else CAPTION_HOVER_BG
+        press_bg = CLOSE_PRESS_BG if self._is_close else CAPTION_PRESS_BG
+        self.setStyleSheet(f"""
+            QToolButton {{
+                border: none;
+                background-color: {bg};
+            }}
+            QToolButton:hover {{
+                background-color: {hover_bg};
+            }}
+            QToolButton:pressed {{
+                background-color: {press_bg};
+            }}
+        """)
+
     def set_icon_name(self, name: str) -> None:
         self._icon_name = name
         self._update_icon(FG)
