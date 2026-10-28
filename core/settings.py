@@ -56,7 +56,6 @@ DEFAULTS = {
     "clip_pad_after": "3",
     "auto_update": True,
     "check_app_updates": True,
-    "custom_titlebar": True,
 }
 
 
