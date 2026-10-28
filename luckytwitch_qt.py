@@ -16,6 +16,9 @@ from __future__ import annotations
 import signal
 import sys
 
+if "__compiled__" in globals() or hasattr(sys.modules.get("__main__"), "__compiled__"):
+    sys.frozen = True
+
 from PySide6.QtCore import QEvent, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 

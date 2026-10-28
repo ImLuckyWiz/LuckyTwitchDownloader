@@ -145,3 +145,13 @@ def test_release_notes_have_top_entries_for_v2():
     main_notes = (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8").splitlines()
     assert main_notes[0].strip().startswith("## v2.")
     assert any(line.strip() == "## v2.0.0" for line in main_notes)
+
+
+def test_is_frozen_detection(monkeypatch):
+    monkeypatch.delattr(paths.sys, "frozen", raising=False)
+    assert paths.is_frozen() is False
+    monkeypatch.setattr(paths.sys, "frozen", True, raising=False)
+    assert paths.is_frozen() is True
+    monkeypatch.delattr(paths.sys, "frozen", raising=False)
+    monkeypatch.setitem(paths.__dict__, "__compiled__", True)
+    assert paths.is_frozen() is True

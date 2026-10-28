@@ -236,7 +236,7 @@ class Registration:
 
 def launch_command(exe: str | None = None, script: str | None = None) -> str:
     """The command the system should run, with ``%1`` where the link goes."""
-    if getattr(sys, "frozen", False) or exe:
+    if getattr(sys, "frozen", False) or "__compiled__" in globals() or hasattr(sys.modules.get("__main__"), "__compiled__") or exe:
         return f'"{exe or sys.executable}" "%1"'
     python = Path(sys.executable)
     windowless = python.with_name("pythonw.exe")  # no console window when started from a link

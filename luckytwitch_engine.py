@@ -42,7 +42,7 @@ import requests
 
 APP_DIR = (
     Path(sys.executable).parent
-    if getattr(sys, "frozen", False)
+    if (getattr(sys, "frozen", False) or "__compiled__" in globals() or hasattr(sys.modules.get("__main__"), "__compiled__"))
     else Path(__file__).resolve().parent
 )
 

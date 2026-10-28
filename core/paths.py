@@ -27,6 +27,12 @@ def read_bundled_version() -> str:
             return p.read_text(encoding="utf-8").strip()
     except OSError:
         pass
+    try:
+        cand = Path(sys.executable).parent / "version.txt"
+        if cand.is_file():
+            return cand.read_text(encoding="utf-8").strip()
+    except OSError:
+        pass
     return ""
 
 
@@ -57,7 +63,21 @@ def resolve_app_user_model_id(version: str = "") -> str:
     return PRE_RELEASE_APP_USER_MODEL_ID if is_prerelease_version(version) else APP_USER_MODEL_ID
 
 
-FROZEN = getattr(sys, "frozen", False)
+def is_frozen() -> bool:
+    """Return True if running inside a compiled / packaged binary (Nuitka, PyInstaller, etc.)."""
+    if getattr(sys, "frozen", False):
+        return True
+    if "__compiled__" in globals() or hasattr(sys.modules.get("__main__"), "__compiled__"):
+        return True
+    if getattr(sys, "_MEIPASS", None):
+        return True
+    return False
+
+
+if is_frozen() and not getattr(sys, "frozen", False):
+    sys.frozen = True  # Standardize across packaging backends (e.g. Nuitka)
+
+FROZEN = is_frozen()
 BUNDLED_VERSION = read_bundled_version() if FROZEN else ""
 DATA_DIR = resolve_data_dir(FROZEN, BUNDLED_VERSION)
 CONFIG_PATH = DATA_DIR / "config.json"

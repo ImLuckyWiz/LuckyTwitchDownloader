@@ -14,3 +14,4 @@ This directory contains specifications, architectural plans, and upgrade roadmap
 | [`QUALITY_AND_AUDIO_PLAN.md`](QUALITY_AND_AUDIO_PLAN.md) | Plan | Done in v2.2.0 | Stream quality picker and lossless / converted audio extraction (.m4a / .mp3). |
 | [`TITLE_CLEANING_AND_NAMING_PLAN.md`](TITLE_CLEANING_AND_NAMING_PLAN.md) | Plan | Done in v2.1.1 | Bot command stripping, title editing in Plan tab, and single-part naming cleanup. |
 | [`UPDATE_DETECTION_PLAN.md`](UPDATE_DETECTION_PLAN.md) | Plan | Done in v2.3.0 | Automated GitHub update detection, update dialog, and Windows silent in-place updater. |
+| [`VERIFICATION_CHECKLIST.md`](VERIFICATION_CHECKLIST.md) | Checklist | In progress | Real-hardware verification matrix across Windows, macOS, and Adobe Premiere Pro (Phase V). |

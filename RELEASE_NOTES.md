@@ -1,3 +1,12 @@
+## v2.3.2
+
+LuckyTwitch Downloader **v2.3.2** fixes standalone frozen binary detection so update checking and installed version discovery work seamlessly on packaged releases.
+
+### What's new in 2.3.2:
+- **Frozen Binary Detection (Nuitka):** Fixed an issue where standalone Nuitka builds did not set `sys.frozen`, causing packaged installations to report as a "Development build" and skip automatic update checks.
+- **Robust Bundled Version Fallback:** Added direct fallback reading of `version.txt` alongside `sys.executable` when running in standalone mode.
+- **Full Update Functionality:** Packaged installations now correctly display their version tag, perform background update checks, and present the update dialog for 1-click upgrades.
+
 ## v2.3.1
 
 LuckyTwitch Downloader **v2.3.1** is a housekeeping and maintenance release preparing the project for upcoming platform builds and modularization.
