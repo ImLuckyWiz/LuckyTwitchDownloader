@@ -9,8 +9,7 @@ Get the latest version from the [Releases](../../releases) page:
 | System | File |
 | --- | --- |
 | Windows | `LuckyTwitch-Setup.exe` |
-| macOS, Apple Silicon (M1, M2, M3...) | `LuckyTwitch-macos-arm64.dmg` |
-| macOS, Intel | `LuckyTwitch-macos-x86_64.dmg` |
+| macOS (Apple Silicon: M1, M2, M3, M4) | `LuckyTwitch-macos-arm64.dmg` |
 
 ### Install
 
