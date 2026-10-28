@@ -30,15 +30,29 @@ Get the latest version from the [Releases](../../releases) page:
 2. Write the cut points, for example `0:00 - 30:00 - 1:30:00 - end` (consecutive parts). Use `;` or a new line to skip gaps: `0:00 - 30:00 ; 2:00:00 - end`. Times can be `H:MM:SS`, `MM:SS`, seconds or `1h30m`. Or use the **Timeline** above the text box: click the thumbnails to cut, drag a cut line to move it, right-click it to remove it, click a part to skip it, double-click a game bar to make that game its own part. The mouse wheel zooms, **Undo** takes back the last edit. The text and the timeline always match.
 3. Choose the download strategy (**Auto** picks whichever is cheaper: full VOD then split, or only the parts), then start the job.
 
-### Finding a VOD (Search tab)
+### Finding a VOD (Search tab) and Watch List
 
 Instead of pasting a link you can search for a streamer: open the **Search** tab, type a name and press Enter (or enter/drop a streamer name directly into the URL bar on the Plan tab to jump straight to search). Pick a channel to see its VODs with thumbnails (past broadcasts, highlights or uploads), then double-click one (or press **Use this VOD**) and it is loaded in the Plan tab. The streamers you open are remembered under **Recent streamers**. Searching needs the Twitch sign-in described below; if you are not signed in, the tab shows a **Sign in…** button.
 
-Other options include exact cuts, keeping the full VOD, and a queue of jobs. Cancelling stops everything and keeps the partial download so it can resume.
-
+- **Streamer watch list:** Click the **Pin streamer** button on any channel header to add them to your watch list. The app periodically checks for broadcasts newer than the last one seen and displays a notification badge on the Search tab. It never downloads automatically.
+- **Download history:** Press the **History** button in the top command bar to view your past downloads, complete with date, streamer, title, parts count, quality, and destination folder. You can reopen any folder or reload the VOD into the Plan tab with one click. VOD cards in Search and the Plan strip display a `✓ Downloaded` badge with the date.
 - **Editing stream titles:** You can edit the stream title directly on the **Plan tab** before queuing a download. A **Reset** button restores Twitch's original title at any time.
 - **Auto-clean titles:** In **Options → Output**, *Auto-clean titles* automatically strips bot commands (`!links`, `!gsupps`), promo hashtags (`#ad`), and emojis so your files have clean names. You can toggle this off if you prefer raw titles.
 - **Clean single-part naming:** When a download has only one part, redundant ` - part1` tags are automatically omitted from file names and video metadata.
+
+### Queue, Parallel Downloads & Speed Limit
+
+The **Queue & log** tab manages and runs queued jobs:
+
+- **Parallel downloads:** In the Queue tab, choose how many jobs run concurrently (from **1 job** up to **4 parallel jobs**). Jobs download in parallel with isolated temporary folders to prevent collisions.
+- **Granular cancellation:** If multiple jobs are running, selecting a specific row and pressing **Cancel current** stops only that download while leaving other parallel jobs running.
+- **Bandwidth limit:** Set an optional speed limit (**Unlimited**, **1 MB/s**, **2 MB/s**, **5 MB/s**, **10 MB/s**, **20 MB/s**) passed directly to yt-dlp (`--limit-rate`) to prevent saturating your internet connection.
+- **Retry and reordering:** Easily reorder waiting downloads with Move Up / Move Down, or retry failed and cancelled jobs in one click.
+
+### Interface & Custom Window Bar
+
+- **Language (Español):** LuckyTwitch is fully localized in English and Spanish. On first run, it automatically detects your system language. You can also manually switch languages anytime in **Options → Interface → Language**.
+- **Custom dark window bar:** The window uses a custom dark purple title bar matching the app's aesthetic, with responsive minimize, maximize/restore, and soft-red close buttons, smooth window dragging, and geometry recovery. To use your operating system's native window frame instead, launch with `--native-frame` or toggle it in UI settings.
 
 ### Quality and Audio only (Twitch VODs)
 
@@ -72,6 +86,11 @@ The panel lives in [`premiere-plugin-cep/`](premiere-plugin-cep) and is availabl
 - **`LuckyTwitch-Premiere-Plugin-CEP.zip`**: Manual install with `install.bat` (Windows) or `install-mac.command` (macOS), which configures Adobe's unsigned panels flag automatically.
 
 The CEP panel offers the whole edit in one button with the real razor: it adds the markers, cuts around every clip (with padding), deletes the gaps, links video and audio again, and checks the whole result against the plan. See [`premiere-plugin-cep/README.md`](premiere-plugin-cep/README.md) and [`docs/markers-format.md`](docs/markers-format.md).
+
+- **Limit to chapter:** Pick any individual game or chapter to restrict markers, cuts, and gap deletes strictly inside that segment without touching the rest of the timeline.
+- **Named recipes:** Choose from built-in presets (*Default*, *Safety (5s)*, *Tight Cut & Delete*) or apply custom recipes for padding and ripple limits.
+- **Preferences inheritance:** Default padding and safety limits configured in LuckyTwitch Downloader are automatically adopted by the panel.
+- **Muted audio markers:** Silenced audio stretches are mapped directly as colored markers on the timeline.
 
 ### Muted audio (Twitch VODs)
 
@@ -124,11 +143,11 @@ Making a page that offers such a link? The format is in [`docs/link-format.md`](
 
 ## Where things are stored
 
-| What | Windows | macOS |
-| --- | --- | --- |
-| Settings, Twitch login (`config.json`) | `%LOCALAPPDATA%\LuckyTwitch` | `~/Library/Application Support/LuckyTwitch` |
-| yt-dlp and ffmpeg | `...\LuckyTwitch\tools` | `.../LuckyTwitch/tools` |
-| Downloads (default) | `Downloads\LuckyTwitch` | `~/Downloads/LuckyTwitch` |
+| What | Windows | macOS | Linux |
+| --- | --- | --- | --- |
+| Settings, Twitch login, history, watch list | `%LOCALAPPDATA%\LuckyTwitch` | `~/Library/Application Support/LuckyTwitch` | `~/.local/share/LuckyTwitch` |
+| yt-dlp and ffmpeg | `...\LuckyTwitch\tools` | `.../LuckyTwitch/tools` | `~/.local/share/LuckyTwitch/tools` |
+| Downloads (default) | `Downloads\LuckyTwitch` | `~/Downloads/LuckyTwitch` | `~/Downloads/LuckyTwitch` |
 
 The data folder also holds a small `links` folder and a `running.beat` file: they are how a second launch (a clicked link) hands its link to the window that is already open.
 
@@ -149,14 +168,15 @@ Nuitka compiles native standalone binaries, so build each system on that system.
 
 - **Windows:** run `build_windows.bat [version]` → `dist\LuckyTwitch\LuckyTwitch.exe`, plus `dist\LuckyTwitch-Setup.exe` if [Inno Setup 6](https://jrsoftware.org/isdl.php) is installed.
 - **macOS:** run `./build_mac.sh` → `dist/LuckyTwitch.app` and `dist/LuckyTwitch-macos-<arch>.dmg`. It also installs the app into Applications on that Mac. The result matches the Mac's chip (Apple Silicon or Intel).
+- **Linux:** run `./build_linux.sh [version]` → `dist/LuckyTwitch-x86_64.AppImage` and `dist/LuckyTwitch-linux-x86_64.tar.gz`.
 
 ## Development
 
 ```
-luckytwitch_engine.py       everything that is not GUI (planning, yt-dlp / ffmpeg, chapters)
+core/                       modular core engines (download, finalize, runtime, planning, chapters, history, i18n, etc.)
+luckytwitch_engine.py       lightweight backward-compatible facade re-exporting core modules
 luckytwitch_qt.py           the Qt 6 app entry point
 qt_ui/                      Qt 6 UI components (main_window, shell, tabs, timeline, widgets, icons)
-core/                       pure business logic (config, credentials, settings, options, timeline)
 weblink.py                  luckytwitch:// links: reading them, handing them to the open window, registering the scheme
 tests/                      pytest suite
 premiere-plugin-cep/        the Premiere Pro panel (CEP): reads .markers.json and edits the whole timeline (JavaScript, own tests)

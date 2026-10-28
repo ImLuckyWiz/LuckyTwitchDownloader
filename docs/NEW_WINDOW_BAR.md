@@ -1,6 +1,6 @@
 # New Window Bar Plan (custom title bar)
 
-Status: Pending (planned as Phase W, v2.6.0; nothing is implemented yet)
+Status: Done in v2.6.0 (implemented via Option B cross-platform FramelessWindowHint)
 
 This document plans a **custom window bar** for **LuckyTwitch Downloader**: the OS title bar is replaced by a bar drawn by the app, in the same dark/purple theme as the rest of the UI, with its own minimize / maximize / close buttons. It is a plan only. No code is written until the owner approves the open decisions in section 12.
 

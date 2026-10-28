@@ -49,6 +49,8 @@ If something is wrong the panel tells you before you press anything (the big but
 
 | Setting | Meaning |
 |---|---|
+| Recipe | Preset configurations (*Default*, *Safety (5s)*, *Tight Cut & Delete*) or custom values |
+| Scope to chapter | Restrict cuts, gap deletes, and markers strictly inside one selected game/chapter |
 | Before / after each clip | seconds kept around every clip (the "safety cut"). 10 and 10 keeps 10 s before and after |
 | Merge clips closer than | clips that touch after padding become one piece |
 | Also cut at every game / category change | adds a cut at each game change |
@@ -56,7 +58,7 @@ If something is wrong the panel tells you before you press anything (the big but
 | Refuse to delete more than | the delete limit, in % of the timeline (default 99) |
 | Need at least N pieces to keep | refuse if fewer would be left |
 
-They are remembered. Keep them the same from the first cut to the delete: if you change the padding after cutting, the delete refuses (the cuts no longer match the plan); change it back, or undo.
+They are remembered across sessions. Starting padding values written into `.markers.json` by LuckyTwitch Downloader are automatically adopted until customized. Keep them the same from the first cut to the delete: if you change the padding after cutting, the delete refuses (the cuts no longer match the plan); change it back, or undo.
 
 ### What it checks first (the failsafe)
 

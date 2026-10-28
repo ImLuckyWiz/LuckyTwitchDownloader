@@ -1,24 +1,43 @@
 ## v2.9.0
 
-LuckyTwitch Downloader **v2.9.0** introduces a rich set of app features (Phases F1 to F4): local download history with badges and re-loading, streamer watch lists with new VOD notifications, multi-job parallel queue execution with bandwidth limits, and Spanish interface localization.
+LuckyTwitch Downloader **v2.9.0** brings full interface internationalization with official Spanish (Español) localization (Phase F4).
 
 ### What's new in 2.9.0:
+- **Spanish Interface Localization (Phase F4):**
+  - Comprehensive Spanish translation catalog (`core/i18n.py`) covering all navigation rail tabs, command buttons, dialogs, status chips, table headers, and option settings.
+  - Automatic first-run system language detection from OS locale (`LANG`/`LC_ALL` and `QLocale`).
+  - Dedicated Language picker in **Options → Interface** allowing seamless switching between English and Español.
+  - Strict placeholder verification suite ensuring all string format tokens remain identical across languages.
+
+## v2.8.0
+
+LuckyTwitch Downloader **v2.8.0** introduces parallel queue execution and configurable download bandwidth limits (Phase F3).
+
+### What's new in 2.8.0:
+- **Parallel Queue Execution (Phase F3):**
+  - Multi-job queue concurrency selector (1 to 4 jobs at the same time) in the Queue tab toolbar.
+  - Thread-safe coordinator and worker pool dynamically pulling waiting jobs from the queue model.
+  - Isolated temporary directories preventing file collisions when downloading multiple streams or parts concurrently.
+  - Granular cancellation: selecting an active running job and clicking Cancel stops only that job without cancelling other parallel downloads.
+- **Bandwidth Speed Limiting:**
+  - Integrated speed limit selector (`Unlimited`, `1 MB/s`, `2 MB/s`, `5 MB/s`, `10 MB/s`, `20 MB/s`) passing `--limit-rate` directly to yt-dlp.
+  - Persisted in UI state so your bandwidth preferences are preserved across sessions.
+
+## v2.7.0
+
+LuckyTwitch Downloader **v2.7.0** introduces local download history tracking and a streamer watch list (Phases F1 and F2).
+
+### What's new in 2.7.0:
 - **Download History (Phase F1):**
-  - Records every finished download locally (`luckytwitch_history.json`) with VOD ID, title, streamer, date, parts count, output folder, and quality.
-  - Adds a "✓ Downloaded" pill indicator on VOD cards and rows in Search and Plan views.
-  - Dedicated History dialog accessible from the command bar with quick buttons to open folders, reload VODs, and clear history.
+  - Records every finished job locally in `luckytwitch_history.json` with VOD ID, title, streamer, date, parts count, output folder, and quality.
+  - Visual `✓ Downloaded` pill badge on VOD cards in the Search tab and the loaded-VOD strip in the Plan tab.
+  - Dedicated **Download History** dialog accessible from the command bar with quick actions to open target folders, re-load VODs directly into the Plan tab, and clear history.
+  - Completely local and private: no data is sent anywhere.
 - **Streamer Watch List (Phase F2):**
-  - Pin favorite streamers directly in the Search tab to check for new VODs without automatic downloading.
-  - Visual notification badge on the Search navigation rail icon when unviewed VODs are detected.
-  - Fully local persistence (`luckytwitch_watchlist.json`) with safe background checking.
-- **Parallel Queue Jobs & Bandwidth Limit (Phase F3):**
-  - Multi-job queue concurrency selector (1 to 4 parallel jobs) with thread-safe execution, dynamic work stealing from the model, and isolated temporary workdirs.
-  - Granular cancellation allowing cancellation of a single selected job without interrupting other active parallel jobs.
-  - Speed limit selector passing `--limit-rate` to yt-dlp (e.g. 1 MB/s, 5 MB/s, 10 MB/s, 20 MB/s, or unlimited).
-- **Spanish Localization (Phase F4):**
-  - Complete Spanish translation catalog (`core/i18n.py`) for all interface tabs, buttons, dialogs, and controls.
-  - Interface language selector in Options (Interface card) and automatic first-run detection from the system language.
-  - Strict placeholder verification ensuring format tokens remain identical across languages.
+  - Pin favorite streamers directly in the Search tab using the pin button on channel headers.
+  - Automatic background check for VODs newer than the last seen broadcast.
+  - Visual notification badge on the Search navigation rail icon when unwatched VODs are detected.
+  - Local watch list persistence (`luckytwitch_watchlist.json`) with safe error suppression.
 
 ## v2.6.0
 
