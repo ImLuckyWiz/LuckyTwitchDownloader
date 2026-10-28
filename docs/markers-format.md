@@ -1,8 +1,8 @@
 # `.markers.json` format (version 1)
 
-Written by LuckyTwitch Downloader next to each part when **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin** is on. Read by both Premiere Pro panels: the UXP plugin in [`premiere-plugin/`](../premiere-plugin) and the CEP panel in [`premiere-plugin-cep/`](../premiere-plugin-cep) (they share one `markers-core.js`, byte for byte). This file is the contract between the app and the panels, so a change here means a change on both sides.
+Written by LuckyTwitch Downloader next to each part when **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin** is on. Read by the Premiere Pro panel in [`premiere-plugin-cep/`](../premiere-plugin-cep). This file is the contract between the app and the panel, so a change here means a change on both sides.
 
-The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (it must be exactly what the app writes) and by both panels' tests (it must be readable), so the two cannot drift apart without a test failing. Regenerate it with `python tests/test_premiere_plugin_json.py`.
+The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (it must be exactly what the app writes) and by the panel's tests (it must be readable), so the two cannot drift apart without a test failing. Regenerate it with `python tests/test_premiere_plugin_json.py`.
 
 ```json
 {

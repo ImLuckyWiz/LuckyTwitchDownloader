@@ -9,7 +9,7 @@ Layout
   src\timecode.js             shared time module (same file runs in Node tests and inside Premiere)
   src\guard.js               the FAILSAFE: facts in, verdict out (pure, tested in Node)
   src\progress.js            the progress model behind the progress bar (pure; tested against a real Premiere log, test\fixtures\doitall-real.log)
-  src\markers-core.js        the UXP plugin's planning layer, BYTE FOR BYTE (a test compares it with ..\premiere-plugin\src\markers-core.js; never edit it here)
+  src\markers-core.js        the markers planning layer (shared parsing, options, and cut calculation)
   test\                      Node tests:  npm test   (run it from this folder)
   mock\run-mock-all.js       DO IT ALL, the running lock, the panel's look and the extension paths against a fake Premiere (real runner.js, guard.js, core, host.jsx)
   mock\run-mock-cuts.js      the cuts phase against a fake Premiere
@@ -17,8 +17,9 @@ Layout
   mock\run-mock-run.js       the markers phase (add / rerun / cancel / remove / refuse / lossy) against a fake project item
   mock\run-mock-dry.js       the dry run against 9 fake timelines (1 good, 8 that must refuse or ask)
 
-Release package (built by .github/workflows/build.yml, job "plugin-cep"): LuckyTwitch-Premiere-Plugin-CEP.zip = README.md, install.bat, install.ps1,
-install-mac.command, cep-panel\, src\. (CEP panels are folders: there is no .ccx-like single file; a signed .zxp would need a certificate Adobe trusts.)
+Release packages (built by .github/workflows/build.yml, job "plugin"):
+- LuckyTwitch-Premiere-Plugin-CEP.zxp: 1-click self-signed install via ZXPInstaller / Anastasiy Extension Manager
+- LuckyTwitch-Premiere-Plugin-CEP.zip: manual installer (README.md, install.bat, install.ps1, install-mac.command, cep-panel\, src\)
 The markers.json sample the tests read is ..\tests\fixtures\markers_sample.json (the one the Python tests keep exact); test\fixtures\ keeps a fallback copy.
 
 History. The text below describes each phase as it was built and verified in real Premiere. Steps 1-4 (the UXP-to-CEP probes: info, selection,

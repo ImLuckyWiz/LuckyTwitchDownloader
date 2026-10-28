@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const P = require("../src/progress.js");
 
-const real = fs.readFileSync(path.join(__dirname, "fixtures", "doitall-real.log"), "utf8").split("\n");
+const real = fs.readFileSync(path.join(__dirname, "fixtures", "doitall-real.log"), "utf8").replace(/\r\n/g, "\n").split("\n");
 const STEP_OF = { Markers: "markers", Cuts: "cuts", Deletes: "deletes", Relink: "relink", "Final check": "final" };
 // replays log lines the way the runner reports them: a phase event at each "[k/n] name" line, a phaseEnd at the "(N ms)" line that closes it
 function replay(lines, st, hooks) {

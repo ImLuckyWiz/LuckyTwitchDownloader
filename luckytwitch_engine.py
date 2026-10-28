@@ -922,7 +922,7 @@ def write_premiere_xml(dest: Path, chapters: list[Chapter], duration: float, fps
 
 
 # --------------------------------------------------------------------------- #
-# Premiere Pro plugin export (.markers.json, read by the plugin in premiere-plugin/)
+# Premiere Pro plugin export (.markers.json, read by the panel in premiere-plugin-cep/)
 # --------------------------------------------------------------------------- #
 MARKERS_JSON_FORMAT = "luckytwitch-markers"
 MARKERS_JSON_VERSION = 1  # bump when the layout changes in a way an older plugin cannot read; see docs/markers-format.md

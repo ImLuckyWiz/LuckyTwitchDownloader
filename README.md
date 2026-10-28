@@ -62,14 +62,15 @@ This uses Twitch's Device Code Flow with a public app, so there is no client sec
 
 In **Options → Chapter details**, tick *Also mark the game / category changes*. Each part (or the full VOD) then gets a `.markers.xml` next to it with one marker per game, named `GAME: <game>` and spanning the whole stretch (for example `GAME: Just Chatting` from 0:00:00 to 1:00:00, then `GAME: Resident Evil 2`). Import it in Premiere with **File → Import**. The game list comes from Twitch through yt-dlp, the same data the Timeline shows as colored bars. It works with or without the clip markers (they share the same file when both are ticked). Premiere's XML import has no marker color, so the `GAME:` prefix is what tells them apart from the clip markers.
 
-### Premiere Pro panels: colored markers and the whole edit (optional)
+### Premiere Pro panel: colored markers and automated timeline edits (optional)
 
-The `.markers.xml` above is limited by what Premiere's XML import understands: no marker colors, and it brings in a separate sequence. For more, tick **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin**. Each part (or the full VOD) then gets a `.markers.json` next to it, and a Premiere Pro panel imports it as colored markers: game changes in one color, clips colored by their views, with the creator and link in the comment. It is independent of the XML option, so you can use either or both. The game markers option applies to both files. There are **two panels**, both read the same file, and both are on the release page (see [`docs/markers-format.md`](docs/markers-format.md) for the file format):
+The `.markers.xml` above is limited by what Premiere's XML import understands: no marker colors, and it brings in a separate sequence. For more, tick **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin**. Each part (or the full VOD) then gets a `.markers.json` next to it, and the Premiere Pro CEP panel imports it as colored markers: game changes in one color, clips colored by their views, with the creator and link in the comment. It is independent of the XML option, so you can use either or both. The game markers option applies to both files.
 
-- **UXP panel** ([`premiere-plugin/`](premiere-plugin), `LuckyTwitch-Premiere-Plugin.ccx`): the easy one. Double-click the `.ccx` to install it with Creative Cloud. Imports the markers (on the clip or on the sequence) and cuts and deletes on any timeline, also one you already trimmed. See [`premiere-plugin/README.md`](premiere-plugin/README.md).
-- **CEP panel** ([`premiere-plugin-cep/`](premiere-plugin-cep), `LuckyTwitch-Premiere-Plugin-CEP.zip`): the whole edit in one button, with the real razor. It adds the markers, cuts around every clip (with padding), deletes the gaps, links video and audio again, and checks the whole result against the plan. It wants a fresh sequence with the video alone on V1/A1, and its installer script switches on Adobe's "allow unsigned panels" flag. See [`premiere-plugin-cep/README.md`](premiere-plugin-cep/README.md).
+The panel lives in [`premiere-plugin-cep/`](premiere-plugin-cep) and is available on the release page in two packages:
+- **`LuckyTwitch-Premiere-Plugin-CEP.zxp`**: 1-click install using ZXPInstaller, Anastasiy's Extension Manager, or aescripts manager.
+- **`LuckyTwitch-Premiere-Plugin-CEP.zip`**: Manual install with `install.bat` (Windows) or `install-mac.command` (macOS), which configures Adobe's unsigned panels flag automatically.
 
-You can install both; they do not get in each other's way.
+The CEP panel offers the whole edit in one button with the real razor: it adds the markers, cuts around every clip (with padding), deletes the gaps, links video and audio again, and checks the whole result against the plan. See [`premiere-plugin-cep/README.md`](premiere-plugin-cep/README.md) and [`docs/markers-format.md`](docs/markers-format.md).
 
 ### Muted audio (Twitch VODs)
 
@@ -157,8 +158,7 @@ qt_ui/                      Qt 6 UI components (main_window, shell, tabs, timeli
 core/                       pure business logic (config, credentials, settings, options, timeline)
 weblink.py                  luckytwitch:// links: reading them, handing them to the open window, registering the scheme
 tests/                      pytest suite
-premiere-plugin/            the Premiere Pro panel (UXP) that reads the .markers.json (JavaScript, own tests)
-premiere-plugin-cep/        the second Premiere Pro panel (CEP): same file, edits the whole timeline (JavaScript, own tests)
+premiere-plugin-cep/        the Premiere Pro panel (CEP): reads .markers.json and edits the whole timeline (JavaScript, own tests)
 docs/                       file format notes (markers-format.md, link-format.md)
 ```
 
@@ -169,7 +169,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The two Premiere panels have their own tests (`cd premiere-plugin && npm test`, `cd premiere-plugin-cep && npm test`, Node 20+, no dependencies; the CEP tests also check that its `markers-core.js` is exactly the UXP one). The engine tests need nothing else. The Qt GUI tests run automatically offscreen on both desktop and headless CI environments.
+The Premiere panel has its own tests (`cd premiere-plugin-cep && npm test`, Node 20+, no dependencies). The engine tests need nothing else. The Qt GUI tests run automatically offscreen on both desktop and headless CI environments.
 
 ## Credits
 

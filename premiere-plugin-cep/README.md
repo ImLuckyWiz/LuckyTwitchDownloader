@@ -1,6 +1,6 @@
-# LuckyTwitch Markers: Premiere Pro panel (CEP edition)
+# LuckyTwitch Markers: Premiere Pro panel (CEP)
 
-The second Premiere Pro panel for LuckyTwitch Downloader. It reads the same `.markers.json` as the [UXP panel](../premiere-plugin) and does the whole edit of a Twitch VOD for you, in one button:
+The official Premiere Pro panel for LuckyTwitch Downloader. It reads the `.markers.json` file written by LuckyTwitch Downloader and does the whole edit of a Twitch VOD for you, in one button:
 
 1. **adds the markers** (games and clips, colored) to the video,
 2. **cuts** the timeline around every clip (with the padding you choose),
@@ -9,35 +9,30 @@ The second Premiere Pro panel for LuckyTwitch Downloader. It reads the same `.ma
 
 and then **reads the whole result back** from Premiere and only says "done" if everything matches the plan.
 
-Both panels stay in the project. Pick the one that suits you; they can even be installed side by side (different ids, different menu entries).
-
-| | UXP panel (`premiere-plugin/`) | CEP panel (this folder) |
-|---|---|---|
-| Install | double-click the `.ccx` (Creative Cloud) | unzip, run the installer script, restart Premiere |
-| Cutting | clone-and-trim (Premiere's UXP has no razor); needs empty tracks above the clip; makes a backup copy of the sequence first | **the real razor**; needs nothing above the clip; no backup copy (save the project first) |
-| Speed | rounds of timeline edits | about 50 s for 110 markers, 199 cuts, 100 deletes and 100 links (measured on Premiere 26.5) |
-| Timeline it accepts | any timeline, also one you already trimmed or cut | **one whole clip alone on V1/A1** (video + audio), or its own half-finished run; anything else is refused with the reason |
-| Markers go | on the clip or on the sequence | on the clip (they follow your cuts) |
-| After the delete | you check the result | **links video and audio again**, and reads the **whole result back** against the plan (pieces, sync, holes, length, links, markers) |
-
-Choose CEP when you start from a fresh VOD on a fresh sequence and want the whole edit in one click. Choose UXP when you want the easy install, or the timeline is not a single clip any more.
-
 ## Install
 
-Premiere's CEP panels are folders, not a single file like a `.ccx`. The installer copies the panel to the right place and switches on Adobe's "allow unsigned panels" flag (`PlayerDebugMode`, per user, harmless).
+You can install the panel either with a 1-click ZXP installer or with the included install script:
+
+### Option 1: 1-Click Install (.zxp)
+Download **`LuckyTwitch-Premiere-Plugin-CEP.zxp`** and drag it into:
+- [ZXPInstaller](https://zxpinstaller.com/)
+- [Anastasiy's Extension Manager](https://install.anastasiy.com/)
+- aescripts + aeplugins manager
+
+### Option 2: Manual Install (.zip)
+Download and unzip **`LuckyTwitch-Premiere-Plugin-CEP.zip`**. The installer copies the panel to the right place and switches on Adobe's "allow unsigned panels" flag (`PlayerDebugMode`, per user, harmless):
 
 **Windows**
-1. Unzip `LuckyTwitch-Premiere-Plugin-CEP.zip`.
-2. Double-click **`install.bat`**. The window lists every file it installed.
-3. Restart Premiere Pro and open **Window > Extensions > LuckyTwitch Markers**.
+1. Double-click **`install.bat`**. The window lists every file it installed.
+2. Restart Premiere Pro and open **Window > Extensions > LuckyTwitch Markers**.
 
-**macOS** (written to the same rules, but not yet tried on a real Mac: tell us if it does not work)
-1. Unzip, then double-click **`install-mac.command`** (if macOS blocks it: right-click > Open, or run `bash install-mac.command` in Terminal).
+**macOS**
+1. Double-click **`install-mac.command`** (if macOS blocks it: right-click > Open, or run `bash install-mac.command` in Terminal).
 2. Restart Premiere Pro and open **Window > Extensions > LuckyTwitch Markers**.
 
 To remove it: `install.bat -Uninstall` (Windows) or `./install-mac.command --uninstall` (macOS). The installer also removes the panel's old test build (`com.luckytwitch.ceptest`) if you had it.
 
-The manifest allows Premiere Pro 14.0 (2020) and newer; it was checked on Premiere Pro 26.5 on Windows only.
+The manifest allows Premiere Pro 14.0 (2020) and newer; it was checked on Premiere Pro 26.5.
 
 ## Use
 
@@ -76,4 +71,4 @@ It refuses to start, and says why, if: anything is on V2+/A2+; V1 or A1 is not e
 
 ## For developers
 
-See [`DEVELOPMENT.md`](DEVELOPMENT.md) (layout, tests, how the panel was verified). `src/markers-core.js` is **the UXP plugin's file, byte for byte**: never edit it here (a test fails if the two differ). Tests: `cd premiere-plugin-cep && npm test` (Node 20+, no dependencies).
+See [`DEVELOPMENT.md`](DEVELOPMENT.md) (layout, tests, how the panel was verified). Tests: `cd premiere-plugin-cep && npm test` (Node 20+, no dependencies).
