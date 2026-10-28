@@ -1,5 +1,7 @@
 # Linux Native Build & Distribution Plan
 
+Status: Pending
+
 This document outlines the architecture, requirements, and step-by-step implementation plan for shipping native Linux binaries (x86_64 and arm64) for LuckyTwitch Downloader in a future release.
 
 ---

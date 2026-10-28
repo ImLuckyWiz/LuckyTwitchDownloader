@@ -1,5 +1,7 @@
 # First-Run Welcome & Quick Setup Plan
 
+Status: Done in v2.1.0
+
 This document outlines the detailed architecture, visual design, interactive onboarding flow, and choreographed animation system for the first-time welcome experience in **LuckyTwitch Downloader**.
 
 ---

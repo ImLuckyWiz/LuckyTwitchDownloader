@@ -1,5 +1,7 @@
 # Quality selection and audio-only: implementation plan
 
+Status: Done in v2.2.0
+
 Written to be executed by a smaller model (Gemini Flash), one phase at a time. Read the whole file once, then work
 phase by phase. Every phase ends green (`python -m pytest tests -q`) before the next one starts.
 

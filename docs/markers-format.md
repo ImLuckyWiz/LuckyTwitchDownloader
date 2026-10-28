@@ -1,5 +1,7 @@
 # `.markers.json` format (version 1)
 
+Status: Active (specification v1)
+
 Written by LuckyTwitch Downloader next to each part when **Options → Chapter details → Also export a .markers.json for the LuckyTwitch Premiere plugin** is on. Read by the Premiere Pro panel in [`premiere-plugin-cep/`](../premiere-plugin-cep). This file is the contract between the app and the panel, so a change here means a change on both sides.
 
 The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (it must be exactly what the app writes) and by the panel's tests (it must be readable), so the two cannot drift apart without a test failing. Regenerate it with `python tests/test_premiere_plugin_json.py`.

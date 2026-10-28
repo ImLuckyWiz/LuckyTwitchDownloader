@@ -1,5 +1,7 @@
 # Naming Tokens Expansion Plan
 
+Status: Done in v2.2.1
+
 This plan outlines the architecture, specification, and implementation steps for expanding file and folder naming template tokens in **LuckyTwitch Downloader**.
 
 ---

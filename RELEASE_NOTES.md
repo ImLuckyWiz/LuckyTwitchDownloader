@@ -1,3 +1,13 @@
+## v2.3.1
+
+LuckyTwitch Downloader **v2.3.1** is a housekeeping and maintenance release preparing the project for upcoming platform builds and modularization.
+
+### What's new in 2.3.1:
+- **CI & Build Pipeline Maintenance:** Pruned retired migration branches from CI push triggers and added Python 3.14 to the automated test matrix alongside Python 3.12.
+- **Repository Hygiene:** Removed obsolete leftover patch files (`progress-eta.patch`).
+- **Documentation & Roadmap Indexing:** Added comprehensive documentation status tracking across all feature plans and established a unified documentation catalog (`docs/README.md`).
+- **Backward Compatibility:** Zero user-facing behavior or setting changes; 100% compatible with existing downloads, settings, and Premiere Pro plugins.
+
 ## v2.3.0
 
 LuckyTwitch Downloader **v2.3.0** introduces automatic update detection, in-place silent upgrades for Windows, and unified Premiere Pro CEP extension packaging.

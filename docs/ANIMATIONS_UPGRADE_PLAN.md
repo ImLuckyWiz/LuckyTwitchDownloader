@@ -1,5 +1,7 @@
 # Qt GUI Animations Upgrade Plan
 
+Status: Done in v2.1.0
+
 This document provides a comprehensive analysis of the current animation architecture in LuckyTwitch Downloader, an exhaustive inventory of existing animations and static candidate elements, design system tokens for motion, and a structured phased implementation roadmap.
 
 ---

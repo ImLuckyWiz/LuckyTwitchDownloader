@@ -1,5 +1,7 @@
 # Title Cleaning, Manual Naming & Single-Part Naming Plan
 
+Status: Done in v2.1.1
+
 This document outlines the architecture, implementation steps, and verification plan for:
 1. **Fixing file truncation on titles with dots** (`Path.with_suffix` bug).
 2. **Fixing double container extension in Destination preview** (`.mp4.mp4`).

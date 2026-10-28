@@ -1,5 +1,7 @@
 # Update Detection Plan
 
+Status: Done in v2.3.0
+
 This document describes how **LuckyTwitch Downloader** will find out that a newer version exists on GitHub, tell the person (an advice, not an interruption), and give them a button to update.
 
 Source of truth for versions: <https://github.com/ImLuckyWiz/LuckyTwitchDownloader/releases>

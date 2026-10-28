@@ -1,5 +1,7 @@
 # `luckytwitch://` links (version 1)
 
+Status: Active (specification v1)
+
 Any web page, document, chat message or program can offer a link that opens LuckyTwitch Downloader with a VOD and its cut points already filled in on the **Plan** tab. This file is the contract between those links and the app. It is meant for people who want to add such a link to their own page or tool.
 
 ```

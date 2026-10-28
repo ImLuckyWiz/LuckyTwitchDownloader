@@ -1,8 +1,10 @@
 # Next Upgrades Plan
 
+Status: In progress (Phase H done in v2.3.1; Phase V pending)
+
 This document plans the next round of work for **LuckyTwitch Downloader** (app, now at v2.3.0) and the **LuckyTwitch Markers** Premiere Pro CEP panel (now at v0.14.0). All items were discussed and approved by the owner. It is written to be executed one phase at a time; every phase ends green before the next starts.
 
-Status of this plan: **Pending** (nothing below is built yet).
+Status of this plan: **In progress** (Phase H done in v2.3.1; Phase V pending).
 
 ---
 
