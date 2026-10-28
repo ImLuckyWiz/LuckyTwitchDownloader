@@ -39,6 +39,17 @@ LuckyTwitch Downloader **v2.7.0** introduces local download history tracking and
   - Visual notification badge on the Search navigation rail icon when unwatched VODs are detected.
   - Local watch list persistence (`luckytwitch_watchlist.json`) with safe error suppression.
 
+## v2.6.1
+
+LuckyTwitch Downloader **v2.6.1** fixes window edge and corner resizing, restores native window shadows and rounded corners, enables Windows 11 Snap Layouts, and adds cross-platform resize grips.
+
+### What's new in 2.6.1:
+- **Native 8-Way Edge & Corner Resizing:** Full resize capability across all 8 window edges and corners with accurate cursor feedback while preserving the 900x560 minimum size limit.
+- **Native Window Shadow & Rounded Corners:** Thin DWM frame extension restores Windows 11 rounded corners and soft window drop shadows.
+- **Aero Snap & Windows 11 Snap Layouts:** Native `WM_NCHITTEST` and `HTMAXBUTTON` handling enables edge-drag Aero Snap and the Windows 11 Snap Layouts menu on the maximize button.
+- **Cross-Platform Edge Grips:** Fallback edge grip system calling `startSystemResize` ensures smooth window resizing on Linux, macOS, or when running with `--grips-only`.
+- **Diagnostic Tool:** Added `tools/frameless_spike.py` for testing frameless window behaviors in isolation.
+
 ## v2.6.0
 
 LuckyTwitch Downloader **v2.6.0** introduces a sleek custom window title bar (Phase W) matching the app's dark purple aesthetic with native window controls, maximize toggles, smooth dragging, and on-screen geometry clamp.

@@ -6,6 +6,7 @@ Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, s
 
 from __future__ import annotations
 
+import os
 import sys
 
 import re
@@ -180,12 +181,15 @@ class MainWindow(QMainWindow):
 
         use_custom_frame = (
             "--native-frame" not in sys.argv
+            and os.environ.get("LUCKYTWITCH_NATIVE_FRAME") != "1"
             and self.settings.get("custom_titlebar", True)
         )
         self.use_custom_titlebar = use_custom_frame
         central = QWidget(self)
         if use_custom_frame:
             self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+            from qt_ui.frameless import FrameController
+            self.frame_controller = FrameController(self)
             outer_lay = QVBoxLayout(central)
             outer_lay.setContentsMargins(0, 0, 0, 0)
             outer_lay.setSpacing(0)
@@ -199,6 +203,7 @@ class MainWindow(QMainWindow):
             parent_container = body
         else:
             self.title_bar = None
+            self.frame_controller = None
             root_lay = QHBoxLayout(central)
             root_lay.setContentsMargins(0, 0, 0, 0)
             root_lay.setSpacing(0)
@@ -381,10 +386,18 @@ class MainWindow(QMainWindow):
             self.add_to_queue(start=start)
 
     
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if getattr(self, "frame_controller", None) is not None:
+            self.frame_controller.on_show()
+
     def changeEvent(self, event) -> None:  # noqa: N802
         if event.type() == QEvent.Type.WindowStateChange:
+            is_max = self.isMaximized()
             if getattr(self, "title_bar", None) is not None:
-                self.title_bar.update_maximized_state(self.isMaximized())
+                self.title_bar.update_maximized_state(is_max)
+            if getattr(self, "frame_controller", None) is not None:
+                self.frame_controller.on_state_change(is_max)
         super().changeEvent(event)
 
     def setWindowTitle(self, title: str) -> None:  # noqa: N802
@@ -394,8 +407,17 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
+        if getattr(self, "frame_controller", None) is not None:
+            self.frame_controller.on_resize(self.width(), self.height(), self.isMaximized())
         if getattr(self, "welcome_overlay", None) is not None:
             self.welcome_overlay.setGeometry(0, 0, self.width(), self.height())
+
+    def nativeEvent(self, event_type, message):  # noqa: N802
+        if getattr(self, "frame_controller", None) is not None:
+            handled, result = self.frame_controller.handle_native_event(event_type, message)
+            if handled:
+                return True, result
+        return super().nativeEvent(event_type, message)
 
     def show_welcome_overlay(self):
         if getattr(self, "welcome_overlay", None) is not None:
