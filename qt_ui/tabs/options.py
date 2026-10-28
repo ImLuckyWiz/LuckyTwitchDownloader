@@ -718,6 +718,27 @@ class OptionsTab(QWidget):
         row.add_control(self.check_app_updates_btn)
         self.refresh_app_update_state()
 
+        interface_card = self._card(f, "Interface", "Language and appearance settings.")
+        lang_row = interface_card.add_row("Language", "Select interface language (English / Español).", divider=False)
+        from core.i18n import SUPPORTED_LANGUAGES, get_language, set_language
+        from core.ui_state import load_ui_state, save_ui_state
+        self.lang_combo = ComboBox()
+        for code, name in SUPPORTED_LANGUAGES.items():
+            self.lang_combo.addItem(name, code)
+        cur_lang = get_language()
+        idx = list(SUPPORTED_LANGUAGES.keys()).index(cur_lang) if cur_lang in SUPPORTED_LANGUAGES else 0
+        self.lang_combo.setCurrentIndex(idx)
+
+        def _on_lang_changed(i: int):
+            code = list(SUPPORTED_LANGUAGES.keys())[i]
+            set_language(code)
+            st = load_ui_state()
+            st.language = code
+            save_ui_state(st)
+
+        self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
+        lang_row.add_control(self.lang_combo)
+
         card = self._card(
             f, "Links from web pages",
             "A page can offer a luckytwitch:// link that opens a VOD here with the cut points already "

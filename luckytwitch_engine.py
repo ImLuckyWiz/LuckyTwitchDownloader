@@ -114,6 +114,36 @@ from core.finalize import (
     stream_dir,
     unique_path,
 )
+from core.history import (
+    HistoryEntry,
+    clear_history,
+    is_downloaded,
+    load_history,
+    record_download,
+    save_history,
+)
+from core.i18n import (
+    DEFAULT_LANGUAGE,
+    LANG_EN,
+    LANG_ES,
+    SUPPORTED_LANGUAGES,
+    TRANSLATIONS_ES,
+    extract_placeholders,
+    get_language,
+    get_system_language,
+    set_language,
+    t,
+)
+from core.watchlist import (
+    WatchedStreamer,
+    add_to_watchlist,
+    check_all_watchers,
+    check_streamer_new_vods,
+    is_watched,
+    load_watchlist,
+    remove_from_watchlist,
+    save_watchlist,
+)
 from core.job import Job, JobOptions
 from core.muted import (
     fetch_muted_ranges,

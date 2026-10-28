@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from core.resources import resource_path
-from luckytwitch_engine import APP_DIR, user_data_dir
+from core.runtime import APP_DIR, user_data_dir
 
 PRE_RELEASE_DIR_SUFFIX = "-beta"
 APP_USER_MODEL_ID = "LuckyTwitch.Downloader"

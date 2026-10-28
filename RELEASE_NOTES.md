@@ -1,3 +1,25 @@
+## v2.9.0
+
+LuckyTwitch Downloader **v2.9.0** introduces a rich set of app features (Phases F1 to F4): local download history with badges and re-loading, streamer watch lists with new VOD notifications, multi-job parallel queue execution with bandwidth limits, and Spanish interface localization.
+
+### What's new in 2.9.0:
+- **Download History (Phase F1):**
+  - Records every finished download locally (`luckytwitch_history.json`) with VOD ID, title, streamer, date, parts count, output folder, and quality.
+  - Adds a "✓ Downloaded" pill indicator on VOD cards and rows in Search and Plan views.
+  - Dedicated History dialog accessible from the command bar with quick buttons to open folders, reload VODs, and clear history.
+- **Streamer Watch List (Phase F2):**
+  - Pin favorite streamers directly in the Search tab to check for new VODs without automatic downloading.
+  - Visual notification badge on the Search navigation rail icon when unviewed VODs are detected.
+  - Fully local persistence (`luckytwitch_watchlist.json`) with safe background checking.
+- **Parallel Queue Jobs & Bandwidth Limit (Phase F3):**
+  - Multi-job queue concurrency selector (1 to 4 parallel jobs) with thread-safe execution, dynamic work stealing from the model, and isolated temporary workdirs.
+  - Granular cancellation allowing cancellation of a single selected job without interrupting other active parallel jobs.
+  - Speed limit selector passing `--limit-rate` to yt-dlp (e.g. 1 MB/s, 5 MB/s, 10 MB/s, 20 MB/s, or unlimited).
+- **Spanish Localization (Phase F4):**
+  - Complete Spanish translation catalog (`core/i18n.py`) for all interface tabs, buttons, dialogs, and controls.
+  - Interface language selector in Options (Interface card) and automatic first-run detection from the system language.
+  - Strict placeholder verification ensuring format tokens remain identical across languages.
+
 ## v2.6.0
 
 LuckyTwitch Downloader **v2.6.0** introduces a sleek custom window title bar (Phase W) matching the app's dark purple aesthetic with native window controls, maximize toggles, smooth dragging, and on-screen geometry clamp.

@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
         self.info_label: QLabel = self.command_bar.info_label
         self.vod_entry.returnPressed.connect(self.on_get_info)
         self.info_btn.clicked.connect(self.on_get_info)
-        self.api_btn.clicked.connect(self.ask_credentials)
+        self.api_btn.clicked.connect(self.ask_credentials)
         self.command_bar.history_btn.clicked.connect(self.open_history_dialog)
         self.command_bar.history_btn.clicked.connect(self.open_history_dialog)
         self.command_bar.set_signed_in(self._client is not None)
@@ -450,6 +450,11 @@ class MainWindow(QMainWindow):
         has_saved = ui_path.is_file()
         state = load_ui_state(ui_path)
         self._ui_state = state
+        from core.i18n import get_language, get_system_language, set_language
+        if has_saved and getattr(state, "language", None):
+            set_language(state.language)
+        else:
+            set_language(get_system_language())
         self.rail.set_expanded(state.rail_expanded, animate=False)
         if has_saved:
             w = max(state.window_w, MIN_SIZE[0])
@@ -488,6 +493,7 @@ class MainWindow(QMainWindow):
         has_onboard = self._ui_state.has_completed_onboarding if hasattr(self, "_ui_state") else False
         is_max = self.isMaximized()
         geom = self.normalGeometry() if is_max else self.geometry()
+        from core.i18n import get_language
         state = UIState(
             window_x=geom.x(),
             window_y=geom.y(),
@@ -497,6 +503,8 @@ class MainWindow(QMainWindow):
             active_tab=active_name,
             rail_expanded=self.rail.expanded,
             has_completed_onboarding=has_onboard,
+            custom_titlebar=self.use_custom_titlebar,
+            language=get_language(),
         )
         save_ui_state(state)
 
@@ -1254,12 +1262,12 @@ class MainWindow(QMainWindow):
         dlg.vod_requested.connect(self.load_vod_from_url)
         dlg.exec()
 
-    def open_history_dialog(self) -> None:
-        from qt_ui.dialogs import HistoryDialog
-        dlg = HistoryDialog(self)
-        dlg.vod_requested.connect(self.load_vod_from_url)
-        dlg.exec()
-
+    def open_history_dialog(self) -> None:
+        from qt_ui.dialogs import HistoryDialog
+        dlg = HistoryDialog(self)
+        dlg.vod_requested.connect(self.load_vod_from_url)
+        dlg.exec()
+
     def ask_credentials(self) -> None:
         """The Twitch API dialog (modal; this returns at once, like the tkinter one)."""
         if self._login_dialog is not None:
