@@ -1,0 +1,17 @@
+"""
+Exception hierarchy for LuckyTwitch Downloader.
+"""
+
+from __future__ import annotations
+
+
+class EngineError(Exception):
+    """Something went wrong; the message is meant to be shown to the user."""
+
+
+class PlanError(EngineError):
+    """The cut points text is invalid."""
+
+
+class Cancelled(EngineError):
+    """The user cancelled the job."""

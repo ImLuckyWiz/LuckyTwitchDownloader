@@ -1,3 +1,29 @@
+## v2.5.0
+
+LuckyTwitch Downloader **v2.5.0** completes the comprehensive engine modularization (Phase E), splitting the monolithic 3,715-line download engine into decoupled, focused core modules under `core/` with a clean DAG dependency structure while preserving 100% backward compatibility.
+
+### What's new in 2.5.0:
+- **Modular Core Architecture:** Decomposed `luckytwitch_engine.py` into 14 cohesive, single-responsibility modules in `core/`:
+  - `core/errors.py`: Custom error hierarchy (`EngineError`, `PlanError`, `Cancelled`).
+  - `core/timeutil.py`: Time parsing, duration conversions, and HMS formatting.
+  - `core/planning.py`: Cut point parsing, split strategy selection, and plan generation.
+  - `core/timeline.py`: Interactive timeline range and cut manipulations.
+  - `core/twitch_api.py`: Device Flow authentication, clip retrieval, and Twitch API client.
+  - `core/vod_search.py`: VOD searches, channel discovery, and thumbnail fetching.
+  - `core/chapters.py`: Clips-to-chapters mapping, gap filling, and ffmetadata export.
+  - `core/premiere_export.py`: Premiere XML marker generation and native `.markers.json` exporter.
+  - `core/muted.py`: Muted audio segment parsing and HLS playlist inspection.
+  - `core/source_info.py`: Media source metadata, storyboards, and format resolution.
+  - `core/job.py`: Job descriptors and download execution options.
+  - `core/runtime.py`: Execution context, process tree management, and tool path discovery.
+  - `core/tools.py`: Tool lifecycle management for yt-dlp, ffmpeg, and TwitchDownloaderCLI.
+  - `core/download.py`: HLS playlist parsing, segment extraction, and stream downloading.
+  - `core/chat.py`: Chat downloading and video overlay rendering.
+  - `core/finalize.py`: Audio/video part finalization, path templating, and job execution pipeline.
+- **100% Backward-Compatible Facade:** `luckytwitch_engine.py` now serves as a lightweight ~200-line re-export facade preserving all 176 public symbols and test monkeypatch targets.
+- **Safety Net Verification:** Added dedicated test coverage freezing the public engine surface (`tests/test_engine_exports.py`) and unit tests for core modules.
+- **Zero Breaking Changes:** Full test suites (1,449 Python pytest tests and 130 Premiere CEP Node tests) pass cleanly without any regression.
+
 ## v2.4.0
 
 LuckyTwitch Downloader **v2.4.0** introduces official native Linux packaging with standalone AppImage and portable tarball releases alongside optimized CI build workflows.

@@ -7,9 +7,148 @@ them directly while ``ui/timeline.py`` stays untouched until cutover.
 from __future__ import annotations
 
 import zlib
-from typing import Iterable, Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable, Sequence
 
-from luckytwitch_engine import GameSegment, Range
+from core.planning import parse_cut_points
+from core.timeutil import fmt_hms
+
+if TYPE_CHECKING:
+    from luckytwitch_engine import GameSegment
+
+# --- range and slice editing --- #
+Range = tuple[float, float]
+MIN_PART = 1.0  # seconds: the shortest part an edit can create
+
+
+@dataclass(frozen=True)
+class Edge:
+    """Something on the timeline that can be dragged: kind is "cut" (shared by two touching parts, `index`
+    is the left one), or "start" / "end" (the border of part `index` next to a skipped section)."""
+
+    kind: str
+    index: int
+    t: float
+
+
+def ranges_of(text: str, duration: float | None) -> list[Range]:
+    """Cut text -> ranges in whole seconds (the text is written back that way anyway). Raises PlanError like
+    parse_cut_points. A part that is shorter than a second once rounded is left out."""
+    out = [(round(p.start), round(p.end)) for p in parse_cut_points(text, duration)]
+    return [(s, e) for s, e in out if e - s >= MIN_PART]
+
+
+def ranges_to_text(ranges: list[Range], duration: float | None) -> str:
+    """Ranges -> cut text: touching parts in one line ("a - b - c"), skipped sections start a new line."""
+    def tok(t: float, last: bool = False) -> str:
+        return "end" if last and duration and t >= duration - 0.5 else fmt_hms(t)
+
+    groups: list[list[str]] = []
+    prev_end: float | None = None
+    for s, e in ranges:
+        if groups and prev_end is not None and abs(prev_end - s) < 1e-6:
+            groups[-1].append(tok(e, True))
+        else:
+            groups.append([fmt_hms(s), tok(e, True)])
+        prev_end = e
+    return "\n".join(" - ".join(g) for g in groups)
+
+
+def edges_of(ranges: list[Range]) -> list[Edge]:
+    out: list[Edge] = []
+    for i, (s, e) in enumerate(ranges):
+        if not (i > 0 and abs(ranges[i - 1][1] - s) < 1e-6):  # a touching start is the previous part's "cut"
+            out.append(Edge("start", i, s))
+        touches = i + 1 < len(ranges) and abs(ranges[i + 1][0] - e) < 1e-6
+        out.append(Edge("cut" if touches else "end", i, e))
+    return out
+
+
+def nearest_edge(ranges: list[Range], t: float, tolerance: float) -> Edge | None:
+    """The edge closest to time `t`, if it is within `tolerance` seconds."""
+    best = min(edges_of(ranges), key=lambda ed: abs(ed.t - t), default=None)
+    return best if best is not None and abs(best.t - t) <= tolerance else None
+
+
+def part_index_at(ranges: list[Range], t: float) -> int | None:
+    for i, (s, e) in enumerate(ranges):
+        if s <= t < e:
+            return i
+    return None
+
+
+def add_cut(ranges: list[Range], t: float) -> list[Range] | None:
+    """Split the part that contains `t`. None = nothing to do (skipped section, or too close to an edge)."""
+    t = round(t)
+    for i, (s, e) in enumerate(ranges):
+        if s + MIN_PART <= t <= e - MIN_PART:
+            return ranges[:i] + [(s, t), (t, e)] + ranges[i + 1:]
+    return None
+
+
+def move_edge(ranges: list[Range], edge: Edge, t: float, duration: float) -> list[Range]:
+    """Drag an edge to `t` (clamped so no part gets shorter than MIN_PART and parts never overlap)."""
+    t = round(t)
+    r = list(ranges)
+    i = edge.index
+    if edge.kind == "cut":
+        t = min(max(t, r[i][0] + MIN_PART), r[i + 1][1] - MIN_PART)
+        r[i], r[i + 1] = (r[i][0], t), (t, r[i + 1][1])
+    elif edge.kind == "start":
+        lo = r[i - 1][1] if i > 0 else 0
+        t = min(max(t, lo), r[i][1] - MIN_PART)
+        r[i] = (t, r[i][1])
+    else:
+        hi = r[i + 1][0] if i + 1 < len(r) else duration
+        t = min(max(t, r[i][0] + MIN_PART), hi)
+        r[i] = (r[i][0], t)
+    return r
+
+
+def remove_cut(ranges: list[Range], index: int) -> list[Range]:
+    """Merge part `index` with the next one (they must touch: use it for "cut" edges)."""
+    return ranges[:index] + [(ranges[index][0], ranges[index + 1][1])] + ranges[index + 2:]
+
+
+def toggle_part(ranges: list[Range], t: float, duration: float) -> list[Range] | None:
+    """Skip the part at `t`, or bring back the skipped section at `t`. None = not possible
+    (the last remaining part cannot be skipped)."""
+    i = part_index_at(ranges, t)
+    if i is not None:
+        return ranges[:i] + ranges[i + 1:] if len(ranges) > 1 else None
+    prev_end = max((e for s, e in ranges if e <= t), default=0)
+    next_start = min((s for s, e in ranges if s > t), default=duration)
+    if next_start - prev_end < MIN_PART:
+        return None
+    pos = sum(1 for s, e in ranges if e <= t)
+    return ranges[:pos] + [(prev_end, next_start)] + ranges[pos:]
+
+
+def isolate_span(ranges: list[Range], a: float, b: float, duration: float, only: bool = False) -> list[Range]:
+    """Make [a, b] its own part(s): cut at a and b, and keep everything in between (skipped sections inside
+    it are brought back). only=True: drop everything else and keep just [a, b]."""
+    a, b = max(0, round(a)), min(duration, round(b))
+    if b - a < MIN_PART:
+        return list(ranges)
+    if only:
+        return [(a, b)]
+    pieces: list[Range] = []
+    for s, e in ranges:
+        pts = [s] + [x for x in (a, b) if s + MIN_PART <= x <= e - MIN_PART] + [e]
+        pieces += list(zip(pts, pts[1:]))
+    inside = sorted(p for p in pieces if p[0] >= a and p[1] <= b)
+    outside = [p for p in pieces if not (p[0] >= a and p[1] <= b)]
+    filled: list[Range] = []
+    cursor = a
+    for s, e in inside:
+        if s > cursor:
+            filled.append((cursor, s))
+        filled.append((s, e))
+        cursor = e
+    if b > cursor:
+        filled.append((cursor, b))
+    return sorted(outside + filled)
+
 
 # --- geometry (pixels) --- #
 THUMB_W, THUMB_H = 100, 56
