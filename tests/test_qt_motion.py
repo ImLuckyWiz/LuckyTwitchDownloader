@@ -313,7 +313,7 @@ def test_queue_delegate_indeterminate_shimmer_when_motion_enabled(qtbot):
         assert delegate._shimmer_timer is not None
         assert delegate._shimmer_timer.isActive()
         prev = delegate._shimmer_phase
-        qtbot.wait(60)
+        qtbot.waitUntil(lambda: delegate._shimmer_phase != prev, timeout=1000)
         assert delegate._shimmer_phase != prev
     finally:
         if delegate._shimmer_timer:
