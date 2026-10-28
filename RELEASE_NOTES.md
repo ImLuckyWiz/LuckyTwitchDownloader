@@ -1,3 +1,17 @@
+## v2.8.0
+
+LuckyTwitch Downloader **v2.8.0** introduces parallel queue execution and configurable download bandwidth limits (Phase F3).
+
+### What's new in 2.8.0:
+- **Parallel Queue Execution (Phase F3):**
+  - Multi-job queue concurrency selector (1 to 4 jobs at the same time) in the Queue tab toolbar.
+  - Thread-safe coordinator and worker pool dynamically pulling waiting jobs from the queue model.
+  - Isolated temporary directories preventing file collisions when downloading multiple streams or parts concurrently.
+  - Granular cancellation: selecting an active running job and clicking Cancel stops only that job without cancelling other parallel downloads.
+- **Bandwidth Speed Limiting:**
+  - Integrated speed limit selector (Unlimited, 1 MB/s, 2 MB/s, 5 MB/s, 10 MB/s, 20 MB/s) passing --limit-rate directly to yt-dlp.
+  - Persisted in UI state so your bandwidth preferences are preserved across sessions.
+
 ## v2.7.0
 
 LuckyTwitch Downloader **v2.7.0** introduces local download history tracking (Phase F1), a streamer watch list (Phase F2), and Phase P Premiere Pro CEP panel upgrades (v0.15.0).
