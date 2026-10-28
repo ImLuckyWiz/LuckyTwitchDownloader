@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from core.errors import EngineError
+from core.errors import Cancelled, EngineError
 from core.premiere_export import probe_video
 from core.runtime import Ctx, _NO_WINDOW, _tool_env, find_tool
 from core.timeutil import fmt_hms

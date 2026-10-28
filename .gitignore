@@ -3,6 +3,8 @@ config.json
 luckytwitch_settings.json
 luckytwitch_ui.json
 luckytwitch_recent.json
+luckytwitch_history.json
+luckytwitch_watchlist.json
 luckytwitch_update.json
 .rnd
 links/
