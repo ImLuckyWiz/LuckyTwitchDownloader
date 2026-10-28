@@ -1,6 +1,6 @@
 # Next Upgrades Plan
 
-Status: In progress (Phase H done in v2.3.1; Phase V Windows verified; Phase L done in v2.4.0; Phase E done in v2.5.0; Phase W in progress)
+Status: In progress (Phase H done in v2.3.1; Phase V Windows verified; Phase L done in v2.4.0; Phase E done in v2.5.0; Phase W done in v2.6.0; Phase P in progress)
 
 This document plans the next round of work for **LuckyTwitch Downloader** (app, now at v2.3.0) and the **LuckyTwitch Markers** Premiere Pro CEP panel (now at v0.14.0). All items were discussed and approved by the owner. It is written to be executed one phase at a time; every phase ends green before the next starts.
 
@@ -120,7 +120,7 @@ Risk: the Nuitka standalone build on Ubuntu can miss Qt plugins. Mitigation: smo
 
 ---
 
-## 6A. Phase W: Custom window bar (ships as v2.6.0)
+## 6A. Phase W: Custom window bar (ships as v2.6.0) — Done
 
 Full plan: **[`NEW_WINDOW_BAR.md`](NEW_WINDOW_BAR.md)**. Summary here so this file stays the master roadmap.
 

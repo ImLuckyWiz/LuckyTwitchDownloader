@@ -1,3 +1,14 @@
+## v2.6.0
+
+LuckyTwitch Downloader **v2.6.0** introduces a sleek custom window title bar (Phase W) matching the app's dark purple aesthetic with native window controls, maximize toggles, smooth dragging, and on-screen geometry clamp.
+
+### What's new in 2.6.0:
+- **Custom Dark Window Bar:** Replaced the OS title bar with a custom in-app bar (`CustomTitleBar`) styled in the dark Twitch theme (`#1e1f22`), featuring the app logo, title label, and custom-styled caption buttons (minimize, maximize/restore, close).
+- **Interactive Caption Controls:** Includes responsive hover feedback with soft red (`#c42b1c`) on the close button, seamless double-click maximize/restore toggle, and drag-to-move window interaction.
+- **Maximized State & Geometry Persistence:** Stored maximized state in `luckytwitch_ui.json` and added on-screen coordinate clamping to guarantee windows never restore off-screen across multi-monitor setups.
+- **Native Frame Override:** Added `--native-frame` CLI argument and `custom_titlebar` setting toggle for users who prefer native OS decoration.
+- **Vector Control Glyphs:** Added `window-minimize`, `window-maximize`, and `window-restore` vector icons rendered in code on the 24x24 grid.
+
 ## v2.5.0
 
 LuckyTwitch Downloader **v2.5.0** completes the comprehensive engine modularization (Phase E), splitting the monolithic 3,715-line download engine into decoupled, focused core modules under `core/` with a clean DAG dependency structure while preserving 100% backward compatibility.

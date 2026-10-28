@@ -383,6 +383,21 @@ def _user() -> list[Shape]:
     return [(_circle(12, 8, 4), "s"), (shoulders, "s")]
 
 
+
+def _window_minimize() -> list[Shape]:
+    return [(_line(6, 16.5, 18, 16.5), "s")]
+
+
+def _window_maximize() -> list[Shape]:
+    return [(_rrect(5, 5, 14, 14, 1.5), "s")]
+
+
+def _window_restore() -> list[Shape]:
+    back = _poly([(8.5, 5), (19, 5), (19, 15.5)])
+    front = _rrect(5, 8.5, 10.5, 10.5, 1.2)
+    return [(back, "s"), (front, "s")]
+
+
 def _missing() -> list[Shape]:
     q = _svgish("M 9.6 9.6 C 9.6 8 10.7 7.2 12 7.2 C 13.3 7.2 14.4 8.1 14.4 9.5 C 14.4 11.4 12 11.6 12 13.8")
     return [(_rrect(3.5, 3.5, 17, 17, 3.5), "s"), (q, "s"), _dot(12, 16.6, 1.0)]
@@ -402,6 +417,7 @@ _BUILDERS: dict[str, Callable[[], list[Shape]]] = {
     # ui controls
     "chevron-right": _chevron_right, "chevron-left": _chevron_left, "chevron-down": _chevron_down, "grid": _grid, "list-view": _list_view,
     "filter": _filter, "sliders": _sliders, "user": _user,
+    "window-minimize": _window_minimize, "window-maximize": _window_maximize, "window-restore": _window_restore,
 }
 
 _ALIASES = {
@@ -411,6 +427,7 @@ _ALIASES = {
     "reload": "refresh", "save": "download", "delete": "trash", "cut": "scissors", "views": "eye",
     "clip": "flag", "person": "user", "account": "user", "options": "sliders", "arrow-right": "chevron-right",
     "arrow-left": "chevron-left", "arrow-down": "chevron-down", "list-ui": "list-view", "time": "clock", "duration": "clock",
+    "minimize": "window-minimize", "maximize": "window-maximize", "restore": "window-restore",
 }
 
 _MISSING = "?"  # internal key of the placeholder (not a legal public name)

@@ -27,6 +27,7 @@ CATALOG = {
     "folder", "folder-open", "copy", "trash", "download", "refresh", "external-link", "link",
     "check", "x", "alert", "info", "clock", "eye", "flag",
     "chevron-right", "chevron-down", "grid", "list-view", "filter", "sliders", "user",
+    "window-minimize", "window-maximize", "window-restore",
 }
 SIZES = (12, 16, 20, 24, 32, 48)
 DPRS = (1.0, 1.25, 1.5, 2.0, 3.0)
