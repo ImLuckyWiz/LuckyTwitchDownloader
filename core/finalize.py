@@ -564,7 +564,11 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                 ctx.log(f"✔ {xml.name}  ({marker_bits(xml_clips)} for Premiere Pro, {fps:g} fps)")
             if opts.premiere_plugin and (json_clips or game_chs or muted_chs):
                 markers = sorted(json_clips + game_chs + muted_chs, key=lambda c: (c.start, c.kind))
-                mj = _write_json(dest, markers, real_end - real_start, fps, src, real_start, real_end)
+                prefs = {
+                    "pad_before": float(getattr(opts.clip_filter, "pad_before", 0) or 0),
+                    "pad_after": float(getattr(opts.clip_filter, "pad_after", 0) or 0),
+                }
+                mj = _write_json(dest, markers, real_end - real_start, fps, src, real_start, real_end, preferences=prefs)
                 ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips, muted_chs)} for the Premiere plugin, {fps:g} fps)")
         if chat_tool:
             chat_files_for_part(ctx, chat_tool, src, opts, part, total_parts, dest, real_start, real_end, workdir)

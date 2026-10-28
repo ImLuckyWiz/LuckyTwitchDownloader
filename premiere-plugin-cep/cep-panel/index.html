@@ -118,7 +118,7 @@
 </head>
 <body>
   <div class="top">
-    <div class="brand"><span class="logo">&#9670;</span><span class="name">LuckyTwitch Markers</span><span class="ver" id="ver">v0.14.0</span></div>
+    <div class="brand"><span class="logo">&#9670;</span><span class="name">LuckyTwitch Markers</span><span class="ver" id="ver">v0.15.0</span></div>
     <span class="pill" id="pill">Starting</span>
   </div>
 
@@ -189,6 +189,10 @@
   <details class="card" id="setBox">
     <summary>Settings<span class="muted" id="setSum"></span></summary>
     <div class="grp">
+      <div class="gh">Recipe</div>
+      <label class="fld"><span class="l">Preset</span><select id="recipeSelect" style="flex:1; background:#181818; color:var(--txt); border:1px solid #4a4a4a; border-radius:3px; padding:3px 5px;"><option value="Default">Default</option></select></label>
+    </div>
+    <div class="grp">
       <div class="gh">Safety cut: footage kept around every clip</div>
       <label class="fld"><span class="l">Before each clip</span><input id="padBefore" type="text" value="0"><span class="muted">s</span></label>
       <label class="fld"><span class="l">After each clip</span><input id="padAfter" type="text" value="0"><span class="muted">s</span></label>
@@ -197,6 +201,7 @@
     </div>
     <div class="grp">
       <div class="gh">What to cut</div>
+      <label class="fld"><span class="l">Limit to chapter</span><select id="limitChapter" style="flex:1; background:#181818; color:var(--txt); border:1px solid #4a4a4a; border-radius:3px; padding:3px 5px;"><option value="">All chapters (whole file)</option></select></label>
       <label class="chk"><input id="recipeCutChapters" type="checkbox"> Also cut at every game / category change</label>
     </div>
     <div class="grp">

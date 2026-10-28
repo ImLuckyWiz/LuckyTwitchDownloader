@@ -22,10 +22,51 @@ const COLORS = [
 ];
 const GREEN = 0, RED = 1, ORANGE = 3, YELLOW = 4, BLUE = 6;
 
+const DEFAULT_RECIPES = [
+  {
+    name: "Default",
+    padBefore: 0,
+    padAfter: 0,
+    mergeGap: 0,
+    recipeCutClips: true,
+    recipeCutChapters: false,
+    recipeMarkers: true,
+    recipeDeleteGaps: false,
+    maxDeletePct: 99,
+    minKeepPieces: 1,
+  },
+  {
+    name: "Safety (5s)",
+    padBefore: 5,
+    padAfter: 5,
+    mergeGap: 2,
+    recipeCutClips: true,
+    recipeCutChapters: false,
+    recipeMarkers: true,
+    recipeDeleteGaps: false,
+    maxDeletePct: 99,
+    minKeepPieces: 1,
+  },
+  {
+    name: "Tight Cut & Delete",
+    padBefore: 1,
+    padAfter: 1,
+    mergeGap: 0,
+    recipeCutClips: true,
+    recipeCutChapters: false,
+    recipeMarkers: true,
+    recipeDeleteGaps: true,
+    maxDeletePct: 95,
+    minKeepPieces: 1,
+  },
+];
+
 const DEFAULT_SETTINGS = {
   importGames: true,
   importClips: true,
+  importMuted: true,
   gameColor: BLUE,
+  mutedColor: RED,
   colorByViews: true, // clips take the color of their view tier; off = all clips use clipColor
   clipColor: YELLOW,
   lowColor: YELLOW, // fewer views than midViews
@@ -48,6 +89,9 @@ const DEFAULT_SETTINGS = {
   recipeDeleteGaps: false, // "Do it all": ripple-delete the pieces between the clips, as the LAST step (the confirmation comes before the run starts)
   maxDeletePct: 99, // refuse to delete more than this percent of the timeline's length (a real VOD keeps only ~10%, so the default is high)
   minKeepPieces: 1, // refuse unless at least this many pieces would be kept
+  limitChapter: null,
+  recipes: DEFAULT_RECIPES,
+  activeRecipe: "Default",
 };
 
 class MarkersFileError extends Error {
@@ -84,7 +128,7 @@ function parseMarkersFile(text) {
   const markers = [];
   let skipped = 0;
   for (const m of data.markers) {
-    const ok = m && (m.kind === "game" || m.kind === "clip") && isNum(m.start) && isNum(m.end) && m.start >= 0;
+    const ok = m && (m.kind === "game" || m.kind === "clip" || m.kind === "muted") && isNum(m.start) && isNum(m.end) && m.start >= 0;
     if (!ok) {
       skipped++;
       continue;
@@ -100,6 +144,11 @@ function parseMarkersFile(text) {
       clips: Array.isArray(m.clips) ? m.clips : [],
     });
   }
+  const preferences = data.preferences && typeof data.preferences === "object" ? {
+    padBefore: isNum(data.preferences.pad_before) ? data.preferences.pad_before : (isNum(data.preferences.padBefore) ? data.preferences.padBefore : undefined),
+    padAfter: isNum(data.preferences.pad_after) ? data.preferences.pad_after : (isNum(data.preferences.padAfter) ? data.preferences.padAfter : undefined),
+    maxDeletePct: isNum(data.preferences.max_delete_pct) ? data.preferences.max_delete_pct : (isNum(data.preferences.maxDeletePct) ? data.preferences.maxDeletePct : undefined),
+  } : null;
   return {
     version: data.version,
     name: typeof data.name === "string" ? data.name : "",
@@ -107,6 +156,7 @@ function parseMarkersFile(text) {
     duration: isNum(data.duration) ? data.duration : null,
     part: data.part && isNum(data.part.start) ? data.part : null,
     source: data.source && typeof data.source === "object" ? data.source : null,
+    preferences,
     markers,
     skipped,
   };
@@ -145,9 +195,54 @@ function normalizeSettings(raw) {
     recipeDeleteGaps: r.recipeDeleteGaps === undefined ? d.recipeDeleteGaps : !!r.recipeDeleteGaps,
     maxDeletePct: Math.min(100, Math.max(1, count(r.maxDeletePct, d.maxDeletePct))),
     minKeepPieces: Math.max(1, Math.floor(count(r.minKeepPieces, d.minKeepPieces))),
+    importMuted: r.importMuted === undefined ? d.importMuted : !!r.importMuted,
+    mutedColor: colorIndex(r.mutedColor, d.mutedColor),
+    limitChapter: r.limitChapter !== undefined && r.limitChapter !== null && r.limitChapter !== "" ? Number(r.limitChapter) : null,
+    recipes: Array.isArray(r.recipes) && r.recipes.length > 0 ? r.recipes : d.recipes,
+    activeRecipe: typeof r.activeRecipe === "string" ? r.activeRecipe : d.activeRecipe,
   };
 }
 
+function applyPreferences(settings, preferences) {
+  if (!preferences || typeof preferences !== "object") return normalizeSettings(settings);
+  const cur = normalizeSettings(settings);
+  const padBefore = preferences.padBefore !== undefined ? preferences.padBefore : (preferences.pad_before !== undefined ? preferences.pad_before : cur.padBefore);
+  const padAfter = preferences.padAfter !== undefined ? preferences.padAfter : (preferences.pad_after !== undefined ? preferences.pad_after : cur.padAfter);
+  const maxDeletePct = preferences.maxDeletePct !== undefined ? preferences.maxDeletePct : (preferences.max_delete_pct !== undefined ? preferences.max_delete_pct : cur.maxDeletePct);
+  return normalizeSettings(Object.assign({}, cur, { padBefore, padAfter, maxDeletePct }));
+}
+
+function applyRecipe(settings, recipe) {
+  if (!recipe || typeof recipe !== "object") return normalizeSettings(settings);
+  const cur = normalizeSettings(settings);
+  const merged = Object.assign({}, cur);
+  for (const k of ["padBefore", "padAfter", "mergeGap", "recipeCutClips", "recipeCutChapters", "recipeMarkers", "recipeDeleteGaps", "maxDeletePct", "minKeepPieces"]) {
+    if (recipe[k] !== undefined) merged[k] = recipe[k];
+  }
+  if (recipe.name) merged.activeRecipe = String(recipe.name);
+  return normalizeSettings(merged);
+}
+
+function applyPreferences(settings, preferences) {
+  if (!preferences || typeof preferences !== "object") return normalizeSettings(settings);
+  const cur = normalizeSettings(settings);
+  const padBefore = preferences.padBefore !== undefined ? preferences.padBefore : (preferences.pad_before !== undefined ? preferences.pad_before : cur.padBefore);
+  const padAfter = preferences.padAfter !== undefined ? preferences.padAfter : (preferences.pad_after !== undefined ? preferences.pad_after : cur.padAfter);
+  const maxDeletePct = preferences.maxDeletePct !== undefined ? preferences.maxDeletePct : (preferences.max_delete_pct !== undefined ? preferences.max_delete_pct : cur.maxDeletePct);
+  return normalizeSettings(Object.assign({}, cur, { padBefore, padAfter, maxDeletePct }));
+}
+
+function applyRecipe(settings, recipe) {
+  if (!recipe || typeof recipe !== "object") return normalizeSettings(settings);
+  const cur = normalizeSettings(settings);
+  const merged = Object.assign({}, cur);
+  for (const k of ["padBefore", "padAfter", "mergeGap", "recipeCutClips", "recipeCutChapters", "recipeMarkers", "recipeDeleteGaps", "maxDeletePct", "minKeepPieces"]) {
+    if (recipe[k] !== undefined) merged[k] = recipe[k];
+  }
+  if (recipe.name) merged.activeRecipe = String(recipe.name);
+  return normalizeSettings(merged);
+}
+
 function colorForClip(views, s) {
   if (!s.colorByViews) return s.clipColor;
   if (views >= s.highViews) return s.highColor;
@@ -164,6 +259,22 @@ function planMarkers(file, rawSettings, baseSeconds = 0) {
   const items = [];
   const counts = { games: 0, clips: 0, hidden: 0 };
   for (const m of file.markers) {
+    if (m.kind === "muted") {
+      if (!s.importMuted) {
+        counts.hidden++;
+        continue;
+      }
+      counts.muted = (counts.muted || 0) + 1;
+      items.push({
+        kind: "muted",
+        name: m.name || "Muted audio",
+        comment: m.comment || "",
+        start: baseSeconds + m.start,
+        duration: Math.max(0, m.end - m.start),
+        color: s.mutedColor,
+      });
+      continue;
+    }
     if (m.kind === "game") {
       if (!s.importGames) {
         counts.hidden++;
@@ -985,6 +1096,9 @@ const LT_CORE_API = {
   shiftAfter,
   checkSpans,
   checkRippleHoles,
+  DEFAULT_RECIPES,
+  applyPreferences,
+  applyRecipe,
 };
 if (typeof module !== "undefined" && module.exports) module.exports = LT_CORE_API;
 if (typeof window !== "undefined") window.LTCore = LT_CORE_API;

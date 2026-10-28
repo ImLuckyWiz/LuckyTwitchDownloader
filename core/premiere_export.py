@@ -131,12 +131,14 @@ def premiere_markers_json(
     source: SourceInfo | None = None,
     part_start: float = 0.0,
     part_end: float | None = None,
+    preferences: dict | None = None,
 ) -> str:
     """
     The markers of one part as JSON for the Premiere Pro plugin. Unlike the XML it keeps what each marker is
     (a clip or a game) and the numbers behind it (views...), so the plugin can choose colors and names itself.
     Times are seconds from the start of the part; part_start / part_end say where the part sits in the VOD.
     Kinds: "clip", "game" and "muted" (a stretch Twitch silenced). A plugin that does not know "muted" skips those.
+    Optional `preferences` provides default padding / ripple limits for the plugin.
     """
     markers = []
     for ch in sorted(chapters, key=lambda c: (c.start, c.kind)):
@@ -182,15 +184,17 @@ def premiere_markers_json(
             "streamer": source.uploader,
             "date": source.date,
         }
+    if preferences:
+        data["preferences"] = preferences
     data["markers"] = markers
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
 def write_markers_json(dest: Path, chapters: list[Chapter], duration: float, fps: float,
                        source: SourceInfo | None = None, part_start: float = 0.0,
-                       part_end: float | None = None) -> Path:
+                       part_end: float | None = None, preferences: dict | None = None) -> Path:
     """Write <part name>.markers.json next to the part file."""
     out = dest.with_name(dest.stem + ".markers.json")
-    out.write_text(premiere_markers_json(dest.stem, chapters, duration, fps, source, part_start, part_end),
+    out.write_text(premiere_markers_json(dest.stem, chapters, duration, fps, source, part_start, part_end, preferences=preferences),
                    encoding="utf-8")
     return out

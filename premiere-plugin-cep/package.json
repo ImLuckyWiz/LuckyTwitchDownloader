@@ -1,6 +1,6 @@
 {
   "name": "luckytwitch-premiere-markers-cep",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "description": "Premiere Pro (CEP) panel that imports the .markers.json written by LuckyTwitch Downloader and edits the timeline: markers, cuts, deletes, relink",
   "scripts": {

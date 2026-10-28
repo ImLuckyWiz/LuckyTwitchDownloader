@@ -174,6 +174,14 @@ def test_plugin_option_is_off_by_default():
     assert eng.JobOptions(cut_text="", out_dir="x").premiere_plugin is False
 
 
+
+
+def test_markers_json_includes_preferences_when_provided():
+    prefs = {"pad_before": 3.0, "pad_after": 4.0}
+    text = premiere_markers_json("p", [], 10.0, 30.0, preferences=prefs)
+    data = json.loads(text)
+    assert data.get("preferences") == prefs
+
 if __name__ == "__main__":
     SAMPLE.write_text(_sample_text(), encoding="utf-8")
     print("wrote", SAMPLE)
