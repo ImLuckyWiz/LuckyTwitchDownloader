@@ -447,6 +447,56 @@ class QueueTab(QWidget):
         for b in (self.retry_btn, self.move_up_btn, self.move_down_btn, self.remove_btn, self.clear_btn):
             buttons.addWidget(b)
 
+        from core.ui_state import load_ui_state, save_ui_state
+        from qt_ui.widgets import ComboBox
+
+        st = load_ui_state()
+        self.max_concurrent_jobs = getattr(st, "max_concurrent_jobs", 1) or 1
+        self.rate_limit = getattr(st, "rate_limit", "") or ""
+
+        self.concurrency_combo = ComboBox()
+        self.concurrency_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.concurrency_combo.addItems(["1 job", "2 parallel jobs", "3 parallel jobs", "4 parallel jobs"])
+        self.concurrency_combo.setToolTip("How many queue jobs can run at the same time")
+        self.concurrency_combo.setCurrentIndex(max(0, min(3, self.max_concurrent_jobs - 1)))
+
+        def _on_concurrency_changed(idx: int):
+            self.max_concurrent_jobs = idx + 1
+            self.runner.max_concurrent = self.max_concurrent_jobs
+            s = load_ui_state()
+            s.max_concurrent_jobs = self.max_concurrent_jobs
+            save_ui_state(s)
+
+        self.concurrency_combo.currentIndexChanged.connect(_on_concurrency_changed)
+        buttons.addWidget(self.concurrency_combo)
+
+        self._speed_limit_choices = [
+            ("Unlimited speed", ""),
+            ("1 MB/s", "1M"),
+            ("2 MB/s", "2M"),
+            ("5 MB/s", "5M"),
+            ("10 MB/s", "10M"),
+            ("20 MB/s", "20M"),
+        ]
+        self.speed_limit_combo = ComboBox()
+        self.speed_limit_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        for label, _val in self._speed_limit_choices:
+            self.speed_limit_combo.addItem(label)
+        self.speed_limit_combo.setToolTip("Bandwidth limit passed to yt-dlp (--limit-rate)")
+        current_speed_idx = next(
+            (i for i, (_l, val) in enumerate(self._speed_limit_choices) if val == self.rate_limit), 0
+        )
+        self.speed_limit_combo.setCurrentIndex(current_speed_idx)
+
+        def _on_speed_changed(idx: int):
+            self.rate_limit = self._speed_limit_choices[idx][1]
+            s = load_ui_state()
+            s.rate_limit = self.rate_limit
+            save_ui_state(s)
+
+        self.speed_limit_combo.currentIndexChanged.connect(_on_speed_changed)
+        buttons.addWidget(self.speed_limit_combo)
+
         buttons.addStretch(1)
         self.folder_btn = QPushButton("Open folder")
         self.folder_btn.setIcon(icon("folder-open", 15))
@@ -683,9 +733,22 @@ class QueueTab(QWidget):
             return
         self.show_requested.emit()
         self.set_running(True)
-        self.runner.start(todo, model=self.model)
+        max_c = getattr(self, "max_concurrent_jobs", 1)
+        r_lim = getattr(self, "rate_limit", "")
+        if r_lim:
+            for it in todo:
+                if hasattr(it.job, "opts") and not getattr(it.job.opts, "rate_limit", ""):
+                    it.job.opts.rate_limit = r_lim
+        self.runner.start(todo, model=self.model, max_concurrent=max_c)
 
     def cancel_current(self) -> None:
+        sel_idx = self.table.selectionModel().currentIndex() if self.table.selectionModel() else None
+        if sel_idx and sel_idx.isValid():
+            it = sel_idx.data(ITEM_ROLE)
+            if it is not None and it.status == "running" and it.iid in self.runner.active_contexts:
+                self.runner.cancel(it.iid)
+                self.status_message.emit(f"Cancelling {it.label}…")
+                return
         if self.runner.cancel() or self.cancel_other():
             self.status_message.emit("Cancelling…")
 

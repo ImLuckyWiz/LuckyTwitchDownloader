@@ -47,6 +47,7 @@ class JobOptions:
     chat_render_smooth: bool = False  # redraw on every frame (smooth scrolling, slower) instead of 5 times a second
     quality: str = QUALITY_BEST  # quality to download (Twitch VODs): "best", "720p60", "audio", etc.
     audio_format: str = "m4a"  # audio container when quality is audio-only: "m4a" | "mp3"
+    rate_limit: str = ""  # optional bandwidth limit passed to yt-dlp ("--limit-rate"), e.g. "5M", "500K"
 
 
 @dataclass

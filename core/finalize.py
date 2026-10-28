@@ -574,9 +574,12 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             chat_files_for_part(ctx, chat_tool, src, opts, part, total_parts, dest, real_start, real_end, workdir)
         results.append(dest)
 
+    rate_limit = getattr(opts, "rate_limit", "")
+    rate_kw = {"rate_limit": rate_limit} if rate_limit else {}
+
     if plan.strategy == "full":
         ctx.stage(0.0, 0.85, "Downloading VOD")
-        full = _dl_full(ctx, src.url, workdir, opts.threads, **fmt_kw)
+        full = _dl_full(ctx, src.url, workdir, opts.threads, **fmt_kw, **rate_kw)
         ctx.stage(0.85, 1.0, "Cutting")
         if opts.exact:
             for i, p in enumerate(plan.parts):
@@ -618,7 +621,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                     f = _cut(ctx, f, p, opts.container, workdir, offset=max(0.0, p.start - real_start))
                     real_start, real_end = p.start, p.end
             else:
-                f = _dl_sec(ctx, src.url, p, workdir, opts.threads, opts.exact, **fmt_kw)
+                f = _dl_sec(ctx, src.url, p, workdir, opts.threads, opts.exact, **fmt_kw, **rate_kw)
                 real_start, real_end = p.start, p.end
             ctx.stage(lo + (hi - lo) * 0.9, hi, f"Finishing part {p.index}/{total_parts}")
             finish(p, f, real_start, real_end)
