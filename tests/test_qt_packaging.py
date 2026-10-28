@@ -179,3 +179,14 @@ def test_is_frozen_detection(monkeypatch):
     monkeypatch.delattr(paths.sys, "frozen", raising=False)
     monkeypatch.setitem(paths.__dict__, "__compiled__", True)
     assert paths.is_frozen() is True
+
+
+def test_cli_help_and_version(capsys):
+    from luckytwitch_qt import main
+    assert main(["luckytwitch_qt.py", "--help"]) == 0
+    out = capsys.readouterr().out
+    assert "Usage: LuckyTwitch" in out
+
+    assert main(["luckytwitch_qt.py", "--version"]) == 0
+    out = capsys.readouterr().out
+    assert "LuckyTwitch" in out

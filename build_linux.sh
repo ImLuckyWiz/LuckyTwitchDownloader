@@ -8,8 +8,13 @@ VER="${1:-${GITHUB_REF_NAME:-1.0}}"
 
 echo "Building LuckyTwitch Linux standalone ($VER)..."
 
-python3 -m pip install --upgrade pip
-python3 -m pip install -r requirements.txt
+PIP_FLAGS=""
+if python3 -m pip install --help 2>&1 | grep -q -- '--break-system-packages'; then
+    PIP_FLAGS="--break-system-packages"
+fi
+
+python3 -m pip install --upgrade pip $PIP_FLAGS || true
+python3 -m pip install -r requirements.txt $PIP_FLAGS
 
 mkdir -p build
 printf '%s\n' "$VER" > build/version.txt

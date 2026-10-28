@@ -49,6 +49,20 @@ class LuckyApplication(QApplication):
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv if argv is None else argv
+    if "--help" in argv or "-h" in argv:
+        print("LuckyTwitch Downloader - Twitch VOD Downloader & Video Cutter")
+        print("Usage: LuckyTwitch [options] [luckytwitch://...]")
+        print("Options:")
+        print("  --help, -h       Show this help message and exit")
+        print("  --version        Show version and exit")
+        print("  --welcome        Open first-run welcome dialog")
+        return 0
+
+    if "--version" in argv:
+        ver = paths.BUNDLED_VERSION or "dev build"
+        print(f"LuckyTwitch {ver}")
+        return 0
+
     paths.ensure_data_dir()
     link = weblink.find_link(argv[1:])  # started by a luckytwitch:// link?
     if link and weblink.hand_off(link, paths.LINKS_DIR, paths.BEAT_PATH):
