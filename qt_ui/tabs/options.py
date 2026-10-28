@@ -664,11 +664,15 @@ class OptionsTab(QWidget):
         self.ytdlp_row = tools_status_card.add_row("yt-dlp", "Twitch stream downloader engine")
         self.ytdlp_status_label = QLabel("Checking…")
         self.ytdlp_status_label.setProperty("role", "muted")
+        self.ytdlp_status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.ytdlp_status_label.setMaximumWidth(280)
         self.ytdlp_row.add_control(self.ytdlp_status_label)
 
         self.ffmpeg_row = tools_status_card.add_row("ffmpeg", "Audio/video muxing, cutting, and stitching", divider=False)
         self.ffmpeg_status_label = QLabel("Checking…")
         self.ffmpeg_status_label.setProperty("role", "muted")
+        self.ffmpeg_status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.ffmpeg_status_label.setMaximumWidth(280)
         self.ffmpeg_row.add_control(self.ffmpeg_status_label)
 
         card = self._card(f)
@@ -704,6 +708,8 @@ class OptionsTab(QWidget):
         self.app_version_row = app_update_card.add_row("Version", "")
         self.app_version_label = QLabel()
         self.app_version_label.setProperty("role", "muted")
+        self.app_version_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.app_version_label.setMaximumWidth(280)
         self.app_version_row.add_control(self.app_version_label)
 
         row = app_update_card.add_row("Check now", "Check GitHub releases for updates now.", divider=False)
@@ -732,7 +738,8 @@ class OptionsTab(QWidget):
         from core import paths, updates
         ver = paths.BUNDLED_VERSION
         if not updates.is_valid_app_version(ver):
-            self.app_version_label.setText("Development build (updates not checked)")
+            self.app_version_label.setText("Development build")
+            self.app_version_label.setToolTip("Development build (updates not checked automatically)")
             return
         state = updates.load_state()
         last = state.get("last_check")
@@ -744,7 +751,8 @@ class OptionsTab(QWidget):
                 last_str = last
         else:
             last_str = "never"
-        self.app_version_label.setText(f"{ver} · last checked: {last_str}")
+        self.app_version_label.setText(f"{ver} · checked: {last_str}")
+        self.app_version_label.setToolTip(f"Installed: {ver}\nLast checked: {last_str}")
 
     # ------------------------------------------------------------------ actions of the tab
     def pick_folder(self) -> None:
@@ -798,12 +806,26 @@ class OptionsTab(QWidget):
     # ------------------------------------------------------------------ what the window tells the tab
     def set_tools_info(self, text: str) -> None:
         self.tools_info_label.setText(text)
-        for part in text.replace("\n", " · ").split(" · "):
-            p = part.strip()
-            if "yt-dlp" in p.lower() and hasattr(self, "ytdlp_status_label"):
-                self.ytdlp_status_label.setText(p)
-            elif "ffmpeg" in p.lower() and hasattr(self, "ffmpeg_status_label"):
-                self.ffmpeg_status_label.setText(p)
+        parts = [p.strip() for p in text.replace("\n", " · ").split(" · ") if p.strip()]
+        for p in parts:
+            head = p.split("(")[0].strip()
+            head_lower = head.lower()
+            if head_lower.startswith("yt-dlp") and hasattr(self, "ytdlp_status_label"):
+                tokens = head.split()
+                if len(tokens) > 1:
+                    ver = " ".join(tokens[1:])
+                    self.ytdlp_status_label.setText("Not installed" if "not installed" in head_lower else ver)
+                else:
+                    self.ytdlp_status_label.setText("Installed")
+                self.ytdlp_status_label.setToolTip(p)
+            elif head_lower.startswith("ffmpeg") and hasattr(self, "ffmpeg_status_label"):
+                tokens = head.split()
+                if len(tokens) > 1:
+                    ver = " ".join(tokens[1:])
+                    self.ffmpeg_status_label.setText("Not installed" if "not installed" in head_lower else ver)
+                else:
+                    self.ffmpeg_status_label.setText("Installed")
+                self.ffmpeg_status_label.setToolTip(p)
 
     def set_tools_running(self, running: bool) -> None:
         self.update_btn.setEnabled(not running)

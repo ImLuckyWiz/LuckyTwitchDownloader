@@ -818,6 +818,21 @@ def test_tools_status_rows_show_individual_versions(tab):
     assert "7.0" in tab.ffmpeg_status_label.text()
 
 
+def test_tools_status_rows_with_long_paths_keep_scroll_width_compact(tab):
+    raw_info = (
+        "yt-dlp 2026.08.19 (C:\\Users\\Lucky\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\yt-dlp.EXE)\n"
+        "ffmpeg N-125875-g5d4d3bdc61-20260731 (C:\\Users\\Lucky\\AppData\\Local\\Microsoft\\WinGet\\Packages\\"
+        "yt-dlp.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-N-125875-g5d4d3bdc61-win64-gpl\\bin\\ffmpeg.EXE)\n"
+        "TwitchDownloaderCLI 1.56.5 (managed by LuckyTwitch)"
+    )
+    tab.set_tools_info(raw_info)
+    assert tab.ytdlp_status_label.text() == "2026.08.19"
+    assert tab.ffmpeg_status_label.text() == "N-125875-g5d4d3bdc61-20260731"
+    # Status labels must not expand beyond 280 px
+    assert tab.ytdlp_status_label.maximumWidth() <= 280
+    assert tab.ffmpeg_status_label.maximumWidth() <= 280
+
+
 def test_quality_and_audio_combos_exist_and_bind(tab, qtbot):
     q_combo = control(tab, "default_quality")
     a_combo = control(tab, "audio_format")
