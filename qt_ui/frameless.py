@@ -15,6 +15,8 @@ import enum
 import os
 import sys
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtCore import QByteArray, QEvent, QPoint, QRect, QSize, Qt
@@ -185,6 +187,47 @@ def shrink_for_autohide(
     return x, y, w, h
 
 
+def calculate_client_rect(
+    proposed_rect: tuple[int, int, int, int],  # (left, top, right, bottom)
+    is_zoomed: bool,
+    work_area: tuple[int, int, int, int],      # (left, top, right, bottom)
+    autohide_edges: tuple[bool, bool, bool, bool] = (False, False, False, False),
+) -> tuple[int, int, int, int]:
+    """Calculate the client rect for WM_NCCALCSIZE.
+
+    When zoomed (maximized), client rect is set to the monitor work area
+    (shrunk by 1px on edges with an auto-hiding taskbar).
+    When not zoomed (normal or drag-restoring), the proposed rectangle
+    is left untouched so client matches window bounds exactly.
+    """
+    if not is_zoomed:
+        return proposed_rect
+
+    wa_left, wa_top, wa_right, wa_bottom = work_area
+    wa_w = wa_right - wa_left
+    wa_h = wa_bottom - wa_top
+    shrunk_x, shrunk_y, shrunk_w, shrunk_h = shrink_for_autohide(
+        (wa_left, wa_top, wa_w, wa_h), autohide_edges
+    )
+    return (shrunk_x, shrunk_y, shrunk_x + shrunk_w, shrunk_y + shrunk_h)
+
+
+def _frame_debug_log(msg: str) -> None:
+    """Diagnostic logger for frameless window events, active only when LUCKYTWITCH_FRAME_DEBUG=1."""
+    if os.environ.get("LUCKYTWITCH_FRAME_DEBUG") != "1":
+        return
+    try:
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        line = f"[{ts}] {msg}\n"
+        sys.stderr.write(line)
+        sys.stderr.flush()
+        log_path = Path.cwd() / "frame_debug.log"
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # 2. Windows Native Glue (Win32 & DWM via ctypes)
 # ---------------------------------------------------------------------------
@@ -210,6 +253,9 @@ if sys.platform == "win32":
     WM_NCLBUTTONUP = 0x00A2
     WM_NCMOUSELEAVE = 0x02A2
     WM_GETMINMAXINFO = 0x0024
+    WM_SIZE = 0x0005
+    WM_WINDOWPOSCHANGING = 0x0046
+    WM_WINDOWPOSCHANGED = 0x0047
 
     MONITOR_DEFAULTTONEAREST = 2
 
@@ -277,6 +323,7 @@ class NativeFrame:
         self._styles_applied = False
         self._max_btn_hovered = False
         self._max_btn_pressed = False
+        self._last_zoomed: bool | None = None
 
     def init_window(self) -> bool:
         """Apply Win32 styles and DWM frame extension once window handle is valid."""
@@ -354,21 +401,37 @@ class NativeFrame:
                     if lparam_addr < 0:
                         lparam_addr &= 0xFFFFFFFFFFFFFFFF
                     params = NCCALCSIZE_PARAMS.from_address(lparam_addr)
-                    if self.window.isMaximized():
-                        hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
+                    is_zoomed = bool(user32.IsZoomed(hwnd))
+                    proposed = (
+                        int(params.rgrc[0].left),
+                        int(params.rgrc[0].top),
+                        int(params.rgrc[0].right),
+                        int(params.rgrc[0].bottom),
+                    )
+
+                    work_area = (0, 0, 0, 0)
+                    if is_zoomed:
+                        # Find monitor containing proposed window rect
+                        hmon = user32.MonitorFromRect(ctypes.byref(params.rgrc[0]), MONITOR_DEFAULTTONEAREST)
+                        if not hmon:
+                            hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
                         mi = MONITORINFO()
                         mi.cbSize = ctypes.sizeof(MONITORINFO)
                         if user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
-                            rc_work = mi.rcWork
-                            autohide = self.get_autohide_taskbar_edges()
-                            shrunk = shrink_for_autohide(
-                                (rc_work.left, rc_work.top, rc_work.right - rc_work.left, rc_work.bottom - rc_work.top),
-                                autohide,
-                            )
-                            params.rgrc[0].left = shrunk[0]
-                            params.rgrc[0].top = shrunk[1]
-                            params.rgrc[0].right = shrunk[0] + shrunk[2]
-                            params.rgrc[0].bottom = shrunk[1] + shrunk[3]
+                            work_area = (mi.rcWork.left, mi.rcWork.top, mi.rcWork.right, mi.rcWork.bottom)
+
+                    autohide = self.get_autohide_taskbar_edges() if is_zoomed else (False, False, False, False)
+                    new_client = calculate_client_rect(proposed, is_zoomed, work_area, autohide)
+
+                    params.rgrc[0].left = new_client[0]
+                    params.rgrc[0].top = new_client[1]
+                    params.rgrc[0].right = new_client[2]
+                    params.rgrc[0].bottom = new_client[3]
+
+                    _frame_debug_log(
+                        f"WM_NCCALCSIZE: is_zoomed={is_zoomed} qt_max={self.window.isMaximized()} "
+                        f"proposed={proposed} -> client={new_client}"
+                    )
                     return True, 0
 
             # 2. WM_NCHITTEST: Hit-test window borders, caption, and maximize button
@@ -386,7 +449,7 @@ class NativeFrame:
                 h = self.window.height()
 
                 client_rects = []
-                max_btn_rect = None
+                max_button_rect = None
 
                 tb: CustomTitleBar | None = getattr(self.window, "title_bar", None)
                 if tb is not None:
@@ -398,12 +461,13 @@ class NativeFrame:
                         geo = tb.max_btn.geometry()
                         max_button_rect = (float(geo.x()), float(geo.y()), float(geo.width()), float(geo.height()))
 
+                is_zoomed = bool(user32.IsZoomed(hwnd))
                 reg = hit_test(
                     x, y, w, h,
                     border=BORDER_THICKNESS,
                     corner_size=CORNER_SIZE,
                     bar_height=TITLEBAR_HEIGHT if tb else 0,
-                    maximized=self.window.isMaximized(),
+                    maximized=is_zoomed,
                     client_rects=client_rects,
                     max_button_rect=max_button_rect,
                 )
@@ -430,12 +494,13 @@ class NativeFrame:
                 if msg.wParam == Region.MAXBUTTON:
                     self._max_btn_pressed = False
                     self._update_max_button_visual(hover=self._max_btn_hovered, pressed=False)
-                    if self.window.isMaximized():
+                    is_zoomed = bool(user32.IsZoomed(hwnd))
+                    if is_zoomed:
                         self.window.showNormal()
                     else:
                         self.window.showMaximized()
                     if getattr(self.window, "title_bar", None):
-                        self.window.title_bar.update_maximized_state(self.window.isMaximized())
+                        self.window.title_bar.update_maximized_state(not is_zoomed)
                     return True, 0
 
             elif msg.message == WM_NCMOUSELEAVE:
@@ -443,6 +508,15 @@ class NativeFrame:
                     self._max_btn_hovered = False
                     self._max_btn_pressed = False
                     self._update_max_button_visual(hover=False, pressed=False)
+
+            elif msg.message in (WM_SIZE, WM_WINDOWPOSCHANGED):
+                is_zoomed = bool(user32.IsZoomed(hwnd))
+                if getattr(self, "_last_zoomed", None) != is_zoomed:
+                    self._last_zoomed = is_zoomed
+                    tb = getattr(self.window, "title_bar", None)
+                    if tb is not None:
+                        tb.update_maximized_state(is_zoomed)
+                    _frame_debug_log(f"STATE_CHANGED (native): is_zoomed={is_zoomed}")
 
         except Exception:
             return False, 0

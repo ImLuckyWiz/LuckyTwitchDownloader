@@ -4,10 +4,25 @@ Run with: python tools/frameless_spike.py
 Flags:
   --native-frame  : Use standard OS window frame
   --grips-only    : Frameless with Qt edge grips instead of Win32 hooks
+  --smoke         : Show window, process events, and exit with code 0 (for CI / smoke tests)
+  --debug         : Enable verbose frameless debug logging to console and frame_debug.log
 """
 
+from __future__ import annotations
+
+import os
 import sys
-from PySide6.QtCore import QEvent, Qt
+from pathlib import Path
+
+# Ensure project root is in sys.path
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+if "--debug" in sys.argv:
+    os.environ["LUCKYTWITCH_FRAME_DEBUG"] = "1"
+
+from PySide6.QtCore import QEvent, QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -19,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from qt_ui.frameless import FrameController
+from qt_ui.theme import apply_theme, set_app_icon
 from qt_ui.titlebar import CustomTitleBar
 
 
@@ -94,6 +110,15 @@ class SpikeWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    apply_theme(app)
+    set_app_icon(app)
+
     win = SpikeWindow()
     win.show()
+
+    if "--smoke" in sys.argv:
+        app.processEvents()
+        win.close()
+        sys.exit(0)
+
     sys.exit(app.exec())

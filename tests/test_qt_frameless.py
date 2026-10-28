@@ -14,6 +14,7 @@ from qt_ui.frameless import (
     EdgeGrips,
     FrameController,
     Region,
+    calculate_client_rect,
     hit_test,
     resized_rect,
     shrink_for_autohide,
@@ -97,6 +98,51 @@ def test_shrink_for_autohide():
     assert shrink_for_autohide(rect, (False, False, False, True)) == (0, 0, 1920, 1079)
     # Taskbar at left
     assert shrink_for_autohide(rect, (True, False, False, False)) == (1, 0, 1919, 1080)
+
+
+def test_calculate_client_rect_when_not_zoomed():
+    proposed = (100, 100, 1120, 700)
+    work_area = (0, 0, 1920, 1040)
+    # When not zoomed (normal window or drag-restoring), proposed rect is untouched
+    assert calculate_client_rect(proposed, is_zoomed=False, work_area=work_area) == proposed
+
+
+def test_calculate_client_rect_when_zoomed():
+    proposed = (-8, -8, 1928, 1048)
+    work_area = (0, 0, 1920, 1040)
+    # When zoomed, client rect matches monitor work area
+    assert calculate_client_rect(proposed, is_zoomed=True, work_area=work_area) == (0, 0, 1920, 1040)
+
+
+def test_calculate_client_rect_zoomed_with_autohide():
+    proposed = (-8, -8, 1928, 1048)
+    work_area = (0, 0, 1920, 1080)
+    # With bottom autohide taskbar, shrinks by 1px at bottom
+    res = calculate_client_rect(proposed, is_zoomed=True, work_area=work_area, autohide_edges=(False, False, False, True))
+    assert res == (0, 0, 1920, 1079)
+
+
+def test_calculate_client_rect_stale_qt_state_during_drag_restore():
+    # Stale Qt state (thought it was maximized) vs real native state (is_zoomed=False)
+    proposed = (400, 200, 1424, 787)
+    work_area = (0, 0, 1920, 1040)
+    # Native is_zoomed=False must NOT overwrite with work_area!
+    res = calculate_client_rect(proposed, is_zoomed=False, work_area=work_area)
+    assert res == proposed
+
+
+def test_calculate_client_rect_secondary_monitor():
+    proposed = (1920 - 8, -8, 3840 + 8, 1088)
+    work_area = (1920, 0, 3840, 1040)
+    res = calculate_client_rect(proposed, is_zoomed=True, work_area=work_area)
+    assert res == (1920, 0, 3840, 1040)
+
+
+def test_frameless_spike_smoke():
+    import subprocess
+    cmd = [sys.executable, "tools/frameless_spike.py", "--smoke"]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+    assert proc.returncode == 0
 
 
 # ---------------------------------------------------------------------------
