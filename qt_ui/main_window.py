@@ -6,6 +6,8 @@ Mirrors ``App.build_ui`` of the tkinter app (window 1020x910, minimum 900x560, s
 
 from __future__ import annotations
 
+import sys
+
 import re
 from urllib.parse import urlsplit
 import weakref
@@ -31,6 +33,7 @@ from qt_ui.bridge import Bridge
 from qt_ui.shell import CommandBar, NavRail, PageStack, ShortcutsDialog, VodStrip
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
 from qt_ui.theme import dark_titlebar
+from qt_ui.titlebar import CustomTitleBar
 from qt_ui.twitch_dialog import TwitchDialog
 
 WINDOW_TITLE = "LuckyTwitch Downloader"
@@ -175,14 +178,35 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(*MIN_SIZE)
         self.setAcceptDrops(True)
 
+        use_custom_frame = (
+            "--native-frame" not in sys.argv
+            and self.settings.get("custom_titlebar", True)
+        )
+        self.use_custom_titlebar = use_custom_frame
         central = QWidget(self)
-        root_lay = QHBoxLayout(central)
-        root_lay.setContentsMargins(0, 0, 0, 0)
-        root_lay.setSpacing(0)
+        if use_custom_frame:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+            outer_lay = QVBoxLayout(central)
+            outer_lay.setContentsMargins(0, 0, 0, 0)
+            outer_lay.setSpacing(0)
+            self.title_bar = CustomTitleBar(self, WINDOW_TITLE)
+            outer_lay.addWidget(self.title_bar)
+            body = QWidget(central)
+            root_lay = QHBoxLayout(body)
+            root_lay.setContentsMargins(0, 0, 0, 0)
+            root_lay.setSpacing(0)
+            outer_lay.addWidget(body)
+            parent_container = body
+        else:
+            self.title_bar = None
+            root_lay = QHBoxLayout(central)
+            root_lay.setContentsMargins(0, 0, 0, 0)
+            root_lay.setSpacing(0)
+            parent_container = central
         self.setCentralWidget(central)
 
         # Right: Main content pane (constructed first to preserve top-to-bottom tab order)
-        main_pane = QWidget(central)
+        main_pane = QWidget(parent_container)
         main_lay = QVBoxLayout(main_pane)
         main_lay.setContentsMargins(0, 0, 0, 0)
         main_lay.setSpacing(0)
@@ -212,7 +236,7 @@ class MainWindow(QMainWindow):
         main_lay.addWidget(top_wrap)
 
         # Left: Navigation Rail (spans full window height)
-        self.rail = NavRail(expanded=False, parent=central)
+        self.rail = NavRail(expanded=False, parent=parent_container)
 
         # Middle shell: PageStack
         tabs_box = QWidget(main_pane)
@@ -354,6 +378,18 @@ class MainWindow(QMainWindow):
         if self.tabs.currentWidget() is self.tab_plan:
             self.add_to_queue(start=start)
 
+    
+    def changeEvent(self, event) -> None:  # noqa: N802
+        if event.type() == QEvent.Type.WindowStateChange:
+            if getattr(self, "title_bar", None) is not None:
+                self.title_bar.update_maximized_state(self.isMaximized())
+        super().changeEvent(event)
+
+    def setWindowTitle(self, title: str) -> None:  # noqa: N802
+        super().setWindowTitle(title)
+        if getattr(self, "title_bar", None) is not None:
+            self.title_bar.set_title(title)
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         if getattr(self, "welcome_overlay", None) is not None:
@@ -381,6 +417,8 @@ class MainWindow(QMainWindow):
         self.welcome_overlay = overlay
         overlay.show()
         overlay.raise_()
+        if getattr(self, "title_bar", None) is not None:
+            self.title_bar.raise_()
         return overlay
 
     def _on_welcome_finished(self, out_dir: str, container: str) -> None:
@@ -416,7 +454,18 @@ class MainWindow(QMainWindow):
             h = max(state.window_h, MIN_SIZE[1])
             self.resize(w, h)
             if state.window_x is not None and state.window_y is not None:
-                self.move(state.window_x, state.window_y)
+                from PySide6.QtGui import QGuiApplication
+                screens = QGuiApplication.screens()
+                on_screen = any(
+                    s.availableGeometry().intersects(QRect(state.window_x, state.window_y, w, h))
+                    for s in screens
+                ) if screens else True
+                if on_screen:
+                    self.move(state.window_x, state.window_y)
+            if getattr(state, "window_maximized", False):
+                self.showMaximized()
+                if getattr(self, "title_bar", None) is not None:
+                    self.title_bar.update_maximized_state(True)
         if self.client is None:
             if has_saved and state.active_tab in TAB_NAMES and state.active_tab != "Search":
                 self.tabs.setCurrentIndex(TAB_NAMES.index(state.active_tab))
@@ -435,11 +484,14 @@ class MainWindow(QMainWindow):
         idx = self.tabs.currentIndex()
         active_name = TAB_NAMES[idx] if 0 <= idx < len(TAB_NAMES) else "Plan"
         has_onboard = self._ui_state.has_completed_onboarding if hasattr(self, "_ui_state") else False
+        is_max = self.isMaximized()
+        geom = self.normalGeometry() if is_max else self.geometry()
         state = UIState(
-            window_x=self.x(),
-            window_y=self.y(),
-            window_w=self.width(),
-            window_h=self.height(),
+            window_x=geom.x(),
+            window_y=geom.y(),
+            window_w=geom.width(),
+            window_h=geom.height(),
+            window_maximized=is_max,
             active_tab=active_name,
             rail_expanded=self.rail.expanded,
             has_completed_onboarding=has_onboard,

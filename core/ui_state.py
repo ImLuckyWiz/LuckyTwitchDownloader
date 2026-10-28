@@ -25,6 +25,7 @@ class UIState:
     log_open: bool = False
     splitter_sizes: list[int] | None = None
     has_completed_onboarding: bool = False
+    window_maximized: bool = False
 
 
 DEFAULT_UI_STATE = UIState()
@@ -47,6 +48,7 @@ def load_ui_state(path: Path | None = None) -> UIState:
                     log_open=bool(data.get("log_open", False)),
                     splitter_sizes=data.get("splitter_sizes"),
                     has_completed_onboarding=bool(data.get("has_completed_onboarding", False)),
+                    window_maximized=bool(data.get("window_maximized", False)),
                 )
     except Exception:  # noqa: BLE001
         pass
