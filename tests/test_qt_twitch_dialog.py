@@ -350,6 +350,8 @@ class Reply:
 def fake_http(monkeypatch):
     """``requests.post`` as the engine sees it: a device code, «pending» a few times, then the tokens."""
     real_sleep = time.sleep
+    import core.twitch_api as twitch_api
+    monkeypatch.setattr(twitch_api, "time", types.SimpleNamespace(sleep=lambda s: real_sleep(0.005), monotonic=time.monotonic))
     monkeypatch.setattr(engine, "time", types.SimpleNamespace(sleep=lambda s: real_sleep(0.005), monotonic=time.monotonic))
     log = types.SimpleNamespace(calls=[], pending=2, approve=True)
 

@@ -1,6 +1,6 @@
 # Next Upgrades Plan
 
-Status: In progress (Phase H done in v2.3.1; Phase V Windows verified; Phase L done in v2.4.0)
+Status: In progress (Phase H done in v2.3.1; Phase V Windows verified; Phase L done in v2.4.0; Phase E done in v2.5.0; Phase W in progress)
 
 This document plans the next round of work for **LuckyTwitch Downloader** (app, now at v2.3.0) and the **LuckyTwitch Markers** Premiere Pro CEP panel (now at v0.14.0). All items were discussed and approved by the owner. It is written to be executed one phase at a time; every phase ends green before the next starts.
 
@@ -10,7 +10,7 @@ Status of this plan: **In progress** (Phase H done in v2.3.1; Phase V pending).
 
 ## 1. Executive Summary & Principles
 
-* **Order:** housekeeping, then verification on real hardware, then Linux, then the engine split, then the Premiere panel, then new app features.
+* **Order:** housekeeping, then verification on real hardware, then Linux, then the engine split, then the custom window bar, then the Premiere panel, then new app features.
 * **Never break what works:** the Python suite (1,456 tests) and the CEP Node suite pass today. Every phase keeps both green (`python -m pytest tests -q`, and `npm test` in `premiere-plugin-cep/`).
 * **One phase per session**, tagged, with release notes per phase (same method as the PySide6 migration).
 * **Nothing is verified "by reading".** Anything that touches real Premiere, a real Mac or a real VOD gets a checklist the owner runs and a log the owner sends back.
@@ -81,7 +81,7 @@ Risk: the Nuitka standalone build on Ubuntu can miss Qt plugins. Mitigation: smo
 
 ---
 
-## 6. Phase E: Split `luckytwitch_engine.py` (internal; ships as v2.5.0)
+## 6. Phase E: Split `luckytwitch_engine.py` (internal; ships as v2.5.0) — Done
 
 **No behaviour change.** Goal: smaller modules in `core/`, each with its own tests, so later features are cheaper and safer.
 
@@ -120,6 +120,28 @@ Risk: the Nuitka standalone build on Ubuntu can miss Qt plugins. Mitigation: smo
 
 ---
 
+## 6A. Phase W: Custom window bar (ships as v2.6.0)
+
+Full plan: **[`NEW_WINDOW_BAR.md`](NEW_WINDOW_BAR.md)**. Summary here so this file stays the master roadmap.
+
+**Goal:** replace the OS title bar of the main window with a bar drawn by the app (same theme, own minimize / maximize / close buttons), keeping the native behaviours: resize from the edges, shadow, Aero Snap, Snap Layouts on the maximize button, double-click maximize and the system menu. Optionally fold the command bar into the bar.
+
+**Approach (to be confirmed by the W0 spike):** on Windows, keep the native window styles and answer `WM_NCCALCSIZE` / `WM_NCHITTEST` from `nativeEvent`; on Linux, a frameless window with `startSystemMove()` / `startSystemResize()` (experimental, opt-in); on macOS, Qt's expanded client area flags, only once a Mac is available. No new dependency, no change to `core/` behaviour, native frame stays available through a setting and `--native-frame`.
+
+| Phase | What | Build |
+|---|---|---|
+| W0 | Spike on real Windows 10/11 (three options compared), decision recorded | none |
+| W1 | Classic bar (OS bar replaced, command bar unchanged), Windows, behind a setting | pre-release |
+| W2 | Maximized state, on-screen clamp of the saved position, DPI and multi-monitor, `--native-frame` | pre-release |
+| W3 | Optional: command bar integrated into the bar | pre-release |
+| W4 to W6 | Optional: Linux custom bar, macOS unified title bar, themed dialogs | later |
+
+Tests: pure hit-test and geometry logic tested everywhere; Win32 glue tested on a Windows CI step; widget tests offscreen; a few existing tests adjusted on purpose (main window layout, icon catalog, contrast, welcome overlay).
+
+Real-hardware test per phase: the Windows checklist in `NEW_WINDOW_BAR.md` section 10, run by the owner.
+
+---
+
 ## 7. Phase P: Premiere panel next steps (v0.15.0 and later)
 
 The editing logic is delicate and verified in real Premiere, so every item below keeps the rule: **plan, failsafe, confirm, verify after**, with the pure logic in `src/` plus Node tests and the mocks in `mock/`.
@@ -141,26 +163,26 @@ Real-Premiere test per item: a copy of the project, run, send the log. Version b
 
 Each feature is optional in the UI and has a switch where it could surprise someone.
 
-### F1. Download history (v2.6.0)
+### F1. Download history (v2.7.0)
 
 * Records every finished job in a small JSON file in the data folder: VOD id, title, streamer, date, parts, folder, quality.
 * Shown as a ✓ "Downloaded" badge on VOD cards and rows (Search tab and Plan strip), with the date; a **History** list to reopen the folder or load the VOD again.
 * Setting to turn it off and a **Clear history** button. Stays local; nothing is sent anywhere.
 * Tests: pure model in `core/history.py`; Qt tests for the badge and the list.
 
-### F2. Streamer watch list (v2.6.0 or v2.7.0)
+### F2. Streamer watch list (v2.7.0 or v2.8.0)
 
 * Pin streamers; on start (and then at a throttle like the update check) look for VODs newer than the last one seen and show a toast and a badge on the Search tab. It **never downloads by itself**.
 * Needs the Twitch sign-in already used by Search; silent on failure, like the update check.
 * Tests: the "new since" logic with fixtures, throttling and failure rules.
 
-### F3. Parallel queue jobs and bandwidth limit (v2.7.0)
+### F3. Parallel queue jobs and bandwidth limit (v2.8.0)
 
 * Setting "jobs at the same time" (default 1, so nothing changes), and an optional speed limit passed to yt-dlp (`--limit-rate`) and to the ffmpeg sections where possible.
 * The queue model and runner already separate rows from the thread; the work is in making `Ctx` (logging, cancel, progress) per job and in disk-space and resume safety with several jobs.
 * Risk: the same output folder used by two jobs; the planner must refuse colliding file names. Cancel must stop only its own job.
 
-### F4. Spanish translation (v2.8.0)
+### F4. Spanish translation (v2.9.0)
 
 * Move user-visible strings to a catalog (Qt `tr` / `.ts`, or a small dictionary layer if that is simpler to keep with Nuitka), with English as the source.
 * Language picker in Options and a first-run default from the system language.
@@ -171,7 +193,7 @@ Each feature is optional in the UI and has a switch where it could surprise some
 
 ## 9. Release and Delivery Method
 
-* Versions: **v2.3.1** (H), **v2.4.0** (L), **v2.5.0** (E), then F1 to F4 as above. Panel versions go on their own line (**v0.15.0** onward) and are packaged by the same `plugin` job.
+* Versions: **v2.3.1** (H), **v2.4.0** (L), **v2.5.0** (E), **v2.6.0** (W, window bar; pre-release builds first), then F1 to F4 as above. Panel versions go on their own line (**v0.15.0** onward) and are packaged by the same `plugin` job.
 * Each session: one phase, tests green, release notes written, a delivery zip with **only the changed files**, then explicit `git add` paths, commit and push.
 * Order can change if a bug in daily use jumps the queue; the plan is updated when that happens.
 
@@ -185,6 +207,7 @@ Each feature is optional in the UI and has a switch where it could surprise some
 4. Watch list: check at start only, or also every N hours while the app stays open.
 5. Spanish: interface only (proposed) or logs and errors as well.
 6. Is a real Mac available for V4 and V5, or do they stay "not verified"?
+7. Window bar (Phase W): the open decisions are listed in `NEW_WINDOW_BAR.md` section 12 (Windows route after the spike, integrated command bar, default frame mode, Linux, dialogs, version slot).
 
 ---
 
@@ -196,3 +219,4 @@ Each feature is optional in the UI and has a switch where it could surprise some
 - [ ] README and `docs/README.md` match what shipped; the plan's status line is updated.
 - [ ] Anything touching real Premiere, a real Mac or a real VOD has its log or screenshot from the owner.
 - [ ] Old settings and old `.markers.json` files still load.
+- [ ] When the window frame changed: the Windows checklist in `NEW_WINDOW_BAR.md` section 10 passes, and native mode (`--native-frame`) behaves as before.
