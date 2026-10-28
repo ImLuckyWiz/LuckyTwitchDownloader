@@ -54,15 +54,16 @@ def test_resource_path_points_into_the_project():
 
 
 # ------------------------------------------------------------------ settings
-def test_defaults_are_the_41_documented_keys_with_the_documented_types():
+def test_defaults_are_the_42_documented_keys_with_the_documented_types():
     d = settings.DEFAULTS
-    assert len(d) == 41
-    assert sum(isinstance(v, bool) for v in d.values()) == 15
+    assert len(d) == 42
+    assert sum(isinstance(v, bool) for v in d.values()) == 16
     assert sum(isinstance(v, str) for v in d.values()) == 26
     expected_bools = {
         "exact", "keep_full", "chapters", "sidecar", "premiere_xml",
         "premiere_plugin", "game_markers", "muted_markers", "chat",
         "chat_embed", "chat_render", "chat_render_smooth", "subfolders", "auto_update", "clean_title",
+        "check_app_updates",
     }
     assert {k for k, v in d.items() if isinstance(v, bool)} == expected_bools
     for k, v in d.items():

@@ -16,7 +16,8 @@ from qt_ui.bridge import KINDS, Bridge  # noqa: E402
 
 # PLAN.md section 3.4: the message kinds of poll_queue
 PLAN_KINDS = ["info_ok", "error", "log", "search_ok", "search_err", "videos_ok", "videos_err", "thumb", "frames",
-              "progress", "job", "item", "tools_info", "tools_done", "saved_chat_done", "queue_done"]
+              "progress", "job", "item", "tools_info", "tools_done", "saved_chat_done", "queue_done", "update_checked",
+              "update_download_done"]
 
 
 class Receiver(QObject):

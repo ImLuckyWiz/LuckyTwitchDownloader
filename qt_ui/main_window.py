@@ -19,14 +19,14 @@ from PySide6.QtWidgets import (
 )
 
 import weblink
-from core import paths
+from core import paths, updates
 from core.config import make_client
 from core.options import build_filter, build_options, flag, num
 from core.settings import DEFAULTS, save_settings
 from core.ui_state import UIState, load_ui_state, save_ui_state
 from luckytwitch_engine import EngineError, Job, clean_title, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
 from qt_ui import dialogs, notify
-from qt_ui.background_jobs import InfoRunner, SavedChatRunner, ToolsRunner
+from qt_ui.background_jobs import InfoRunner, SavedChatRunner, ToolsRunner, UpdateCheckRunner, UpdateDownloadRunner
 from qt_ui.bridge import Bridge
 from qt_ui.shell import CommandBar, NavRail, PageStack, ShortcutsDialog, VodStrip
 from qt_ui.tabs import OptionsTab, PlanTab, QueueTab, SearchTab
@@ -145,6 +145,10 @@ class MainWindow(QMainWindow):
         self.tools_runner = ToolsRunner(self.bridge)
         self.saved_chat_runner = SavedChatRunner(self.bridge)
         self.info_runner = InfoRunner(self.bridge)
+        self.update_check_runner = UpdateCheckRunner(self.bridge)
+        updates.cleanup_stale_installer()
+        self._update_info = None
+        self._checking_updates_manually = False
         self._info_busy = False
         self._info_before = ""
         self._info_tick = 0
@@ -245,6 +249,15 @@ class MainWindow(QMainWindow):
         self.status_label = QLabel(bottom)
         status_row.addWidget(self.status_label, 1)
 
+        self.update_pill = QPushButton("", bottom)
+        self.update_pill.setProperty("variant", "pill")
+        self.update_pill.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.update_pill.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_pill.setToolTip("A new version of LuckyTwitch is available.")
+        self.update_pill.setVisible(False)
+        self.update_pill.clicked.connect(self.open_update_dialog)
+        status_row.addWidget(self.update_pill)
+
         self.activity_pill = QPushButton("", bottom)
         self.activity_pill.setProperty("variant", "pill")
         self.activity_pill.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -291,6 +304,7 @@ class MainWindow(QMainWindow):
         options.output_folder_requested.connect(queue.open_output_folder)
         options.update_tools_requested.connect(self.update_tools_now)
         options.saved_chat_requested.connect(self.render_saved_chat)
+        options.check_app_updates_requested.connect(lambda: self.start_update_check(force=True))
         plan = self.tab_plan
         plan.add_requested.connect(self.add_to_queue)
         plan.clip_download_requested.connect(self.download_clips)
@@ -307,6 +321,7 @@ class MainWindow(QMainWindow):
         self.bridge.progress.connect(self.set_progress)
         self.bridge.job.connect(self.on_job)
         self.bridge.queue_done.connect(self.on_queue_done)
+        self.bridge.update_checked.connect(self.on_update_checked)
 
         self._setup_shortcuts()
         self._restore_ui_state()
@@ -593,6 +608,24 @@ class MainWindow(QMainWindow):
                     on_finished=lambda: self.activity_pill.setVisible(False),
                 )
 
+    def _set_update_pill_visible(self, visible: bool) -> None:
+        from qt_ui.motion import DURATION_FAST, Motion, animate_opacity
+
+        if not Motion.enabled() or not self.isVisible():
+            self.update_pill.setVisible(visible)
+            return
+
+        if visible:
+            if not self.update_pill.isVisible():
+                self.update_pill.setVisible(True)
+                animate_opacity(self.update_pill, 0.0, 1.0, DURATION_FAST)
+        else:
+            if self.update_pill.isVisible():
+                animate_opacity(
+                    self.update_pill, 1.0, 0.0, DURATION_FAST,
+                    on_finished=lambda: self.update_pill.setVisible(False),
+                )
+
     def set_progress(self, frac: float, text: str) -> None:
         """A negative ``frac`` means «unknown»: the bar moves back and forth instead of filling."""
         if frac < 0:
@@ -766,6 +799,80 @@ class MainWindow(QMainWindow):
             dialogs.warning(self, "Tools", error)
         else:
             self.set_status(READY_TEXT)
+
+    # ---------------------------- LuckyTwitch updates ---------------------------- #
+    def start_update_check(self, force: bool = False, manual: bool | None = None) -> None:
+        """Start background check for application updates on GitHub."""
+        if manual is not None:
+            force = manual
+
+        if not force:
+            if not self.settings.get("check_app_updates", True):
+                return
+            if not updates.is_valid_app_version(paths.BUNDLED_VERSION):
+                return
+        if self.tab_queue.runner.is_running() or self.tools_busy:
+            if force:
+                notify.info(self, "Check updates", "Cannot check for updates while downloads or tools are busy.")
+            return
+
+        self._checking_updates_manually = force
+        self.update_check_runner.start(force=force)
+
+    def on_update_checked(self, info, error: str) -> None:
+        manual = self._checking_updates_manually
+        self._checking_updates_manually = False
+
+        self.tab_options.refresh_app_update_state()
+
+        if error:
+            self.log(f"Updates: could not check: {error}")
+            if manual:
+                notify.info(self, "Check updates", f"Could not check for updates: {error}")
+            return
+
+        if info:
+            self._update_info = info
+            state = updates.load_state()
+            is_skipped = state.get("skipped_tag") == info.tag
+            if not is_skipped:
+                self.update_pill.setText(f"● Update available · {info.tag}")
+                self._set_update_pill_visible(True)
+                if state.get("notified_tag") != info.tag:
+                    state["notified_tag"] = info.tag
+                    updates.save_state(state)
+                    cur = paths.BUNDLED_VERSION or "current version"
+                    notify.info(
+                        self, "Update available",
+                        f"LuckyTwitch {info.tag} is out (you have {cur}).",
+                        action=("View update", lambda: self.open_update_dialog(info)),
+                        duration_ms=12000,
+                    )
+            else:
+                self._set_update_pill_visible(False)
+            if manual:
+                self.open_update_dialog(info)
+        else:
+            self._set_update_pill_visible(False)
+            if manual:
+                cur = paths.BUNDLED_VERSION or "current version"
+                notify.info(self, "Up to date", f"LuckyTwitch is up to date ({cur}).")
+
+    def open_update_dialog(self, info=None) -> None:
+        target = info or self._update_info
+        if not target:
+            from core import updates
+            state = updates.load_state()
+            cached = state.get("cached")
+            target = updates.UpdateInfo.from_dict(cached) if cached else None
+        if not target:
+            return
+        from qt_ui.update_dialog import UpdateDialog
+        dlg = UpdateDialog(target, host=self, parent=self)
+        dlg.exec()
+
+    def on_update_skipped(self, tag: str) -> None:
+        self._set_update_pill_visible(False)
 
     # ---------------------------- the overlay of a saved chat ---------------------------- #
     def render_saved_chat(self) -> None:

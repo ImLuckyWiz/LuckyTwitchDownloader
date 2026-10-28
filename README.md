@@ -183,3 +183,4 @@ LuckyTwitch Downloader is not affiliated with Twitch Interactive, Inc., TwitchDo
 
 - The ffmpeg builds the app downloads are GPL. That is fine for personal use; follow the GPL terms if you redistribute them.
 - yt-dlp breaks now and then when Twitch changes things. The app updates it on launch, so restarting it is usually enough.
+- **Update check:** LuckyTwitch checks GitHub releases once per day to notify you of new versions. The request is anonymous (a single HTTPS GET with no settings, paths, or identifiers sent). You can toggle this off at any time under **Options > Tools > LuckyTwitch updates**. On Windows installs, updates can be downloaded and installed in place seamlessly with verified SHA-256 integrity.

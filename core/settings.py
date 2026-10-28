@@ -55,6 +55,7 @@ DEFAULTS = {
     "clip_pad_before": "3",
     "clip_pad_after": "3",
     "auto_update": True,
+    "check_app_updates": True,
 }
 
 

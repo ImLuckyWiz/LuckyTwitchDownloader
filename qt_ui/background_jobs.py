@@ -149,3 +149,90 @@ class FramesRunner:
 
         self.thread = threading.Thread(target=work, daemon=True)
         self.thread.start()
+
+
+class UpdateCheckRunner:
+    """Check for LuckyTwitch updates on GitHub in the background."""
+
+    def __init__(self, bridge: Bridge):
+        self.bridge = bridge
+        self.thread: threading.Thread | None = None
+
+    def start(self, force: bool = False) -> None:
+        bridge = self.bridge
+
+        def work():
+            from datetime import datetime, timezone
+            from core import paths, updates
+
+            try:
+                state = updates.load_state()
+                if not force and not updates.should_check(state):
+                    cached = state.get("cached")
+                    info = updates.UpdateInfo.from_dict(cached) if cached else None
+                    if info and updates.is_newer(info.tag, paths.BUNDLED_VERSION):
+                        _emit("update_checked", bridge, info, "")
+                    else:
+                        _emit("update_checked", bridge, None, "")
+                    return
+
+                info = updates.fetch_latest()
+                now_str = datetime.now(timezone.utc).isoformat()
+                state["last_check"] = now_str
+                if info:
+                    state["latest_tag"] = info.tag
+                    state["cached"] = info.to_dict()
+                updates.save_state(state)
+
+                if info and updates.is_newer(info.tag, paths.BUNDLED_VERSION):
+                    _emit("update_checked", bridge, info, "")
+                else:
+                    _emit("update_checked", bridge, None, "")
+            except Exception as e:  # noqa: BLE001
+                _emit("update_checked", bridge, None, str(e))
+
+        self.thread = threading.Thread(target=work, daemon=True)
+        self.thread.start()
+
+
+class UpdateDownloadRunner:
+    """Download the update installer in the background."""
+
+    def __init__(self, bridge: Bridge):
+        self.bridge = bridge
+        self.thread: threading.Thread | None = None
+
+    def start(self, info, dest: Path) -> Ctx:
+        bridge = self.bridge
+        ctx = _make_ctx(bridge)
+
+        def work():
+            from core import updates
+            error = ""
+            try:
+                ctx.stage(0.0, 1.0, f"Downloading {info.tag}")
+                updates.download_installer(ctx, info, dest)
+                if not updates.verify_download(dest, info.asset_size, info.sha256):
+                    try:
+                        dest.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                    error = "The download did not pass the integrity check."
+            except Cancelled:
+                error = "Cancelled."
+                try:
+                    dest.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            except Exception as e:  # noqa: BLE001
+                error = str(e)
+                try:
+                    dest.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            _emit("progress", bridge, 1.0 if not error else 0.0, "Ready." if not error else error)
+            _emit("update_download_done", bridge, str(dest) if not error else "", error)
+
+        self.thread = threading.Thread(target=work, daemon=True)
+        self.thread.start()
+        return ctx

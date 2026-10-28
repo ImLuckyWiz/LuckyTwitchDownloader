@@ -34,6 +34,7 @@ WizardStyle=modern
 UninstallDisplayIcon={app}\LuckyTwitch.exe
 SetupIconFile=assets\icon.ico
 ArchitecturesInstallIn64BitMode=x64compatible
+CloseApplications=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
@@ -56,3 +57,10 @@ Name: "{autodesktop}\{#EffectiveAppName}"; Filename: "{app}\LuckyTwitch.exe"; Ta
 
 [Run]
 Filename: "{app}\LuckyTwitch.exe"; Description: "Launch {#EffectiveAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\LuckyTwitch.exe"; Flags: nowait; Check: IsRelaunch
+
+[Code]
+function IsRelaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;

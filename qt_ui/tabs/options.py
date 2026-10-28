@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -68,6 +69,7 @@ class OptionsTab(QWidget):
     output_folder_requested = Signal()
     update_tools_requested = Signal()
     saved_chat_requested = Signal()
+    check_app_updates_requested = Signal()
     status_message = Signal(str)
 
     def __init__(self, settings: dict | None = None, parent: QWidget | None = None):
@@ -691,6 +693,25 @@ class OptionsTab(QWidget):
         self.tools_folder_btn.clicked.connect(self.open_tools_folder)
         row.add_control(self.tools_folder_btn)
 
+        app_update_card = self._card(f, "LuckyTwitch updates", "Check for new versions of LuckyTwitch Downloader.")
+        row = app_update_card.add_row(
+            "Check for new versions of LuckyTwitch",
+            "Notifies you when a new release is available on GitHub.",
+        )
+        self._register_setting(row, "check_app_updates", "tools", app_update_card)
+        self._switch(row, "check_app_updates")
+
+        self.app_version_row = app_update_card.add_row("Version", "")
+        self.app_version_label = QLabel()
+        self.app_version_label.setProperty("role", "muted")
+        self.app_version_row.add_control(self.app_version_label)
+
+        row = app_update_card.add_row("Check now", "Check GitHub releases for updates now.", divider=False)
+        self.check_app_updates_btn = QPushButton("Check now")
+        self.check_app_updates_btn.clicked.connect(self.check_app_updates_requested.emit)
+        row.add_control(self.check_app_updates_btn)
+        self.refresh_app_update_state()
+
         card = self._card(
             f, "Links from web pages",
             "A page can offer a luckytwitch:// link that opens a VOD here with the cut points already "
@@ -705,6 +726,25 @@ class OptionsTab(QWidget):
         self.link_btn.clicked.connect(self.register_links)
         row.add_control(self.link_btn)
         self.refresh_link_state()
+
+    def refresh_app_update_state(self) -> None:
+        """Update the version row in the updates card with current version and last checked date."""
+        from core import paths, updates
+        ver = paths.BUNDLED_VERSION
+        if not updates.is_valid_app_version(ver):
+            self.app_version_label.setText("Development build (updates not checked)")
+            return
+        state = updates.load_state()
+        last = state.get("last_check")
+        if last:
+            try:
+                dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                last_str = dt.strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                last_str = last
+        else:
+            last_str = "never"
+        self.app_version_label.setText(f"{ver} · last checked: {last_str}")
 
     # ------------------------------------------------------------------ actions of the tab
     def pick_folder(self) -> None:
@@ -752,6 +792,7 @@ class OptionsTab(QWidget):
             dialogs.error(self, "Links", f"Windows did not accept the setting:\n{e}")
             return
         self.refresh_link_state()
+
         self.status_message.emit("Links are set up: luckytwitch:// links now open this app.")
 
     # ------------------------------------------------------------------ what the window tells the tab

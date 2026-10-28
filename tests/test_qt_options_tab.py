@@ -33,14 +33,14 @@ OPTIONS_KEYS = {
     "out_dir", "container", "threads", "strategy", "threshold", "name_template", "clean_title", "subfolders", "folder_template",
     "exact", "keep_full", "title_tpl", "pad_after", "gap_title", "sidecar", "premiere_xml", "premiere_plugin",
     "game_markers", "muted_markers", "clip_name_template", "clip_pad_before", "clip_pad_after", "chat", "chat_format",
-    "chat_embed", "auto_update",
+    "chat_embed", "auto_update", "check_app_updates",
     "chat_render", "chat_render_mode", "chat_render_look", "chat_render_width", "chat_render_height",
     "chat_render_font_size", "chat_render_fps", "chat_render_smooth",
     "default_quality", "audio_format",
 }
 PLAN_KEYS = {"chapters", "min_views", "min_duration", "top_n", "pad_before"}
 SWITCHES = {"exact", "keep_full", "clean_title", "subfolders", "premiere_plugin", "game_markers", "muted_markers", "premiere_xml",
-            "sidecar", "chat", "chat_embed", "chat_render", "chat_render_smooth", "auto_update"}
+            "sidecar", "chat", "chat_embed", "chat_render", "chat_render_smooth", "auto_update", "check_app_updates"}
 
 
 # ------------------------------------------------------------------ fixtures and helpers
@@ -863,4 +863,23 @@ def test_quality_and_audio_changed_marker_and_reset(tab):
     assert control(tab, "default_quality").currentText() == DEFAULTS["default_quality"]
     assert tab.settings["default_quality"] == DEFAULTS["default_quality"]
     assert not row.changed_dot.isVisible()
+
+
+def test_app_updates_card_and_check_now_signal(tab, qtbot):
+    assert hasattr(tab, "check_app_updates_btn")
+    assert hasattr(tab, "app_version_label")
+    assert tab.check_app_updates_btn.isEnabled()
+
+    signal_emitted = []
+    tab.check_app_updates_requested.connect(lambda: signal_emitted.append(True))
+
+    tab.check_app_updates_btn.click()
+    assert len(signal_emitted) == 1
+
+    # Toggle check_app_updates
+    assert tab.settings["check_app_updates"] is True
+    tab.binder.set("check_app_updates", False)
+    assert tab.settings["check_app_updates"] is False
+    tab.binder.set("check_app_updates", True)
+    assert tab.settings["check_app_updates"] is True
 

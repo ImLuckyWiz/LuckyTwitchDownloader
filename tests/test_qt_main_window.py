@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QProgressBar, QPushButton, QTabBar  # noqa: E402
 
 import luckytwitch_qt  # noqa: E402
-from core import paths  # noqa: E402
+from core import paths, updates  # noqa: E402
 from core.settings import DEFAULTS  # noqa: E402
 from qt_ui import dialogs  # noqa: E402
 from qt_ui import main_window as mw  # noqa: E402
@@ -250,4 +250,69 @@ def test_drop_event_with_multiline_log_shows_warning_and_does_not_fetch(win, box
     assert win.vod_entry.text() == ""
     assert not win._info_busy
     assert any("The dropped text is not a valid video URL" in text for _n, _t, text in boxes.log)
+
+
+def test_main_window_update_check_startup_guards(win, monkeypatch):
+    started = []
+    monkeypatch.setattr(win.update_check_runner, "start", lambda force=False: started.append(force))
+
+    # Guard 1: setting turned off
+    win.settings["check_app_updates"] = False
+    monkeypatch.setattr(paths, "BUNDLED_VERSION", "v2.2.0")
+    win.start_update_check(manual=False)
+    assert len(started) == 0
+
+    # Guard 2: dev build (no bundled version)
+    win.settings["check_app_updates"] = True
+    monkeypatch.setattr(paths, "BUNDLED_VERSION", "")
+    win.start_update_check(manual=False)
+    assert len(started) == 0
+
+    # Manual check overrides dev build
+    win.start_update_check(manual=True)
+    assert len(started) == 1
+    assert started[0] is True
+
+
+def test_main_window_on_update_checked_flows(win, monkeypatch, tmp_path):
+    state_file = tmp_path / "luckytwitch_update.json"
+    monkeypatch.setattr(paths, "UPDATE_STATE_PATH", state_file)
+    monkeypatch.setattr(paths, "BUNDLED_VERSION", "v2.2.0")
+
+    info = updates.UpdateInfo(
+        tag="v2.3.0",
+        notes="Notes",
+        page_url="https://github.com/ImLuckyWiz/LuckyTwitchDownloader/releases/tag/v2.3.0",
+    )
+
+    # 1. Update found (automatic) -> pill shown, toast shown
+    toast_calls = []
+    from qt_ui import notify
+    monkeypatch.setattr(notify, "info", lambda parent, title, text, action=None, duration_ms=0: toast_calls.append((title, text, action)))
+
+    win.on_update_checked(info, "")
+    assert win.update_pill.isVisible()
+    assert "v2.3.0" in win.update_pill.text()
+    assert len(toast_calls) == 1
+    assert "v2.3.0" in toast_calls[0][1]
+
+    # Clicking the pill opens dialog
+    dlg_opened = []
+    monkeypatch.setattr(win, "open_update_dialog", lambda inf=None: dlg_opened.append(inf))
+    win.update_pill.click()
+    assert len(dlg_opened) == 1
+
+    # 2. Skipped version -> automatic check hides pill and suppresses toast
+    state = updates.load_state()
+    state["skipped_tag"] = "v2.3.0"
+    updates.save_state(state)
+    toast_calls.clear()
+
+    win.on_update_checked(info, "")
+    assert not win.update_pill.isVisible()
+    assert len(toast_calls) == 0
+
+    # 3. Up to date -> pill hidden
+    win.on_update_checked(None, "")
+    assert not win.update_pill.isVisible()
 

@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         app.link_opened.connect(window.open_link)
     window.show()
     window.start_tools_setup()
+    QTimer.singleShot(3000, window.start_update_check)
     if link:
         QTimer.singleShot(300, lambda: window.open_link(link))
 

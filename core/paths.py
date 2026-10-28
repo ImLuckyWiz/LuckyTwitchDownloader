@@ -66,6 +66,7 @@ RECENT_PATH = DATA_DIR / "luckytwitch_recent.json"
 LINKS_DIR = DATA_DIR / "links"  # links other launches leave for the open window (see weblink.py)
 BEAT_PATH = DATA_DIR / "running.beat"  # the open window touches this so a second launch knows it is there
 UI_STATE_PATH = DATA_DIR / "luckytwitch_ui.json"
+UPDATE_STATE_PATH = DATA_DIR / "luckytwitch_update.json"
 MAX_RECENT = 12
 
 

@@ -23,7 +23,8 @@ from PySide6.QtCore import QObject, Signal
 # the tkinter message kinds, in the order of poll_queue; ``Bridge.KINDS`` and the tests use this
 KINDS = (
     "info_ok", "error", "log", "search_ok", "search_err", "videos_ok", "videos_err", "thumb", "frames",
-    "progress", "job", "item", "tools_info", "tools_done", "saved_chat_done", "queue_done",
+    "progress", "job", "item", "tools_info", "tools_done", "saved_chat_done", "queue_done", "update_checked",
+    "update_download_done",
 )
 
 
@@ -60,3 +61,7 @@ class Bridge(QObject):
     saved_chat_done = Signal(str, str)
     # the queue run is over
     queue_done = Signal()
+    # update check finished: (UpdateInfo or None, error text or "")
+    update_checked = Signal(object, str)
+    # update installer download finished: (dest_path or "", error text or "")
+    update_download_done = Signal(str, str)

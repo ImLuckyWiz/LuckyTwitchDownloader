@@ -28,7 +28,7 @@ def _data_folder_in_tmp(request, tmp_path, monkeypatch):
         return
     for name, leaf in (("SETTINGS_PATH", "luckytwitch_settings.json"), ("RECENT_PATH", "luckytwitch_recent.json"),
                        ("CONFIG_PATH", "config.json"), ("LINKS_DIR", "links"), ("BEAT_PATH", "running.beat"),
-                       ("UI_STATE_PATH", "luckytwitch_ui.json")):
+                       ("UI_STATE_PATH", "luckytwitch_ui.json"), ("UPDATE_STATE_PATH", "luckytwitch_update.json")):
         monkeypatch.setattr(paths, name, tmp_path / "data" / leaf)
     (tmp_path / "data").mkdir(exist_ok=True)
     try:

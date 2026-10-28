@@ -1,3 +1,15 @@
+## v2.3.0
+
+LuckyTwitch Downloader **v2.3.0** introduces automatic update detection, in-place silent upgrades for Windows, and unified Premiere Pro CEP extension packaging.
+
+### What's new in 2.3.0:
+- **Automated GitHub Update Discovery:** Automatically checks GitHub releases in the background (throttled to once every 24 hours). Dev builds stay quiet automatically while allowing manual checks anytime.
+- **Status Bar Update Pill & Toasts:** A subtle update pill appears in the bottom status bar when a newer release is detected, paired with a non-intrusive slide-in toast notification. Skipped releases are remembered so you are never pestered twice.
+- **Dedicated Update Dialog:** A rich dialog presents the new release tag, currently running version, formatted release notes, and streamlined upgrade actions.
+- **1-Click Silent Windows Upgrades:** On Windows installations, click **Update now** to download the setup package directly within the app. After strict SHA-256 integrity verification, LuckyTwitch runs the installer silently (`/SILENT /CLOSEAPPLICATIONS /RELAUNCH=1`) and relaunches seamlessly into the new version with all settings, credentials, and downloaded tools preserved.
+- **Privacy & Settings Controls:** Added a dedicated **LuckyTwitch updates** card in **Options → Tools** with an automatic check toggle, version readout, and manual **Check now** button. Update checks are completely private: a single anonymous HTTPS GET without sending any user settings, paths, or identifiers.
+- **Unified Premiere Pro CEP Extension:** The Premiere Pro integration has been consolidated into the modern CEP extension (`LuckyTwitch-Premiere-Plugin-CEP.zxp` and `.zip`), featuring 1-click drag-and-drop installation via ZXPInstaller or Anastasiy's Extension Manager alongside offline manual install scripts.
+
 ## v2.2.1
 
 LuckyTwitch Downloader **v2.2.1** expands template tokens for both files and stream folders with broadcast date deconstruction, dominant game detection, duration tags, and resolution synonyms.
