@@ -625,4 +625,19 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
 
     shutil.rmtree(workdir, ignore_errors=True)
     ctx.stage(1.0, 1.0, "Done")
+    try:
+        from core import history
+        vod_id = src.twitch_vod_id or src.id
+        if vod_id:
+            history.record_download({
+                "vod_id": vod_id,
+                "title": src.title,
+                "streamer": src.uploader,
+                "date": src.date,
+                "parts": len(results),
+                "folder": str(final_dir),
+                "quality": getattr(opts, "quality", "") or "Best available",
+            })
+    except Exception:
+        pass
     return results

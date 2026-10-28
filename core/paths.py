@@ -87,6 +87,8 @@ LINKS_DIR = DATA_DIR / "links"  # links other launches leave for the open window
 BEAT_PATH = DATA_DIR / "running.beat"  # the open window touches this so a second launch knows it is there
 UI_STATE_PATH = DATA_DIR / "luckytwitch_ui.json"
 UPDATE_STATE_PATH = DATA_DIR / "luckytwitch_update.json"
+HISTORY_PATH = DATA_DIR / "luckytwitch_history.json"
+WATCHLIST_PATH = DATA_DIR / "luckytwitch_watchlist.json"
 MAX_RECENT = 12
 
 

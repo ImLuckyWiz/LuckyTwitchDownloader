@@ -231,6 +231,7 @@ class MainWindow(QMainWindow):
         self.vod_entry.returnPressed.connect(self.on_get_info)
         self.info_btn.clicked.connect(self.on_get_info)
         self.api_btn.clicked.connect(self.ask_credentials)
+        self.command_bar.history_btn.clicked.connect(self.open_history_dialog)
         self.command_bar.set_signed_in(self._client is not None)
         top_lay.addWidget(self.command_bar)
 
@@ -1268,6 +1269,14 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentWidget(self.tab_plan)
         self.on_get_info()
 
+    def open_history_dialog(self) -> None:
+        from qt_ui.dialogs import HistoryDialog
+        dlg = HistoryDialog(self)
+        dlg.vod_requested.connect(self.use_vod)
+        dlg.exec()
+
+    def load_vod_from_url(self, url: str) -> None:
+        self.use_vod(url)
     def ask_credentials(self) -> None:
         """The Twitch API dialog (modal; this returns at once, like the tkinter one)."""
         if self._login_dialog is not None:

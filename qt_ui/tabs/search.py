@@ -249,6 +249,15 @@ class SearchTab(QWidget):
         self.vod_filter_edit.textChanged.connect(self.set_vod_filter)
         head.addWidget(self.vod_filter_edit, 0, Qt.AlignmentFlag.AlignTop)
 
+        self.pin_btn = QToolButton()
+        self.pin_btn.setIcon(icon("flag", 16))
+        self.pin_btn.setToolTip("Pin streamer to Watch List")
+        self.pin_btn.setAccessibleName("Toggle watch list pin for streamer")
+        self.pin_btn.setCheckable(True)
+        self.pin_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.pin_btn.clicked.connect(self._toggle_pin)
+        head.addWidget(self.pin_btn, 0, Qt.AlignmentFlag.AlignTop)
+
         self.list_mode_btn = QToolButton()
         self.list_mode_btn.setIcon(icon("list-view", 16))
         self.list_mode_btn.setToolTip("List view")
@@ -514,6 +523,7 @@ class SearchTab(QWidget):
             self.sv_gen += 1
             gen = self.sv_gen
             self.sv_channel = ch
+            self._sync_pin()
             self.sv_cursor = None
             self.vod_model.clear()
             if remember:
@@ -665,6 +675,27 @@ class SearchTab(QWidget):
         self._closing = True
         self.thumbs.stop()
 
+    def _toggle_pin(self) -> None:
+        from core import watchlist
+        if not self.sv_channel:
+            return
+        login = str(self.sv_channel.get("login") or "").lower().strip()
+        name = str(self.sv_channel.get("name") or login)
+        if watchlist.is_watched(login):
+            watchlist.remove_from_watchlist(login)
+        else:
+            watchlist.add_to_watchlist(login, name)
+        self._sync_pin()
+
+    def _sync_pin(self) -> None:
+        if not hasattr(self, "pin_btn"):
+            return
+        from core import watchlist
+        login = str(self.sv_channel.get("login") or "").lower().strip() if self.sv_channel else ""
+        watched = bool(login and watchlist.is_watched(login))
+        self.pin_btn.setChecked(watched)
+        self.pin_btn.setToolTip("Unpin streamer from Watch List" if watched else "Pin streamer to Watch List")
+
 
 def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active_cb) -> None:
     """Background worker: fetches Twitch profile pictures for channels and invokes on_avatar_cb(cid, path)."""
@@ -693,3 +724,4 @@ def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active
                         on_avatar_cb(uid, str(path))
     except Exception:
         pass
+

@@ -299,6 +299,26 @@ class VodGridDelegate(QStyledItemDelegate):
         painter.setPen(QColor(WHITE))
         painter.drawText(badge_rect, int(Qt.AlignmentFlag.AlignCenter), dur_txt)
 
+        vod_id = str(v.get("id", ""))
+        from core import history
+        if history.is_downloaded(vod_id):
+            dl_font = QFont(option.font)
+            dl_font.setPointSize(7)
+            dl_font.setBold(True)
+            painter.setFont(dl_font)
+            dl_fm = painter.fontMetrics()
+            dl_txt = "✓ Downloaded"
+            dl_w = dl_fm.horizontalAdvance(dl_txt) + 8.0
+            dl_rect = QRectF(thumb_rect.left() + 4.0, thumb_rect.top() + 4.0, dl_w, 16.0)
+            from core.palette import OK
+            dl_bg = QColor(OK)
+            dl_bg.setAlpha(220)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(dl_bg)
+            painter.drawRoundedRect(dl_rect, 3.0, 3.0)
+            painter.setPen(QColor(WHITE))
+            painter.drawText(dl_rect, int(Qt.AlignmentFlag.AlignCenter), dl_txt)
+
         title = str(v.get("title") or "")
         font_title = QFont(option.font)
         font_title.setPointSize(9)

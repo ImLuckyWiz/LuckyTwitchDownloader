@@ -1,3 +1,23 @@
+## v2.7.0
+
+LuckyTwitch Downloader **v2.7.0** introduces local download history tracking (Phase F1), a streamer watch list (Phase F2), and Phase P Premiere Pro CEP panel upgrades (v0.15.0).
+
+### What's new in 2.7.0:
+- **Download History (Phase F1):**
+  - Records every finished job locally in luckytwitch_history.json with VOD ID, title, streamer, date, parts count, output folder, and quality.
+  - Visual ✓ Downloaded pill badge on VOD cards in the Search tab and the loaded-VOD strip in the Plan tab.
+  - Dedicated **Download History** dialog accessible from the command bar with quick actions to open target folders, re-load VODs directly into the Plan tab, and clear history.
+  - Completely local and private: no data is sent anywhere.
+- **Streamer Watch List (Phase F2):**
+  - Pin favorite streamers directly in the Search tab using the pin button on channel headers.
+  - Automatic background check for VODs newer than the last seen broadcast.
+  - Visual notification badge on the Search navigation rail icon when unwatched VODs are detected.
+  - Local watch list persistence (luckytwitch_watchlist.json) with safe error suppression.
+- **Premiere Pro Plugin (v0.15.0 - Phase P):**
+  - **Limit to Chapter:** Choose one game or chapter to run markers, cuts, and deletes inside it without affecting the rest of the timeline.
+  - **Named Recipes:** Save and re-apply cut configurations (padding, merge, ripple limits).
+  - **Preferences from Downloader:** Reads suggested defaults from .markers.json.
+
 ## v2.6.2
 
 LuckyTwitch Downloader **v2.6.2** fixes window un-maximize when dragging the custom title bar downwards and repairs the standalone 	ools/frameless_spike.py diagnostic tool.

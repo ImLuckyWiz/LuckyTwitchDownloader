@@ -94,6 +94,7 @@ class NavRail(QFrame):
         self._current_index = 0
         self.vod_loaded = False
         self.queue_count = 0
+        self.search_badge = False
 
         self.setFixedWidth(self.EXPANDED_WIDTH if self._expanded else self.COLLAPSED_WIDTH)
         lay = QVBoxLayout(self)
@@ -197,12 +198,18 @@ class NavRail(QFrame):
         self.queue_count = max(0, int(count))
         self._refresh_labels()
 
+    def set_search_badge(self, active: bool) -> None:
+        self.search_badge = bool(active)
+        self._refresh_labels()
+
     def _refresh_labels(self) -> None:
         for idx, btn in self.buttons.items():
             _key, _glyph, label, _icon = RAIL_ITEMS[idx]
             display_label = label.replace("&", "&&")
             badge = ""
-            if idx == 1 and self.vod_loaded:
+            if idx == 0 and getattr(self, "search_badge", False):
+                badge = " \u25cf"
+            elif idx == 1 and self.vod_loaded:
                 badge = " \u25cf"
             elif idx == 3 and self.queue_count > 0:
                 badge = f" ({self.queue_count})" if self._expanded else f" {self.queue_count}"
@@ -373,6 +380,12 @@ class CommandBar(QFrame):
         self.api_btn.setIcon(icon("user", 14))
         row.addWidget(self.api_btn)
 
+        self.history_btn = QPushButton("History", self)
+        self.history_btn.setObjectName("historyBtn")
+        self.history_btn.setIcon(icon("check", 14))
+        self.history_btn.setToolTip("View download history")
+        row.addWidget(self.history_btn)
+
         outer.addLayout(row)
 
         self.info_label = QLabel("No VOD loaded.", self)
@@ -465,6 +478,24 @@ class VodStrip(QFrame):
         text_col.addWidget(self.meta_label)
         lay.addLayout(text_col, 1)
 
+        self.downloaded_badge = QLabel("✓ Downloaded", self)
+        self.downloaded_badge.setObjectName("vodDownloadedBadge")
+        self.downloaded_badge.setStyleSheet("color: #4fbf80; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: rgba(79, 191, 128, 0.15);")
+        self.downloaded_badge.setVisible(False)
+        lay.addWidget(self.downloaded_badge)
+
+        self.downloaded_badge = QLabel("✓ Downloaded", self)
+
+        self.downloaded_badge.setObjectName("vodDownloadedBadge")
+
+        self.downloaded_badge.setStyleSheet("color: #4fbf80; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: rgba(79, 191, 128, 0.15);")
+
+        self.downloaded_badge.setVisible(False)
+
+        lay.addWidget(self.downloaded_badge)
+
+
+
         self.open_btn = QPushButton("Open on Twitch", self)
         self.open_btn.setIcon(icon("external-link", 14))
         self.open_btn.setProperty("variant", "ghost")
@@ -504,6 +535,30 @@ class VodStrip(QFrame):
         if warn:
             bits.append(f"({warn})")
         self.meta_label.setText("  \u00b7  ".join(b for b in bits if b))
+
+        vod_id = str(getattr(src, "twitch_vod_id", "") or getattr(src, "vod_id", "") or "")
+
+        from core import history
+
+        hist = history.is_downloaded(vod_id)
+
+        if hist and hasattr(self, "downloaded_badge"):
+
+            self.downloaded_badge.setToolTip(f"Downloaded on {hist.downloaded_at}")
+
+            self.downloaded_badge.setVisible(True)
+
+        elif hasattr(self, "downloaded_badge"):
+
+            self.downloaded_badge.setVisible(False)
+        vod_id = str(getattr(src, "twitch_vod_id", "") or getattr(src, "vod_id", "") or "")
+        from core import history
+        hist = history.is_downloaded(vod_id)
+        if hist and hasattr(self, "downloaded_badge"):
+            self.downloaded_badge.setToolTip(f"Downloaded on {hist.downloaded_at}")
+            self.downloaded_badge.setVisible(True)
+        elif hasattr(self, "downloaded_badge"):
+            self.downloaded_badge.setVisible(False)
         self.thumb_label.setPixmap(QPixmap())
         self.thumb_label.setText("VOD")
         from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
