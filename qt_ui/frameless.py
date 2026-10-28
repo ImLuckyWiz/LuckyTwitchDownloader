@@ -17,7 +17,7 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt
+from PySide6.QtCore import QByteArray, QEvent, QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QCursor, QMouseEvent, QWindow
 from PySide6.QtWidgets import QWidget
 
@@ -333,117 +333,119 @@ class NativeFrame:
             pass
         return (False, False, False, False)
 
-    def handle_native_event(self, event_type: str, message: int) -> tuple[bool, int]:
+    def handle_native_event(self, event_type, message) -> tuple[bool, int]:
         """Process Win32 MSG in nativeEvent."""
-        if sys.platform != "win32" or event_type not in ("windows_generic_MSG", "windows_dispatcher_MSG"):
+        if sys.platform != "win32":
             return False, 0
 
-        msg = wintypes.MSG.from_address(message)
-        hwnd = msg.hWnd
+        try:
+            ev = bytes(event_type) if hasattr(event_type, "__bytes__") or isinstance(event_type, (bytes, bytearray, QByteArray)) else str(event_type).encode("ascii", "ignore")
+            if ev not in (b"windows_generic_MSG", b"windows_dispatcher_MSG"):
+                return False, 0
 
-        # 1. WM_NCCALCSIZE: Remove standard titlebar and borders
-        if msg.message == WM_NCCALCSIZE:
-            if msg.wParam:
-                params = NCCALCSIZE_PARAMS.from_address(msg.lParam)
-                # If maximized, fit within monitor work area (avoids screen overhang)
-                if self.window.isMaximized():
-                    hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
-                    mi = MONITORINFO()
-                    mi.cbSize = ctypes.sizeof(MONITORINFO)
-                    if user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
-                        rc_work = mi.rcWork
-                        # Shrink 1px if auto-hiding taskbar is present
-                        autohide = self.get_autohide_taskbar_edges()
-                        shrunk = shrink_for_autohide(
-                            (rc_work.left, rc_work.top, rc_work.right - rc_work.left, rc_work.bottom - rc_work.top),
-                            autohide,
-                        )
-                        params.rgrc[0].left = shrunk[0]
-                        params.rgrc[0].top = shrunk[1]
-                        params.rgrc[0].right = shrunk[0] + shrunk[2]
-                        params.rgrc[0].bottom = shrunk[1] + shrunk[3]
-                return True, 0
+            addr = int(message)
+            msg = wintypes.MSG.from_address(addr)
+            hwnd = msg.hWnd
 
-        # 2. WM_NCHITTEST: Hit-test window borders, caption, and maximize button
-        elif msg.message == WM_NCHITTEST:
-            # Extract screen coordinates
-            screen_x = ctypes.c_short(msg.lParam & 0xFFFF).value
-            screen_y = ctypes.c_short((msg.lParam >> 16) & 0xFFFF).value
+            # 1. WM_NCCALCSIZE: Remove standard titlebar and borders
+            if msg.message == WM_NCCALCSIZE:
+                if msg.wParam:
+                    lparam_addr = int(msg.lParam)
+                    if lparam_addr < 0:
+                        lparam_addr &= 0xFFFFFFFFFFFFFFFF
+                    params = NCCALCSIZE_PARAMS.from_address(lparam_addr)
+                    if self.window.isMaximized():
+                        hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)
+                        mi = MONITORINFO()
+                        mi.cbSize = ctypes.sizeof(MONITORINFO)
+                        if user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+                            rc_work = mi.rcWork
+                            autohide = self.get_autohide_taskbar_edges()
+                            shrunk = shrink_for_autohide(
+                                (rc_work.left, rc_work.top, rc_work.right - rc_work.left, rc_work.bottom - rc_work.top),
+                                autohide,
+                            )
+                            params.rgrc[0].left = shrunk[0]
+                            params.rgrc[0].top = shrunk[1]
+                            params.rgrc[0].right = shrunk[0] + shrunk[2]
+                            params.rgrc[0].bottom = shrunk[1] + shrunk[3]
+                    return True, 0
 
-            # Convert to window client coordinates
-            pt = POINT(screen_x, screen_y)
-            user32.ScreenToClient(hwnd, ctypes.byref(pt))
+            # 2. WM_NCHITTEST: Hit-test window borders, caption, and maximize button
+            elif msg.message == WM_NCHITTEST:
+                screen_x = ctypes.c_short(msg.lParam & 0xFFFF).value
+                screen_y = ctypes.c_short((msg.lParam >> 16) & 0xFFFF).value
 
-            # Scale to logical Qt coordinates
-            dpr = self.window.devicePixelRatio()
-            x = pt.x / dpr
-            y = pt.y / dpr
-            w = self.window.width()
-            h = self.window.height()
+                pt = POINT(screen_x, screen_y)
+                user32.ScreenToClient(hwnd, ctypes.byref(pt))
 
-            # Client rects for titlebar widgets
-            client_rects = []
-            max_btn_rect = None
+                dpr = self.window.devicePixelRatio()
+                x = pt.x / dpr
+                y = pt.y / dpr
+                w = self.window.width()
+                h = self.window.height()
 
-            tb: CustomTitleBar | None = getattr(self.window, "title_bar", None)
-            if tb is not None:
-                # Add titlebar interactive children (min_btn, close_btn, icon)
-                for child in (tb.icon_label, tb.min_btn, tb.close_btn):
-                    if child.isVisible():
-                        geo = child.geometry()
-                        client_rects.append((float(geo.x()), float(geo.y()), float(geo.width()), float(geo.height())))
-                if tb.max_btn.isVisible():
-                    geo = tb.max_btn.geometry()
-                    max_button_rect = (float(geo.x()), float(geo.y()), float(geo.width()), float(geo.height()))
+                client_rects = []
+                max_btn_rect = None
 
-            reg = hit_test(
-                x, y, w, h,
-                border=BORDER_THICKNESS,
-                corner_size=CORNER_SIZE,
-                bar_height=TITLEBAR_HEIGHT if tb else 0,
-                maximized=self.window.isMaximized(),
-                client_rects=client_rects,
-                max_button_rect=max_button_rect,
-            )
+                tb: CustomTitleBar | None = getattr(self.window, "title_bar", None)
+                if tb is not None:
+                    for child in (tb.icon_label, tb.min_btn, tb.close_btn):
+                        if child.isVisible():
+                            geo = child.geometry()
+                            client_rects.append((float(geo.x()), float(geo.y()), float(geo.width()), float(geo.height())))
+                    if tb.max_btn.isVisible():
+                        geo = tb.max_btn.geometry()
+                        max_button_rect = (float(geo.x()), float(geo.y()), float(geo.width()), float(geo.height()))
 
-            # Return corresponding Win32 HT* constant
-            return True, int(reg)
+                reg = hit_test(
+                    x, y, w, h,
+                    border=BORDER_THICKNESS,
+                    corner_size=CORNER_SIZE,
+                    bar_height=TITLEBAR_HEIGHT if tb else 0,
+                    maximized=self.window.isMaximized(),
+                    client_rects=client_rects,
+                    max_button_rect=max_button_rect,
+                )
+                return True, int(reg)
 
-        # 3. Handle Snap Layouts flyout interactions on maximize button
-        elif msg.message == WM_NCMOUSEMOVE:
-            if msg.wParam == Region.MAXBUTTON:
-                if not self._max_btn_hovered:
-                    self._max_btn_hovered = True
-                    self._update_max_button_visual(hover=True, pressed=self._max_btn_pressed)
-            else:
-                if self._max_btn_hovered:
+            # 3. Handle Snap Layouts flyout interactions on maximize button
+            elif msg.message == WM_NCMOUSEMOVE:
+                if msg.wParam == Region.MAXBUTTON:
+                    if not self._max_btn_hovered:
+                        self._max_btn_hovered = True
+                        self._update_max_button_visual(hover=True, pressed=self._max_btn_pressed)
+                else:
+                    if self._max_btn_hovered:
+                        self._max_btn_hovered = False
+                        self._update_max_button_visual(hover=False, pressed=False)
+
+            elif msg.message == WM_NCLBUTTONDOWN:
+                if msg.wParam == Region.MAXBUTTON:
+                    self._max_btn_pressed = True
+                    self._update_max_button_visual(hover=True, pressed=True)
+                    return True, 0
+
+            elif msg.message == WM_NCLBUTTONUP:
+                if msg.wParam == Region.MAXBUTTON:
+                    self._max_btn_pressed = False
+                    self._update_max_button_visual(hover=self._max_btn_hovered, pressed=False)
+                    if self.window.isMaximized():
+                        self.window.showNormal()
+                    else:
+                        self.window.showMaximized()
+                    if getattr(self.window, "title_bar", None):
+                        self.window.title_bar.update_maximized_state(self.window.isMaximized())
+                    return True, 0
+
+            elif msg.message == WM_NCMOUSELEAVE:
+                if self._max_btn_hovered or self._max_btn_pressed:
                     self._max_btn_hovered = False
+                    self._max_btn_pressed = False
                     self._update_max_button_visual(hover=False, pressed=False)
 
-        elif msg.message == WM_NCLBUTTONDOWN:
-            if msg.wParam == Region.MAXBUTTON:
-                self._max_btn_pressed = True
-                self._update_max_button_visual(hover=True, pressed=True)
-                return True, 0
-
-        elif msg.message == WM_NCLBUTTONUP:
-            if msg.wParam == Region.MAXBUTTON:
-                self._max_btn_pressed = False
-                self._update_max_button_visual(hover=self._max_btn_hovered, pressed=False)
-                # Toggle maximize state
-                if self.window.isMaximized():
-                    self.window.showNormal()
-                else:
-                    self.window.showMaximized()
-                if getattr(self.window, "title_bar", None):
-                    self.window.title_bar.update_maximized_state(self.window.isMaximized())
-                return True, 0
-
-        elif msg.message == WM_NCMOUSELEAVE:
-            if self._max_btn_hovered or self._max_btn_pressed:
-                self._max_btn_hovered = False
-                self._max_btn_pressed = False
-                self._update_max_button_visual(hover=False, pressed=False)
+        except Exception:
+            return False, 0
 
         return False, 0
 
