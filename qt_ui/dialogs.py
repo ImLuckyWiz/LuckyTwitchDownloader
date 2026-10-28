@@ -7,7 +7,7 @@ and one-click 'Copy details' button.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication, QDialog, QFileDialog, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,
     QVBoxLayout, QWidget,
@@ -239,3 +239,104 @@ def save_file(parent: QWidget | None, title: str, start: str = "", name_filter: 
     """The system's save-file picker (Phase 9c, F3 «Save log…»). ``""`` when the person cancels."""
     path, _chosen = QFileDialog.getSaveFileName(parent, title, start, name_filter)
     return path
+
+
+class HistoryDialog(QDialog):
+    """Download history dialog showing recorded downloads with options to open folder or load VOD."""
+
+    vod_requested = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("historyDialog")
+        self.setWindowTitle("Download History")
+        self.setModal(True)
+        self.resize(760, 480)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(16, 16, 16, 16)
+        outer.setSpacing(12)
+
+        # Header row
+        header = QHBoxLayout()
+        title_lbl = QLabel("Download History", self)
+        title_lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.addWidget(title_lbl)
+
+        header.addStretch(1)
+
+        self.clear_btn = QPushButton("Clear history", self)
+        self.clear_btn.setProperty("variant", "ghost")
+        self.clear_btn.clicked.connect(self._on_clear)
+        header.addWidget(self.clear_btn)
+
+        outer.addLayout(header)
+
+        # Table
+        from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+        self.table = QTableWidget(self)
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["Downloaded", "Streamer", "Title", "Parts", "Quality", "Actions"])
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        outer.addWidget(self.table, 1)
+
+        # Footer
+        footer = QHBoxLayout()
+        self.count_label = QLabel("", self)
+        self.count_label.setProperty("role", "muted")
+        footer.addWidget(self.count_label)
+        footer.addStretch(1)
+        close_btn = QPushButton("Close", self)
+        close_btn.setProperty("variant", "accent")
+        close_btn.clicked.connect(self.accept)
+        footer.addWidget(close_btn)
+        outer.addLayout(footer)
+
+        self.refresh()
+
+    def refresh(self) -> None:
+        from core import history
+        from PySide6.QtWidgets import QTableWidgetItem, QWidget, QHBoxLayout, QPushButton
+        from core.files import open_in_file_manager
+
+        entries = history.load_history()
+        self.table.setRowCount(len(entries))
+        self.count_label.setText(f"{len(entries)} completed download(s)")
+
+        for row, e in enumerate(entries):
+            self.table.setItem(row, 0, QTableWidgetItem(e.downloaded_at))
+            self.table.setItem(row, 1, QTableWidgetItem(e.streamer))
+            self.table.setItem(row, 2, QTableWidgetItem(e.title))
+            self.table.setItem(row, 3, QTableWidgetItem(str(e.parts)))
+            self.table.setItem(row, 4, QTableWidgetItem(e.quality))
+
+            actions_widget = QWidget(self.table)
+            act_lay = QHBoxLayout(actions_widget)
+            act_lay.setContentsMargins(4, 2, 4, 2)
+            act_lay.setSpacing(6)
+
+            if e.folder:
+                f_btn = QPushButton("Folder", actions_widget)
+                f_btn.setProperty("variant", "ghost")
+                f_btn.clicked.connect(lambda _, p=e.folder: open_in_file_manager(p))
+                act_lay.addWidget(f_btn)
+
+            if e.vod_id:
+                load_btn = QPushButton("Load", actions_widget)
+                load_btn.setProperty("variant", "ghost")
+                load_btn.clicked.connect(lambda _, vid=e.vod_id: self._load_vod(vid))
+                act_lay.addWidget(load_btn)
+
+            self.table.setCellWidget(row, 5, actions_widget)
+
+    def _load_vod(self, vod_id: str) -> None:
+        url = f"https://www.twitch.tv/videos/{vod_id}"
+        self.vod_requested.emit(url)
+        self.accept()
+
+    def _on_clear(self) -> None:
+        from core import history
+        history.clear_history()
+        self.refresh()
