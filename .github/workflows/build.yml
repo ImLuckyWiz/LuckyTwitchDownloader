@@ -71,8 +71,9 @@ jobs:
           curl -sLO https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage --appimage-extract
-          sudo mv squashfs-root/usr/bin/appimagetool /usr/local/bin/
-          rm -rf appimagetool-x86_64.AppImage squashfs-root
+          sudo mv squashfs-root /opt/appimagetool
+          sudo ln -sf /opt/appimagetool/AppRun /usr/local/bin/appimagetool
+          rm -rf appimagetool-x86_64.AppImage
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

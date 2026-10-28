@@ -35,6 +35,12 @@ python3 -m nuitka --mode=standalone \
   --update-check=never \
   luckytwitch_qt.py
 
+# Nuitka in standalone mode creates dist/LuckyTwitch.dist; normalize to dist/LuckyTwitch
+if [ -d "dist/LuckyTwitch.dist" ]; then
+    rm -rf dist/LuckyTwitch
+    mv dist/LuckyTwitch.dist dist/LuckyTwitch
+fi
+
 # Create fallback portable tarball
 echo "Creating portable tarball..."
 tar -czf "dist/LuckyTwitch-linux-x86_64.tar.gz" -C dist LuckyTwitch
@@ -64,7 +70,7 @@ chmod +x "$APPDIR/AppRun"
 
 if command -v appimagetool >/dev/null 2>&1; then
     echo "Creating AppImage with appimagetool..."
-    ARCH=x86_64 appimagetool "$APPDIR" "dist/LuckyTwitch-x86_64.AppImage"
+    ARCH=x86_64 appimagetool --no-appstream "$APPDIR" "dist/LuckyTwitch-x86_64.AppImage"
 else
     echo "Notice: appimagetool not found on PATH. Tarball created at dist/LuckyTwitch-linux-x86_64.tar.gz."
 fi
