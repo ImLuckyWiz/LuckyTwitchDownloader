@@ -1,6 +1,6 @@
 # Next Upgrades Plan
 
-Status: In progress (Phase H done in v2.3.1; Phase V pending)
+Status: In progress (Phase H done in v2.3.1; Phase V Windows verified; Phase L done in v2.4.0)
 
 This document plans the next round of work for **LuckyTwitch Downloader** (app, now at v2.3.0) and the **LuckyTwitch Markers** Premiere Pro CEP panel (now at v0.14.0). All items were discussed and approved by the owner. It is written to be executed one phase at a time; every phase ends green before the next starts.
 
@@ -66,7 +66,7 @@ If no Mac is available, V4 and V5 stay open and are listed as such in the README
 
 ---
 
-## 5. Phase L: Linux AppImage (v2.4.0)
+## 5. Phase L: Linux AppImage (v2.4.0) — Done
 
 Follows `docs/LINUX_BUILD_PLAN.md` (desktop entry, `build_linux.sh`, CI leg, AppImage plus tarball). Changes to that plan:
 

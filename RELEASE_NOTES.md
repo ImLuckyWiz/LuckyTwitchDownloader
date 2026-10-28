@@ -1,3 +1,14 @@
+## v2.4.0
+
+LuckyTwitch Downloader **v2.4.0** introduces official native Linux packaging with standalone AppImage and portable tarball releases alongside optimized CI build workflows.
+
+### What's new in 2.4.0:
+- **Official Standalone Linux AppImage:** Added `LuckyTwitch-x86_64.AppImage` for one-click execution across modern distributions (Ubuntu, Fedora, Arch, openSUSE, SteamOS / Steam Deck) with zero root privileges or complex setup needed.
+- **Portable Linux Tarball:** Added `LuckyTwitch-linux-x86_64.tar.gz` providing a self-contained portable directory distribution.
+- **Desktop Environment Integration:** Bundled freedesktop `.desktop` entry with icon assets and protocol registration for `luckytwitch://` URLs.
+- **Linux Update Discovery:** Update notifications seamlessly identify `.AppImage` and `.tar.gz` release assets and route directly to download links.
+- **Optimized CI Pipeline:** Streamlined GitHub Actions build matrix, pruning legacy macOS Intel runners to dramatically accelerate release compilation times while testing across Python 3.12 and 3.14.
+
 ## v2.3.2
 
 LuckyTwitch Downloader **v2.3.2** fixes standalone frozen binary detection so update checking and installed version discovery work seamlessly on packaged releases.

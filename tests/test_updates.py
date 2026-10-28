@@ -107,6 +107,29 @@ def test_pick_asset_macos_intel():
     assert asset["name"] == "LuckyTwitch-macos-x86_64.dmg"
 
 
+def test_pick_asset_linux():
+    release = {
+        "assets": [
+            {"name": "LuckyTwitch-Setup.exe", "browser_download_url": "http://win"},
+            {"name": "LuckyTwitch-macos-arm64.dmg", "browser_download_url": "http://mac"},
+            {"name": "LuckyTwitch-x86_64.AppImage", "browser_download_url": "http://appimage"},
+            {"name": "LuckyTwitch-linux-x86_64.tar.gz", "browser_download_url": "http://tar"},
+        ]
+    }
+    asset = updates.pick_asset(release, sys_platform="linux", machine="x86_64")
+    assert asset is not None
+    assert asset["name"] == "LuckyTwitch-x86_64.AppImage"
+
+    release_tar = {
+        "assets": [
+            {"name": "LuckyTwitch-linux-x86_64.tar.gz", "browser_download_url": "http://tar"},
+        ]
+    }
+    asset_tar = updates.pick_asset(release_tar, sys_platform="linux", machine="x86_64")
+    assert asset_tar is not None
+    assert asset_tar["name"] == "LuckyTwitch-linux-x86_64.tar.gz"
+
+
 def test_pick_asset_none_matching():
     release = {"assets": [{"name": "random.txt"}]}
     assert updates.pick_asset(release, sys_platform="win32") is None

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=LuckyTwitch
+Comment=Twitch VOD Downloader & Video Cutter
+Exec=LuckyTwitch %u
+Icon=luckytwitch
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Network;
+MimeType=x-scheme-handler/luckytwitch;
+StartupWMClass=LuckyTwitch

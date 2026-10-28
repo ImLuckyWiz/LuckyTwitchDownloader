@@ -43,6 +43,8 @@ jobs:
             label: windows
           - os: macos-14          # Apple Silicon
             label: macos-arm64
+          - os: ubuntu-22.04      # Linux x86_64
+            label: linux-x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +58,21 @@ jobs:
             echo "::error file=$notes,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update $notes before tagging."
             exit 1
           fi
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0 \
+            patchelf file zsync
+          # Download standalone appimagetool
+          curl -sLO https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage --appimage-extract
+          sudo mv squashfs-root/usr/bin/appimagetool /usr/local/bin/
+          rm -rf appimagetool-x86_64.AppImage squashfs-root
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -89,12 +106,23 @@ jobs:
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: bash build_mac.sh "${{ github.ref_type == 'tag' && github.ref_name || '1.0' }}"
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: bash build_linux.sh "${{ github.ref_type == 'tag' && github.ref_name || '1.0' }}"
+      - name: Smoke test standalone binary (Linux)
+        if: runner.os == 'Linux'
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          dist/LuckyTwitch/LuckyTwitch --help || true
       - uses: actions/upload-artifact@v4
         with:
           name: LuckyTwitch-${{ matrix.label }}
           path: |
             dist/LuckyTwitch-Setup.exe
             dist/LuckyTwitch-*.dmg
+            dist/LuckyTwitch-*.AppImage
+            dist/LuckyTwitch-*.tar.gz
 
   plugin:
     runs-on: windows-latest
@@ -159,6 +187,8 @@ jobs:
           files: |
             release/*.exe
             release/*.dmg
+            release/*.AppImage
+            release/*.tar.gz
             release/*.zip
             release/*.zxp
             release/SHA256SUMS.txt

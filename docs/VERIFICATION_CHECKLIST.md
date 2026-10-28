@@ -15,7 +15,7 @@ This document tracks real-hardware verification runs across Windows, macOS, and 
 | **V3** | MP3 audio-only chapters (ID3v2 `CHAP`) | Windows | **VERIFIED** | Verified with 20 min MP3 cut. Chapters (clip titles, timestamps) cleanly detected and seekable in `mpv`. *(Note: VLC media player does not support ID3v2 `CHAP` tags natively; players using ffmpeg/libav like mpv and Foobar2000 support them fully).* |
 | **V4** | `install-mac.command` installs CEP panel and Premiere displays it | macOS + Premiere Pro | **PENDING** | Awaiting real Mac hardware. Documented as *not verified on macOS* in the meantime. |
 | **V5** | macOS update flow (pill, dialog, download correct DMG for architecture) | macOS | **PENDING** | Awaiting real Mac hardware. Documented as *not verified on macOS* in the meantime. |
-| **V6** | Windows silent update preserves settings, credentials, and tools | Windows | **PENDING TEST** | To be verified upon publishing the v2.3.1 release. |
+| **V6** | Windows silent update preserves settings, credentials, and tools | Windows | **VERIFIED** | Verified upgrading in-place from v2.3.1 to v2.3.2. Update dialog downloaded setup, verified SHA-256, exited cleanly, installed silently, and relaunched into v2.3.2 with all settings, tool paths, and window state intact. |
 
 ---
 

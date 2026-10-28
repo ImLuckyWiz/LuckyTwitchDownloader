@@ -137,6 +137,18 @@ def pick_asset(release: dict, sys_platform: str | None = None, machine: str | No
         for a in assets:
             if a.get("name", "").endswith(".dmg"):
                 return a
+    elif sys_plat.startswith("linux"):
+        for a in assets:
+            name = a.get("name", "")
+            if name.endswith(".AppImage") and "x86_64" in name:
+                return a
+        for a in assets:
+            if a.get("name", "").endswith(".AppImage"):
+                return a
+        for a in assets:
+            name = a.get("name", "")
+            if name.endswith(".tar.gz") and "linux" in name:
+                return a
 
     return None
 

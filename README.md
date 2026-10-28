@@ -1,6 +1,6 @@
 # LuckyTwitch Downloader
 
-Download Twitch VODs (or any link yt-dlp supports) and cut them into parts by timestamps, with optional chapters built from the VOD's Twitch clips. Runs on Windows and macOS.
+Download Twitch VODs (or any link yt-dlp supports) and cut them into parts by timestamps, with optional chapters built from the VOD's Twitch clips. Runs on Windows, macOS, and Linux.
 
 ## Download
 
@@ -10,11 +10,13 @@ Get the latest version from the [Releases](../../releases) page:
 | --- | --- |
 | Windows | `LuckyTwitch-Setup.exe` |
 | macOS (Apple Silicon: M1, M2, M3, M4) | `LuckyTwitch-macos-arm64.dmg` |
+| Linux (x86_64) | `LuckyTwitch-x86_64.AppImage`, `LuckyTwitch-linux-x86_64.tar.gz` |
 
 ### Install
 
 - **Windows:** run the installer. It installs for your user only (no admin rights needed) and adds a Start menu entry. Running a newer installer updates the existing install.
 - **macOS:** open the `.dmg` and drag **LuckyTwitch** onto the **Applications** shortcut. To update, drag the new version over the old one and choose **Replace** (close the app first).
+- **Linux:** make the AppImage executable (`chmod +x LuckyTwitch-x86_64.AppImage`) and run it (`./LuckyTwitch-x86_64.AppImage`). On Ubuntu 24.04+, if FUSE is not installed, install `libfuse2t64` (`sudo apt install libfuse2t64`) or extract it (`./LuckyTwitch-x86_64.AppImage --appimage-extract`). A portable directory archive (`LuckyTwitch-linux-x86_64.tar.gz`) is also available.
 
 ### First launch
 

@@ -139,6 +139,30 @@ def test_ci_workflow_runs_pytest_offscreen_and_passes_version_to_both_builders()
     assert "python -m pytest tests" in yml
     assert "build_windows.bat" in yml
     assert "bash build_mac.sh" in yml
+    assert "bash build_linux.sh" in yml
+    assert "LuckyTwitch-*.AppImage" in yml
+    assert "LuckyTwitch-*.tar.gz" in yml
+
+
+def test_linux_desktop_entry_and_assets():
+    desktop_file = ROOT / "assets" / "luckytwitch.desktop"
+    assert desktop_file.is_file()
+    content = desktop_file.read_text(encoding="utf-8")
+    assert "[Desktop Entry]" in content
+    assert "Name=LuckyTwitch" in content
+    assert "Exec=LuckyTwitch %u" in content
+    assert "Icon=luckytwitch" in content
+    assert "Type=Application" in content
+    assert "MimeType=x-scheme-handler/luckytwitch;" in content
+
+    icon_file = ROOT / "assets" / "luckytwitch.png"
+    assert icon_file.is_file()
+
+    build_script = ROOT / "build_linux.sh"
+    assert build_script.is_file()
+    script_text = build_script.read_text(encoding="utf-8")
+    assert "nuitka" in script_text
+    assert "appimagetool" in script_text
 
 
 def test_release_notes_have_top_entries_for_v2():
