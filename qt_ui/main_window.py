@@ -1281,14 +1281,11 @@ class MainWindow(QMainWindow):
     def open_history_dialog(self) -> None:
         from qt_ui.dialogs import HistoryDialog
         dlg = HistoryDialog(self)
-        dlg.vod_requested.connect(self.load_vod_from_url)
+        dlg.vod_requested.connect(self.use_vod)
         dlg.exec()
 
-    def open_history_dialog(self) -> None:
-        from qt_ui.dialogs import HistoryDialog
-        dlg = HistoryDialog(self)
-        dlg.vod_requested.connect(self.load_vod_from_url)
-        dlg.exec()
+    def load_vod_from_url(self, url: str) -> None:
+        self.use_vod(url)
 
     def ask_credentials(self) -> None:
         """The Twitch API dialog (modal; this returns at once, like the tkinter one)."""
