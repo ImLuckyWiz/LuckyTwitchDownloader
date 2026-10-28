@@ -30,7 +30,7 @@ CEP_ROOT = ROOT / "premiere-plugin-cep"
 PANEL_DIR = CEP_ROOT / "cep-panel"
 SRC_DIR = CEP_ROOT / "src"
 
-ZXPSIGN_BASE_URL = "https://github.com/Adobe-CEP/CEP-Resources/raw/master/ZXPSignCMD/4.1.2"
+ZXPSIGN_BASE_URL = "https://raw.githubusercontent.com/Adobe-CEP/CEP-Resources/master/ZXPSignCMD"
 
 
 def find_or_download_zxpsigncmd(cache_dir: Path) -> Path | None:
@@ -40,32 +40,46 @@ def find_or_download_zxpsigncmd(cache_dir: Path) -> Path | None:
         return Path(which)
 
     system = platform.system().lower()
+    urls: list[str] = []
     if system == "windows":
         exe_path = cache_dir / "ZXPSignCmd.exe"
-        url = f"{ZXPSIGN_BASE_URL}/win64/ZXPSignCmd.exe"
+        urls = [
+            f"{ZXPSIGN_BASE_URL}/4.1.3/x64/ZXPSignCmd.exe",
+            f"{ZXPSIGN_BASE_URL}/4.1.103/win64/ZXPSignCmd.exe",
+            f"{ZXPSIGN_BASE_URL}/4.1.1/win64/ZXPSignCmd.exe",
+        ]
     elif system == "darwin":
         exe_path = cache_dir / "ZXPSignCmd"
-        url = f"{ZXPSIGN_BASE_URL}/osx10/ZXPSignCmd"
+        urls = [
+            f"{ZXPSIGN_BASE_URL}/4.1.3/macOS/ZXPSignCmd",
+            f"{ZXPSIGN_BASE_URL}/4.1.2/macOS/ZXPSignCmd",
+            f"{ZXPSIGN_BASE_URL}/4.1.1/osx10.15/ZXPSignCmd",
+        ]
     else:
-        # Linux
+        # Linux fallback
         exe_path = cache_dir / "ZXPSignCmd"
-        url = f"{ZXPSIGN_BASE_URL}/linux/ZXPSignCmd"
+        urls = [
+            f"{ZXPSIGN_BASE_URL}/4.1.3/x64/ZXPSignCmd",
+        ]
 
     if exe_path.exists() and exe_path.stat().st_size > 0:
         return exe_path
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Downloading ZXPSignCmd from {url}...")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "LuckyTwitch-Packager"})
-        with urllib.request.urlopen(req, timeout=30) as resp, open(exe_path, "wb") as f:
-            shutil.copyfileobj(resp, f)
-        exe_path.chmod(0o755)
-        print(f"Downloaded ZXPSignCmd to {exe_path}")
-        return exe_path
-    except Exception as exc:
-        print(f"Warning: could not download ZXPSignCmd ({exc})")
-        return None
+    for url in urls:
+        print(f"Downloading ZXPSignCmd from {url}...")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (LuckyTwitch-Packager)"})
+            with urllib.request.urlopen(req, timeout=30) as resp, open(exe_path, "wb") as f:
+                shutil.copyfileobj(resp, f)
+            exe_path.chmod(0o755)
+            print(f"Downloaded ZXPSignCmd to {exe_path}")
+            return exe_path
+        except Exception as exc:
+            print(f"Warning: could not download ZXPSignCmd from {url} ({exc})")
+            if exe_path.exists():
+                exe_path.unlink(missing_ok=True)
+    return None
 
 
 def stage_extension_bundle(stage_dir: Path) -> None:
@@ -229,8 +243,8 @@ def main() -> int:
     cache_dir = ROOT / "build" / "tools"
     zxpsign = find_or_download_zxpsigncmd(cache_dir)
     if not zxpsign:
-        print("ZXPSignCmd is not available. ZXP build skipped.")
-        return 0
+        print("Error: ZXPSignCmd is not available. Cannot build signed ZXP package.", file=sys.stderr)
+        return 1
 
     with tempfile.TemporaryDirectory() as tmp_stage:
         stage_dir = Path(tmp_stage) / "bundle"
