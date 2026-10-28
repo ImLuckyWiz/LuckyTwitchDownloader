@@ -39,6 +39,23 @@ LuckyTwitch Downloader **v2.7.0** introduces local download history tracking and
   - Visual notification badge on the Search navigation rail icon when unwatched VODs are detected.
   - Local watch list persistence (`luckytwitch_watchlist.json`) with safe error suppression.
 
+## v2.6.2
+
+LuckyTwitch Downloader **v2.6.2** fixes window un-maximize when dragging the custom title bar downwards and repairs the standalone 	ools/frameless_spike.py diagnostic tool.
+
+### What's new in 2.6.2:
+- **Title Bar Drag-to-Restore Fix:**
+  - Resolved client area misalignment when pulling down a maximized window by querying native Win32 IsZoomed state instead of Qt's cached state during WM_NCCALCSIZE.
+  - Added pure calculate_client_rect function ensuring client bounds match the window rectangle during native drag transitions and accurately align to the monitor work area when zoomed.
+  - Query monitor bounds via MonitorFromRect based on proposed window bounds to support seamless transitions and multi-monitor setups.
+  - Native state sync automatically updates the title bar restore/maximize button glyph immediately when Windows unmaximizes the window.
+- **Repaired Diagnostic Spike Tool (	ools/frameless_spike.py):**
+  - Resolved ModuleNotFoundError by inserting project root into sys.path.
+  - Added app theme and application icon styling to faithfully reproduce application behavior.
+  - Added --smoke flag for fast automated CI sanity tests and --debug flag for verbose Win32 message logging.
+- **Frame Debugging:**
+  - Added opt-in diagnostic logging enabled via LUCKYTWITCH_FRAME_DEBUG=1 or --debug.
+
 ## v2.6.1
 
 LuckyTwitch Downloader **v2.6.1** fixes window edge and corner resizing, restores native window shadows and rounded corners, enables Windows 11 Snap Layouts, and adds cross-platform resize grips.
