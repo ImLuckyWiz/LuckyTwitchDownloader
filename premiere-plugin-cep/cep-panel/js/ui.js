@@ -47,6 +47,20 @@
   function renderPreflight(r) {
     pf = r; lastCheckAt = Date.now(); checking = false;
     summary(); settingsError();
+    // update limitChapter dropdown if chapters available
+    var sel = $("limitChapter");
+    if (sel && r.file && r.file.parsed && sel.options) {
+      var chapters = window.LTCore.chapterList(r.file.parsed);
+      var currentVal = sel.value;
+      if (sel.options.length !== chapters.length + 1) {
+        var optHtml = '<option value="">All chapters (whole file)</option>';
+        chapters.forEach(function (ch) {
+          optHtml += '<option value="' + ch.index + '">' + ch.name + '</option>';
+        });
+        sel.innerHTML = optHtml;
+        sel.value = currentVal;
+      }
+    }
     // markers file
     var f = r.file;
     if (f && f.loaded) { text("fileName", f.name); text("fileHow", f.how + " \u00B7 " + f.markerCount + " markers"); }
@@ -229,6 +243,20 @@
   BOXES.forEach(function (id) { var e = $(id); if (e) e.addEventListener("toggle", saveOpen); });
   ["padBefore", "padAfter", "mergeGap"].forEach(function (id) { var e = $(id); if (e) e.addEventListener("input", function () { summary(); settingsError(); }); });
   if (window.addEventListener) window.addEventListener("focus", function () { if (AUTO && !checking && Date.now() - lastCheckAt > 3000) scheduleRefresh(150); });
+
+  var recSel = $("recipeSelect");
+  if (recSel && window.LTCore && window.LTCore.DEFAULT_RECIPES) {
+    var recHtml = "";
+    window.LTCore.DEFAULT_RECIPES.forEach(function (rec) {
+      recHtml += '<option value="' + rec.name + '">' + rec.name + '</option>';
+    });
+    recSel.innerHTML = recHtml;
+    recSel.addEventListener("change", function () {
+      if (R.applyRecipeByName) R.applyRecipeByName(recSel.value);
+    });
+  }
+  var lc = $("limitChapter");
+  if (lc) lc.addEventListener("change", function () { R.saveSettings(); });
 
   loadOpen(); summary(); idlePill();
   if (AUTO) scheduleRefresh(300);

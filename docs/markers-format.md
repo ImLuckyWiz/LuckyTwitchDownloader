@@ -15,6 +15,7 @@ The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (
   "fps": 29.97,
   "part": { "start": 1200.0, "end": 1270.0 },
   "source": { "url": "...", "vod_id": "1", "title": "...", "streamer": "...", "date": "2026-01-01" },
+  "preferences": { "pad_before": 3.0, "pad_after": 3.0 },
   "markers": [
     { "kind": "game", "name": "Just Chatting", "start": 0.0, "end": 50.0, "game": "Just Chatting", "comment": "Game / category" },
     { "kind": "clip", "name": "Funny moment (bob, 120 views)", "start": 7.0, "end": 30.0, "views": 120,
@@ -32,7 +33,9 @@ The sample `tests/fixtures/markers_sample.json` is checked by the Python tests (
 | `duration` | Real length of the part in seconds. |
 | `fps` | Frame rate read from the part with ffprobe (30 if it could not be read). |
 | `part.start` / `part.end` | Where the part sits in the original VOD, in seconds. Useful to line up the chat file, whose times count from the start of the VOD. |
-| `source` | The VOD the part came from (omitted if unknown). |
+| `source` | The VOD the part came from (omitted if unknown). |
+| `preferences` | Optional object giving starting defaults for the Premiere panel (e.g. `pad_before`, `pad_after`). |
+| `preferences` | Optional object giving starting defaults for the Premiere panel (e.g. `pad_before`, `pad_after`). |
 | `markers[].kind` | `"game"` (a game / category stretch), `"clip"` (a Twitch clip) or `"muted"` (a stretch Twitch silenced, see below). A plugin that does not know a kind must skip it, not fail. |
 | `markers[].start` / `end` | Seconds **from the start of the part** (not the VOD). `end > start` for a range; a marker can also be a single point. |
 | `markers[].name` | Clip: the title built from the chapter title template. Game: the game's name, with no `GAME:` prefix (the plugin adds it if asked). Muted: always `"Muted audio"`. |

@@ -142,7 +142,7 @@ Real-hardware test per phase: the Windows checklist in `NEW_WINDOW_BAR.md` secti
 
 ---
 
-## 7. Phase P: Premiere panel next steps (v0.15.0 and later)
+## 7. Phase P: Premiere panel next steps (ships as v0.15.0) — Done
 
 The editing logic is delicate and verified in real Premiere, so every item below keeps the rule: **plan, failsafe, confirm, verify after**, with the pure logic in `src/` plus Node tests and the mocks in `mock/`.
 

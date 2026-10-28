@@ -741,3 +741,49 @@ test("recipeSteps: markers on the sequence go after the cut and the delete, mark
   assert.deepEqual(core.recipeSteps({ placement: "sequence", recipeCutClips: false }), [{ id: "markers" }]);
   assert.deepEqual(core.recipeSteps({ placement: "clip", recipeDeleteGaps: true })[0], { id: "markers" });
 });
+
+test("v0.15.0: muted markers are recognized and planned", () => {
+  const json = JSON.stringify({
+    format: core.FORMAT,
+    version: 1,
+    markers: [
+      { kind: "muted", name: "Muted audio", start: 10, end: 40, comment: "Silenced" },
+      { kind: "clip", name: "Good clip", start: 50, end: 70, views: 25 },
+    ]
+  });
+  const f = core.parseMarkersFile(json);
+  assert.equal(f.markers.length, 2);
+  assert.equal(f.skipped, 0);
+  assert.equal(f.markers[0].kind, "muted");
+
+  const plan = core.planMarkers(f, {});
+  assert.equal(plan.items.length, 2);
+  assert.equal(plan.items[0].kind, "muted");
+  assert.equal(plan.items[0].color, core.DEFAULT_SETTINGS.mutedColor);
+});
+
+test("v0.15.0: preferences from markers file and applyPreferences", () => {
+  const json = JSON.stringify({
+    format: core.FORMAT,
+    version: 1,
+    preferences: { pad_before: 5.5, pad_after: 6.0, max_delete_pct: 90 },
+    markers: []
+  });
+  const f = core.parseMarkersFile(json);
+  assert.deepEqual(f.preferences, { padBefore: 5.5, padAfter: 6.0, maxDeletePct: 90 });
+
+  const s = core.applyPreferences(core.DEFAULT_SETTINGS, f.preferences);
+  assert.equal(s.padBefore, 5.5);
+  assert.equal(s.padAfter, 6.0);
+  assert.equal(s.maxDeletePct, 90);
+});
+
+test("v0.15.0: named recipes and applyRecipe", () => {
+  assert.ok(core.DEFAULT_RECIPES.length >= 3);
+  const safety = core.DEFAULT_RECIPES.find((r) => r.name.includes("Safety"));
+  assert.ok(safety);
+  const s = core.applyRecipe(core.DEFAULT_SETTINGS, safety);
+  assert.equal(s.padBefore, 5);
+  assert.equal(s.padAfter, 5);
+  assert.equal(s.activeRecipe, safety.name);
+});

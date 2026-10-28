@@ -72,6 +72,9 @@
     res.text = r.data;
     try { res.parsed = C.parseMarkersFile(r.data); } catch (e) { res.error = e && e.message ? e.message : String(e); return res; }
     res.loaded = true;
+    if (res.parsed && res.parsed.preferences) {
+      applyFilePreferences(res.parsed.preferences);
+    }
     res.matchesMedia = media ? C.markersNameMatchesMedia(res.name, media) : null;
     return res;
   }
@@ -84,6 +87,38 @@
   function fieldEl(id) { return document.getElementById(id); }
   function fieldText(id) { var e = fieldEl(id); return e ? String(e.value === undefined ? "" : e.value).replace(/^\s+|\s+$/g, "").replace(",", ".") : ""; }
   // Throws (with a message fit for the log) when a field holds something that is not a number; an EMPTY field means "the default".
+  var appliedPrefs = false;
+  function applyFilePreferences(prefs) {
+    if (!prefs || appliedPrefs) return;
+    try {
+      var saved = window.localStorage.getItem("ltSettings");
+      var padB = fieldEl("padBefore"), padA = fieldEl("padAfter");
+      if (padB && prefs.padBefore !== undefined && (fieldText("padBefore") === "0" || fieldText("padBefore") === "" || !saved)) {
+        padB.value = String(prefs.padBefore);
+      }
+      if (padA && prefs.padAfter !== undefined && (fieldText("padAfter") === "0" || fieldText("padAfter") === "" || !saved)) {
+        padA.value = String(prefs.padAfter);
+      }
+      appliedPrefs = true;
+    } catch (ignore) {}
+  }
+
+  function applyRecipeByName(name) {
+    var C = window.LTCore;
+    var rec = (C.DEFAULT_RECIPES || []).find(function (r) { return r.name === name; });
+    if (!rec) return;
+    for (var i = 0; i < NUM_FIELDS.length; i++) {
+      var id = NUM_FIELDS[i][0];
+      var el = fieldEl(id);
+      if (el && rec[id] !== undefined) el.value = String(rec[id]);
+    }
+    var ch = fieldEl("recipeCutChapters");
+    if (ch && rec.recipeCutChapters !== undefined) ch.checked = !!rec.recipeCutChapters;
+    var rm = fieldEl("recipeMarkers");
+    if (rm && rec.recipeMarkers !== undefined) rm.checked = !!rec.recipeMarkers;
+    saveSettings();
+  }
+
   function getSettings() {
     var C = window.LTCore, raw = {}, i, id, t, n;
     for (i = 0; i < NUM_FIELDS.length; i++) {
@@ -95,10 +130,11 @@
       raw[id] = n;
     }
     var ch = fieldEl("recipeCutChapters"); raw.recipeCutChapters = !!(ch && ch.checked);
+    var lc = fieldEl("limitChapter"); if (lc && lc.value !== "") raw.limitChapter = lc.value;
     return C.normalizeSettings(raw);
   }
   function describeSettings(s) {
-    return "keep " + s.padBefore + " s before and " + s.padAfter + " s after each clip, merge clips closer than " + s.mergeGap + " s, " + (s.recipeCutChapters ? "also cut at game changes" : "clips only") + "; delete limit " + s.maxDeletePct + "%, keep at least " + s.minKeepPieces + " piece(s)";
+    return "keep " + s.padBefore + " s before and " + s.padAfter + " s after each clip, merge clips closer than " + s.mergeGap + " s, " + (s.recipeCutChapters ? "also cut at game changes" : "clips only") + "; delete limit " + s.maxDeletePct + "%, keep at least " + s.minKeepPieces + " piece(s)" + (s.limitChapter !== null ? " (limited to chapter)" : "");
   }
   function loadSavedSettings() {
     try {
@@ -106,6 +142,7 @@
       for (i = 0; i < NUM_FIELDS.length; i++) { e = fieldEl(NUM_FIELDS[i][0]); if (e && saved[NUM_FIELDS[i][0]] !== undefined) e.value = String(saved[NUM_FIELDS[i][0]]); }
       e = fieldEl("recipeCutChapters"); if (e && saved.recipeCutChapters !== undefined) e.checked = !!saved.recipeCutChapters;
       e = fieldEl("recipeMarkers"); if (e && saved.recipeMarkers !== undefined) e.checked = !!saved.recipeMarkers;
+      e = fieldEl("limitChapter"); if (e && saved.limitChapter !== undefined) e.value = String(saved.limitChapter);
     } catch (ignore) {}
   }
   function saveSettings() {
@@ -114,6 +151,7 @@
       for (i = 0; i < NUM_FIELDS.length; i++) o[NUM_FIELDS[i][0]] = fieldText(NUM_FIELDS[i][0]);
       e = fieldEl("recipeCutChapters"); o.recipeCutChapters = !!(e && e.checked);
       e = fieldEl("recipeMarkers"); o.recipeMarkers = !(e && e.checked === false);
+      e = fieldEl("limitChapter"); if (e) o.limitChapter = e.value;
       window.localStorage.setItem("ltSettings", JSON.stringify(o));
     } catch (ignore) {}
     try { log("Settings: " + describeSettings(getSettings())); } catch (err) { log("Settings problem: " + err.message); }
@@ -124,14 +162,18 @@
   function buildPlan(file, facts) {
     var C = window.LTCore, s = getSettings();
     var v = facts.v1[0], frame = 1 / facts.seq.fps;
-    var items = C.planMarkers(file, s, 0).items;
-    var cs = C.planCutSet(items, { clips: s.recipeCutClips, chapters: s.recipeCutChapters, padBefore: s.padBefore, padAfter: s.padAfter, mergeGap: s.mergeGap, min: 0, max: v.outPoint });
+    var scope = C.chapterScope(file, s.limitChapter);
+    var rawItems = C.planMarkers(file, s, 0).items;
+    var items = scope ? C.restrictItems(rawItems, scope) : rawItems;
+    var minTime = scope ? Math.max(0, scope.min) : 0;
+    var maxTime = scope ? Math.min(v.outPoint, scope.max) : v.outPoint;
+    var cs = C.planCutSet(items, { clips: s.recipeCutClips, chapters: s.recipeCutChapters, padBefore: s.padBefore, padAfter: s.padAfter, mergeGap: s.mergeGap, min: minTime, max: maxTime });
     var clips = [{ start: v.start, end: v.end, inPoint: v.inPoint, outPoint: v.outPoint, speed: 1 }];
     var cov = C.coverage(cs.ranges, clips);
     var pending = C.pendingCutPoints(cs.points, clips, frame);
     var pieces = C.simulatePieces(clips, pending);
-    var gaps = C.planGapDelete(pieces, cs.ranges, { frame: frame, maxDeletePct: s.maxDeletePct, minKeep: s.minKeepPieces });
-    return { settings: s, items: items, ranges: cs.ranges, points: cs.points, pending: pending, clipsInside: cov.inside, clipsTotal: cs.ranges.length, gaps: gaps, markerCount: items.length };
+    var gaps = C.planGapDelete(pieces, cs.ranges, { frame: frame, maxDeletePct: s.maxDeletePct, minKeep: s.minKeepPieces, scope: scope });
+    return { settings: s, items: items, ranges: cs.ranges, points: cs.points, pending: pending, clipsInside: cov.inside, clipsTotal: cs.ranges.length, gaps: gaps, markerCount: items.length, scope: scope };
   }
   // Rough time, scaled from the step 3 / probe logs (about 40 ms per marker; 169 cuts 7.7 s, 85 deletes 9.2 s, 85 relinks 8.2 s; cuts grow with the square).
   function estimateSeconds(plan, gapCount) {
@@ -405,7 +447,7 @@
       var cf = { seq: snap.seq, video: snap.video, audio: snap.audio, v1: snap.v1, a1: snap.a1, mode: mode, expect: { origin: vo, edges: edges } };
       if (mode === "complete") {
         var pieces = snap.v1.map(function (p) { return { start: p.start, end: p.end, inPoint: p.inPoint, outPoint: p.outPoint, speed: 1 }; }), s = facts.plan.settings;
-        cf.gaps = C.planGapDelete(pieces, facts.plan.ranges, { frame: 1 / fps, maxDeletePct: s.maxDeletePct, minKeep: s.minKeepPieces });
+        cf.gaps = C.planGapDelete(pieces, facts.plan.ranges, { frame: 1 / fps, maxDeletePct: s.maxDeletePct, minKeep: s.minKeepPieces, scope: facts.plan.scope });
         cf.expectGaps = { deleteCount: facts.plan.gaps.deleteCount, keepCount: facts.plan.gaps.keepCount };
       }
       var cv = G.evaluateCuts(cf);
@@ -506,11 +548,16 @@
     else if (fr.matchesMedia === false) hard.push("The markers file \"" + fr.name + "\" does not match the video on V1.");
     if (fr.loaded && snap.v1.length && fps > 0) {
       try {
-        var st = getSettings(), items = C.planMarkers(fr.parsed, st, 0).items;
-        var cs = C.planCutSet(items, { clips: st.recipeCutClips, chapters: st.recipeCutChapters, padBefore: st.padBefore, padAfter: st.padAfter, mergeGap: st.mergeGap, min: 0, max: snap.v1[snap.v1.length - 1].outPoint });
+        var st = getSettings();
+        var scope = C.chapterScope(fr.parsed, st.limitChapter);
+        var rawItems = C.planMarkers(fr.parsed, st, 0).items;
+        var items = scope ? C.restrictItems(rawItems, scope) : rawItems;
+        var minTime = scope ? Math.max(0, scope.min) : 0;
+        var maxTime = scope ? Math.min(snap.v1[snap.v1.length - 1].outPoint, scope.max) : snap.v1[snap.v1.length - 1].outPoint;
+        var cs = C.planCutSet(items, { clips: st.recipeCutClips, chapters: st.recipeCutChapters, padBefore: st.padBefore, padAfter: st.padAfter, mergeGap: st.mergeGap, min: minTime, max: maxTime });
         pieces = snap.v1.map(function (p) { return { start: p.start, end: p.end, inPoint: p.inPoint, outPoint: p.outPoint, speed: 1 }; });
         ranges = cs.ranges;
-        gaps = C.planGapDelete(pieces, ranges, { frame: 1 / fps, maxDeletePct: st.maxDeletePct, minKeep: st.minKeepPieces });
+        gaps = C.planGapDelete(pieces, ranges, { frame: 1 / fps, maxDeletePct: st.maxDeletePct, minKeep: st.minKeepPieces, scope: scope });
       } catch (e) { hard.push("The delete plan could not be worked out: " + (e && e.message ? e.message : String(e))); }
     }
     var cv = G.evaluateDeletes({ seq: snap.seq, video: snap.video, audio: snap.audio, v1: snap.v1, a1: snap.a1, gaps: gaps, mode: mode,
@@ -875,7 +922,7 @@
   });
   bindRun("rChoose", chooseFile);
   bindRun("rAuto", clearChoice);
-  window.LTRunner = { on: on, preflight: refreshPreflight, runPhases: runPhases, gather: gather, check: check, cutsCheck: cutsCheck, buildPlan: buildPlan, getSettings: getSettings, doItAll: doItAll, describeSettings: describeSettings, printVerdict: printVerdict, log: log, state: S };
+  window.LTRunner = { on: on, preflight: refreshPreflight, runPhases: runPhases, gather: gather, check: check, cutsCheck: cutsCheck, buildPlan: buildPlan, getSettings: getSettings, saveSettings: saveSettings, loadSavedSettings: loadSavedSettings, applyRecipeByName: applyRecipeByName, applyFilePreferences: applyFilePreferences, doItAll: doItAll, describeSettings: describeSettings, printVerdict: printVerdict, log: log, state: S };
   bind("bClear", async function () { out.value = ""; });
   bind("bCopy", async function () { out.select(); document.execCommand("copy"); });
   try {

@@ -8,6 +8,11 @@ LuckyTwitch Downloader **v2.6.0** introduces a sleek custom window title bar (Ph
 - **Maximized State & Geometry Persistence:** Stored maximized state in `luckytwitch_ui.json` and added on-screen coordinate clamping to guarantee windows never restore off-screen across multi-monitor setups.
 - **Native Frame Override:** Added `--native-frame` CLI argument and `custom_titlebar` setting toggle for users who prefer native OS decoration.
 - **Vector Control Glyphs:** Added `window-minimize`, `window-maximize`, and `window-restore` vector icons rendered in code on the 24x24 grid.
+- **Premiere Pro CEP Panel v0.15.0:**
+  - **Limit to Chapter:** Select any individual game or chapter to restrict markers, cuts, and gap deletes strictly within that segment without deleting or modifying adjacent footage.
+  - **Named Recipes:** Choose from built-in recipes ("Default", "Safety (5s)", "Tight Cut & Delete") or apply custom presets for padding, gap merging, and ripple limits.
+  - **Preferences from Downloader:** Starting padding and safety values written into `.markers.json` by LuckyTwitch Downloader are automatically adopted by the panel until customized.
+  - **Muted Markers Support:** Full validation and planning support for Twitch silenced audio segments (`kind: "muted"`).
 
 ## v2.5.0
 
