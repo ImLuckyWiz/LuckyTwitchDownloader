@@ -6,11 +6,15 @@ import pytest
 
 from luckytwitch_engine import (
     Ctx,
+    GameSegment,
     JobOptions,
     Part,
     SourceInfo,
     clean_title,
+    date_components,
+    dominant_game,
     finalize_part,
+    format_duration_tag,
     part_stem,
     safe_name,
     stream_dir,
@@ -216,3 +220,89 @@ def test_part_stem_quality_token():
     # Old template without {quality} is unchanged
     opts_old = make_opts(name_template="{streamer} - {id} - part{n}", quality="720p")
     assert part_stem(src_with_fmts, opts_old, Part(1, 0, 60), 2) == "Streamer - 123 - part1"
+
+
+# --------------------------------------------------------------------------- date_components & format_duration_tag
+def test_date_components():
+    assert date_components("2026-10-26") == ("2026", "10", "26")
+    assert date_components("1999-01-05") == ("1999", "01", "05")
+    assert date_components("") == ("", "", "")
+    assert date_components(None) == ("", "", "")
+    assert date_components("invalid-date") == ("", "", "")
+    assert date_components("2026-10") == ("2026", "10", "")
+
+
+def test_format_duration_tag():
+    assert format_duration_tag(0) == "00h00m00s"
+    assert format_duration_tag(59) == "00h00m59s"
+    assert format_duration_tag(61) == "00h01m01s"
+    assert format_duration_tag(3661) == "01h01m01s"
+    assert format_duration_tag(7322.9) == "02h02m02s"
+
+
+# --------------------------------------------------------------------------- dominant_game
+def test_dominant_game():
+    segs = [
+        GameSegment(0, 1800, "Just Chatting"),
+        GameSegment(1800, 5400, "Elden Ring"),
+        GameSegment(5400, 7200, "Just Chatting"),
+    ]
+    # In range 0..1000: Just Chatting only
+    assert dominant_game(segs, 0, 1000) == "Just Chatting"
+    # In range 1000..3000: Just Chatting has 800s (1000..1800), Elden Ring has 1200s (1800..3000) -> Elden Ring
+    assert dominant_game(segs, 1000, 3000) == "Elden Ring"
+    # Whole stream: Elden Ring is 3600s, Just Chatting is 1800+1800 = 3600s (first encounter wins)
+    assert dominant_game(segs, 0, 7200) in ("Just Chatting", "Elden Ring")
+    # Empty / None / Out of range
+    assert dominant_game(None, 0, 100) == ""
+    assert dominant_game([], 0, 100) == ""
+    assert dominant_game(segs, 8000, 9000) == ""
+    assert dominant_game(segs, 100, 100) == ""
+
+
+# --------------------------------------------------------------------------- expanded naming tokens
+def test_expanded_naming_tokens_in_part_stem():
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    segs = [GameSegment(0, 3600, "Minecraft"), GameSegment(3600, 7200, "Overwatch")]
+    fmts = [VideoFormat("1080p60", 1080, 60, 6000, False, True)]
+    src = make_src(date="2026-10-27", segments=segs, formats=fmts)
+
+    # stream_date, download_date, date, year, month, day
+    opts_dates = make_opts(name_template="{stream_date}_{date}_{download_date}_{year}_{month}_{day}")
+    assert part_stem(src, opts_dates, Part(1, 0, 1800), 1) == f"2026-10-27_2026-10-27_{today}_2026_10_27"
+
+    # game, category, duration
+    opts_content = make_opts(name_template="{game} - {category} - {duration} - part{n}")
+    assert part_stem(src, opts_content, Part(1, 0, 1800), 2) == "Minecraft - Minecraft - 00h30m00s - part1"
+    assert part_stem(src, opts_content, Part(2, 3600, 7200), 2) == "Overwatch - Overwatch - 01h00m00s - part2"
+
+    # resolution as synonym for quality
+    opts_res = make_opts(name_template="{streamer} - {resolution} - part{n}", quality="1080p")
+    assert part_stem(src, opts_res, Part(1, 0, 1800), 2) == "Streamer - 1080p60 - part1"
+
+
+def test_expanded_naming_tokens_in_stream_dir():
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    segs = [GameSegment(0, 1000, "Intro"), GameSegment(1000, 7200, "Cyberpunk 2077")]
+    fmts = [VideoFormat("720p60", 720, 60, 3000, False, True)]
+    src = make_src(date="2026-10-27", duration=7200.0, segments=segs, formats=fmts)
+
+    opts = make_opts(
+        folder_template="{year}-{month}-{day} - {game} - {duration} - {quality} - {id}",
+        quality="720p",
+    )
+    p = stream_dir(src, opts)
+    assert p == Path("OUT") / "Streamer" / "2026-10-27 - Cyberpunk 2077 - 02h00m00s - 720p60 - 123"
+
+    # test download_date, stream_date, category, resolution in folder
+    opts2 = make_opts(
+        folder_template="{download_date} - {stream_date} - {category} - {resolution}",
+        quality="720p",
+    )
+    p2 = stream_dir(src, opts2)
+    assert p2 == Path("OUT") / "Streamer" / f"{today} - 2026-10-27 - Cyberpunk 2077 - 720p60"
+

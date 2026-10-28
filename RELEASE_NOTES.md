@@ -1,3 +1,14 @@
+## v2.2.1
+
+LuckyTwitch Downloader **v2.2.1** expands template tokens for both files and stream folders with broadcast date deconstruction, dominant game detection, duration tags, and resolution synonyms.
+
+### What's new in 2.2.1:
+- **Date Deconstruction Tokens:** Added `{stream_date}` (broadcast date), `{download_date}` (current download date), `{year}` (4-digit broadcast year), `{month}` (2-digit month), and `{day}` (2-digit day) to easily organize files and folders by air date.
+- **Dominant Game / Category Tokens:** Added `{game}` and `{category}` tokens. For part files, it automatically detects the game with the longest duration during that specific part's time span; for stream folders, it detects the dominant game of the entire stream.
+- **Duration Token:** Added `{duration}` token, formatting part lengths or total stream durations as standard tags (e.g. `01h30m00s`).
+- **Quality & Resolution Tokens in Folders:** Added `{quality}` and `{resolution}` tokens to stream folder templates so different quality versions can be routed to separate subfolders.
+- **Options Tab Token Chips & Previews:** Added clickable chips for all new tokens in **Options → Output** for both *File name* and *Stream folder name*, with live previews demonstrating real game segments and duration tags.
+
 ## v2.2.0
 
 LuckyTwitch Downloader **v2.2.0** brings full stream quality selection, lossless audio-only extraction (.m4a / .mp3), real-time download size estimation, `{quality}` naming token support, and robust URL/input validation.

@@ -400,8 +400,15 @@ def test_a_chip_replaces_the_selected_text(tab):
 
 def test_every_template_field_has_chips_for_its_tokens(tab):
     expected = {
-        "name_template": {"streamer", "date", "id", "title", "quality", "n", "total", "start", "end"},
-        "folder_template": {"streamer", "date", "id", "title"},
+        "name_template": {
+            "streamer", "stream_date", "download_date", "date", "year", "month",
+            "day", "game", "quality", "id", "title",
+            "duration", "n", "total", "start", "end",
+        },
+        "folder_template": {
+            "streamer", "stream_date", "download_date", "date", "year", "month", "day",
+            "game", "quality", "id", "title", "duration",
+        },
         "title_tpl": {"title", "creator", "views", "duration"},
         "clip_name_template": {"clip_title", "creator", "views", "clip_id", "clip_duration",
                                "streamer", "date", "id", "title", "start", "end"},
@@ -427,6 +434,8 @@ def test_the_example_line_follows_the_template_and_the_format_as_you_type(tab):
     assert example(tab, "name_template") == "Example:  1 of 3 - Big Stream.mp4"
     control(tab, "container").setCurrentText("mkv")
     assert example(tab, "name_template") == "Example:  1 of 3 - Big Stream.mkv"
+    tab.template_entries["name_template"].setText("{game} - {duration} - {quality}")
+    assert example(tab, "name_template") == "Example:  Just Chatting - 01h00m00s - 1080p60.mkv"
 
 
 def test_a_half_typed_template_never_breaks_the_example(tab):

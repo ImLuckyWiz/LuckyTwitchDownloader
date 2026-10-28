@@ -406,9 +406,14 @@ class OptionsTab(QWidget):
 
         self._template_row(
             adv, "File name", "How each part is called. Click a token to add it.", "name_template",
-            ["streamer", "date", "id", "title", "quality", "n", "total", "start", "end"],
-            info="{n} is the part number, {total} how many parts there are, {start} and {end} the part's "
-                 "time range in the VOD (like 01h02m03s). {id} is the VOD's Twitch id.",
+            [
+                "streamer", "stream_date", "download_date", "date", "year", "month", "day", "game",
+                "quality", "id", "title", "duration", "n", "total", "start", "end",
+            ],
+            per_row=8,
+            info="{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream date. "
+                 "{year}, {month}, {day} are broadcast dates. {game} is the dominant game played. {duration} is the part length. "
+                 "{quality} is the video quality. {n} is part number, {total} total parts, {start} and {end} part timestamps.",
             section_key="output", card=card, adv=adv)
 
         row = adv.add_row("Auto-clean titles", "Strip bot commands (!links, !gsupps) and promo tags from stream titles.")
@@ -421,7 +426,14 @@ class OptionsTab(QWidget):
 
         self.folder_entry = self._template_row(
             adv, "Stream folder name", "Name of the folder that holds one stream's files.", "folder_template",
-            ["streamer", "date", "id", "title"], divider=False, per_row=4,
+            [
+                "streamer", "stream_date", "download_date", "date", "year", "month",
+                "day", "game", "quality", "id", "title", "duration",
+            ],
+            divider=False, per_row=6,
+            info="{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream date. "
+                 "{year}, {month}, {day} are broadcast dates. {game} is the dominant stream game. "
+                 "{duration} is the total stream length. {quality} is the video quality.",
             section_key="output", card=card, adv=adv)
 
         qcard = self._card(f, "Quality", "What to download when a VOD offers several qualities (Twitch VODs).")

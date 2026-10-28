@@ -7,10 +7,28 @@ the loaded VOD (a ``SourceInfo``) or None: then a sample VOD is used.
 
 from __future__ import annotations
 
-from luckytwitch_engine import JobOptions, Part, SourceInfo, _SafeDict, part_stem, stream_dir
+from luckytwitch_engine import (
+    GameSegment,
+    JobOptions,
+    Part,
+    SourceInfo,
+    VideoFormat,
+    _SafeDict,
+    part_stem,
+    stream_dir,
+)
 
-SAMPLE_SOURCE = dict(url="https://www.twitch.tv/videos/123", id="v123", title="Big Stream", uploader="Streamer",
-                     duration=7200.0, date="2026-10-01", twitch_vod_id="123")
+SAMPLE_SOURCE = dict(
+    url="https://www.twitch.tv/videos/123",
+    id="v123",
+    title="Big Stream",
+    uploader="Streamer",
+    duration=7200.0,
+    date="2026-10-01",
+    twitch_vod_id="123",
+    segments=[GameSegment(0.0, 7200.0, "Just Chatting")],
+    formats=[VideoFormat("1080p60", 1080, 60, 6000, False, True)],
+)
 SAMPLE_CLIP = {"id": "ClipId", "title": "Epic fail", "creator_name": "viewer1", "view_count": 500, "duration": 30}
 
 _ENGINE_DEFAULTS = JobOptions(cut_text="", out_dir="")  # the engine's own default templates
@@ -28,11 +46,13 @@ def template(settings: dict, name: str, fallback: str) -> str:
 
 def example_options(settings: dict) -> JobOptions:
     container = settings.get("container", "mp4")
+    quality = settings.get("default_quality", "Best available")
     return JobOptions(
         cut_text="", out_dir="", container=container if isinstance(container, str) else "mp4",
         name_template=template(settings, "name_template", _ENGINE_DEFAULTS.name_template),
         folder_template=template(settings, "folder_template", _ENGINE_DEFAULTS.folder_template),
         clip_name_template=template(settings, "clip_name_template", _ENGINE_DEFAULTS.clip_name_template),
+        quality=quality if isinstance(quality, str) else "Best available",
         subfolders=True)
 
 

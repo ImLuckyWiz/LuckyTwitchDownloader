@@ -2655,24 +2655,73 @@ def unique_path(path: Path) -> Path:
         n += 1
 
 
+def dominant_game(segments: list[GameSegment] | None, start: float, end: float) -> str:
+    """Returns the game/category with the longest time overlap inside [start, end]."""
+    if not segments or end <= start:
+        return ""
+    overlaps: dict[str, float] = {}
+    for seg in segments:
+        seg_start = getattr(seg, "start", 0.0)
+        seg_end = getattr(seg, "end", 0.0)
+        title = (getattr(seg, "title", "") or "").strip()
+        if not title:
+            continue
+        overlap = max(0.0, min(end, seg_end) - max(start, seg_start))
+        if overlap > 0:
+            overlaps[title] = overlaps.get(title, 0.0) + overlap
+    if not overlaps:
+        return ""
+    return max(overlaps.items(), key=lambda item: item[1])[0]
+
+
+def date_components(date_str: str | None) -> tuple[str, str, str]:
+    """Extract (year, month, day) from YYYY-MM-DD or empty strings if invalid."""
+    if not date_str:
+        return "", "", ""
+    parts = date_str.strip().split("-")
+    year = parts[0] if len(parts) >= 1 and len(parts[0]) == 4 and parts[0].isdigit() else ""
+    month = parts[1] if len(parts) >= 2 and len(parts[1]) == 2 and parts[1].isdigit() else ""
+    day = parts[2] if len(parts) >= 3 and len(parts[2]) == 2 and parts[2].isdigit() else ""
+    return year, month, day
+
+
+def format_duration_tag(seconds: float) -> str:
+    """Format seconds into HHhMMmSSs tag string."""
+    s = max(0, int(seconds))
+    return f"{s // 3600:02d}h{s % 3600 // 60:02d}m{s % 60:02d}s"
+
+
 def part_stem(src: SourceInfo, opts: JobOptions, part: Part, total: int, clip: dict | None = None) -> str:
-    def tag(t: float) -> str:
-        s = int(t)
-        return f"{s // 3600:02d}h{s % 3600 // 60:02d}m{s % 60:02d}s"
+    tag = format_duration_tag
 
     resolved_q = resolve_format(src.formats, getattr(opts, "quality", QUALITY_BEST)) if getattr(src, "formats", None) else None
     q_tag = resolved_q.tag if resolved_q else ""
 
+    stream_date = src.date or ""
+    year, month, day = date_components(src.date)
+    download_date = datetime.now().strftime("%Y-%m-%d")
+    game = dominant_game(getattr(src, "segments", None), part.start, part.end)
+    duration_str = tag(max(0.0, part.end - part.start))
+
     data = _SafeDict(
         streamer=src.uploader or "vod",
-        date=src.date or "",
+        stream_date=stream_date,
+        download_date=download_date,
+        date=stream_date,
+        year=year,
+        month=month,
+        day=day,
+        game=game,
+        category=game,
         id=src.twitch_vod_id or src.id,
         title=src.title,
+        duration=duration_str,
         n=part.index,
         total=total,
         start=tag(part.start),
         end=tag(part.end),
         quality=q_tag,
+        resolution=q_tag,
     )
     template = opts.name_template
     if clip:  # single clip download: the clip's own name instead of the stream's
@@ -2710,11 +2759,32 @@ def stream_dir(src: SourceInfo, opts: JobOptions) -> Path:
     base = Path(opts.out_dir)
     if not opts.subfolders:
         return base
+
+    resolved_q = resolve_format(src.formats, getattr(opts, "quality", QUALITY_BEST)) if getattr(src, "formats", None) else None
+    q_tag = resolved_q.tag if resolved_q else ""
+
+    stream_date = src.date or ""
+    year, month, day = date_components(src.date)
+    download_date = datetime.now().strftime("%Y-%m-%d")
+    duration_val = getattr(src, "duration", 0.0) or 0.0
+    game = dominant_game(getattr(src, "segments", None), 0.0, duration_val)
+    duration_str = format_duration_tag(duration_val)
+
     data = _SafeDict(
         streamer=src.uploader or "vod",
-        date=src.date or "",
+        stream_date=stream_date,
+        download_date=download_date,
+        date=stream_date,
+        year=year,
+        month=month,
+        day=day,
+        game=game,
+        category=game,
         id=src.twitch_vod_id or src.id,
         title=src.title,
+        duration=duration_str,
+        quality=q_tag,
+        resolution=q_tag,
     )
     try:
         stream = opts.folder_template.format_map(data)
