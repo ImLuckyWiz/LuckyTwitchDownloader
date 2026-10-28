@@ -34,6 +34,35 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
+  init-release:
+    name: Initialize Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare release notes for this tag
+        shell: bash
+        run: |
+          notes=RELEASE_NOTES.md
+          first=$(head -n1 "$notes" | sed 's/^## *//; s/[[:space:]]*$//' | tr -d '\r')
+          if [ "$first" != "$GITHUB_REF_NAME" ]; then
+            echo "::error file=$notes,line=1::First line is '## $first' but the tag is '$GITHUB_REF_NAME'. Update $notes before tagging."
+            exit 1
+          fi
+          awk -v tag="$GITHUB_REF_NAME" '
+            { sub(/\r$/, "") }
+            $0 == "## " tag { found=1; print; next }
+            found && /^## / { exit }
+            found { print }
+            END { if (!found) exit 1 }
+          ' "$notes" > RELEASE_NOTES_FOR_TAG.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES_FOR_TAG.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'true' }}
+
   build:
     strategy:
       fail-fast: false
@@ -124,6 +153,16 @@ jobs:
             dist/LuckyTwitch-*.dmg
             dist/LuckyTwitch-*.AppImage
             dist/LuckyTwitch-*.tar.gz
+      - name: Upload binaries to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/LuckyTwitch-Setup.exe
+            dist/LuckyTwitch-*.dmg
+            dist/LuckyTwitch-*.AppImage
+            dist/LuckyTwitch-*.tar.gz
+          fail_on_unmatched_files: false
 
   plugin:
     runs-on: windows-latest
@@ -155,44 +194,11 @@ jobs:
           path: |
             dist/LuckyTwitch-Premiere-Plugin-CEP.zip
             dist/LuckyTwitch-Premiere-Plugin-CEP.zxp
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, build, plugin]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare release notes for this tag
-        shell: bash
-        run: |
-          notes=RELEASE_NOTES.md
-          awk -v tag="$GITHUB_REF_NAME" '
-            { sub(/\r$/, "") }
-            $0 == "## " tag { found=1; print; next }
-            found && /^## / { exit }
-            found { print }
-            END { if (!found) exit 1 }
-          ' "$notes" > RELEASE_NOTES_FOR_TAG.md
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: LuckyTwitch-*
-          merge-multiple: true
-          path: release
-      - name: Generate SHA-256 checksums
-        shell: bash
-        run: |
-          cd release
-          sha256sum * > SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v2
+      - name: Upload Premiere plugin to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/*.exe
-            release/*.dmg
-            release/*.AppImage
-            release/*.tar.gz
-            release/*.zip
-            release/*.zxp
-            release/SHA256SUMS.txt
-          body_path: RELEASE_NOTES_FOR_TAG.md
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'true' }}
+            dist/LuckyTwitch-Premiere-Plugin-CEP.zip
+            dist/LuckyTwitch-Premiere-Plugin-CEP.zxp
+          fail_on_unmatched_files: false
