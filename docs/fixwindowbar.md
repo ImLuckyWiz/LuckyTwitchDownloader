@@ -2,7 +2,7 @@
 
 
 
-Status: \*\*In progress.\*\* Code for W1 to W4 written; waiting for the Windows 11 checklist (section 9). Update the phase table (section 6) as work moves.
+Status: **Done in v2.6.1.** Shipped in release v2.6.1. For follow-up drag-restore and spike tool fixes in v2.6.2, see [`WINDOW_BAR_FIX_2_6_2.md`](WINDOW_BAR_FIX_2_6_2.md).
 
 
 
