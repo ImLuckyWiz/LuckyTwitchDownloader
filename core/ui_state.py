@@ -27,6 +27,9 @@ class UIState:
     has_completed_onboarding: bool = False
     window_maximized: bool = False
     custom_titlebar: bool = True
+    max_concurrent_jobs: int = 1
+    rate_limit: str = ""
+    language: str = "en"
 
 
 DEFAULT_UI_STATE = UIState()
@@ -51,6 +54,9 @@ def load_ui_state(path: Path | None = None) -> UIState:
                     has_completed_onboarding=bool(data.get("has_completed_onboarding", False)),
                     window_maximized=bool(data.get('window_maximized', False)),
                     custom_titlebar=bool(data.get('custom_titlebar', True)),
+                    max_concurrent_jobs=int(data.get('max_concurrent_jobs', 1)),
+                    rate_limit=str(data.get('rate_limit', '')),
+                    language=str(data.get('language', 'en')),
                 )
     except Exception:  # noqa: BLE001
         pass

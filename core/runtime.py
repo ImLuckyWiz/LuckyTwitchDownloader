@@ -143,6 +143,10 @@ class Ctx:
             self._log(f"{self._label}: {body}" if body else self._label)
 
     # -- cancel -- #
+    @property
+    def cancelled(self) -> bool:
+        return self.cancel_event.is_set()
+
     def cancel(self) -> None:
         self.cancel_event.set()
         proc = self.proc

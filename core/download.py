@@ -298,6 +298,7 @@ def run_ytdlp(
     total_secs: float | None = None,
     watch_dir: Path | None = None,
     format_id: str | None = None,
+    rate_limit: str | None = None,
 ) -> None:
     """
     Run the yt-dlp binary, forwarding progress to ctx. Cancel kills the whole process tree.
@@ -324,6 +325,8 @@ def run_ytdlp(
     if total_secs:
         # --quiet makes yt-dlp run ffmpeg with -loglevel quiet; -stats brings its progress line back.
         cmd += ["--downloader-args", "ffmpeg:-stats"]
+    if rate_limit and str(rate_limit).strip():
+        cmd += ["--limit-rate", str(rate_limit).strip()]
     ffmpeg = _find("ffmpeg")
     if ffmpeg:
         cmd += ["--ffmpeg-location", str(Path(ffmpeg).parent)]
@@ -396,14 +399,20 @@ def _find_media(folder: Path) -> Path | None:
     return max(files, key=lambda p: p.stat().st_size) if files else None
 
 
-def download_full(ctx: Ctx, url: str, workdir: Path, threads: int, format_id: str | None = None) -> Path:
+def download_full(
+    ctx: Ctx, url: str, workdir: Path, threads: int, format_id: str | None = None, rate_limit: str | None = None
+) -> Path:
     workdir.mkdir(parents=True, exist_ok=True)
     done = workdir / "full.done"
     existing = _find_media(workdir)
     if done.exists() and existing:
         ctx.log("Full VOD already downloaded in the work folder, reusing it.")
         return existing
-    kw = {"format_id": format_id} if format_id is not None else {}
+    kw = {}
+    if format_id is not None:
+        kw["format_id"] = format_id
+    if rate_limit and str(rate_limit).strip():
+        kw["rate_limit"] = str(rate_limit).strip()
     eng = sys.modules.get("luckytwitch_engine")
     _ytdlp = getattr(eng, "run_ytdlp", run_ytdlp) if eng else run_ytdlp
     _ytdlp(ctx, ["-o", _out_template(workdir, "full"), url], threads, **kw)
@@ -415,7 +424,14 @@ def download_full(ctx: Ctx, url: str, workdir: Path, threads: int, format_id: st
 
 
 def download_section(
-    ctx: Ctx, url: str, part: Part, workdir: Path, threads: int, exact: bool, format_id: str | None = None
+    ctx: Ctx,
+    url: str,
+    part: Part,
+    workdir: Path,
+    threads: int,
+    exact: bool,
+    format_id: str | None = None,
+    rate_limit: str | None = None,
 ) -> Path:
     pdir = workdir / f"part{part.index}"
     if pdir.exists():
@@ -424,7 +440,11 @@ def download_section(
     args = ["-o", _out_template(pdir, "part"), "--download-sections", f"*{part.start:.3f}-{part.end:.3f}"]
     if exact:
         args.append("--force-keyframes-at-cuts")
-    kw = {"format_id": format_id} if format_id is not None else {}
+    kw = {}
+    if format_id is not None:
+        kw["format_id"] = format_id
+    if rate_limit and str(rate_limit).strip():
+        kw["rate_limit"] = str(rate_limit).strip()
     eng = sys.modules.get("luckytwitch_engine")
     _ytdlp = getattr(eng, "run_ytdlp", run_ytdlp) if eng else run_ytdlp
     _ytdlp(ctx, args + [url], threads, total_secs=part.duration, watch_dir=pdir, **kw)
