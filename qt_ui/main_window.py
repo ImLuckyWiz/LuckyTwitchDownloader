@@ -14,7 +14,7 @@ import weakref
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtCore import QEvent, QRect, Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QProgressBar, QPushButton, QVBoxLayout, QWidget,

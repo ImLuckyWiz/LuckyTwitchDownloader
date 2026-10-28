@@ -36,6 +36,8 @@ def test_save_and_load_ui_state_roundtrip(tmp_path: Path):
         rail_expanded=True,
         log_open=True,
         splitter_sizes=[250, 450],
+        window_maximized=True,
+        custom_titlebar=False,
     )
     ui_state.save_ui_state(s1, target)
     assert target.is_file()
@@ -49,6 +51,8 @@ def test_save_and_load_ui_state_roundtrip(tmp_path: Path):
     assert loaded.rail_expanded is True
     assert loaded.log_open is True
     assert loaded.splitter_sizes == [250, 450]
+    assert loaded.window_maximized is True
+    assert loaded.custom_titlebar is False
 
 
 def test_save_ui_state_ignores_os_errors(tmp_path: Path):
