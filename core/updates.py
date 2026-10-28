@@ -218,7 +218,12 @@ def fetch_latest(session: requests.Session | None = None,
             asset_size = asset.get("size", 0) if asset else 0
 
             sha256 = ""
-            if asset_name:
+            if asset:
+                digest = asset.get("digest", "")
+                if digest and digest.startswith("sha256:"):
+                    sha256 = digest.split(":", 1)[1].strip().lower()
+
+            if not sha256 and asset_name:
                 for a in data.get("assets", []):
                     if a.get("name") == "SHA256SUMS.txt" and a.get("browser_download_url"):
                         try:
