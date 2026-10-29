@@ -139,12 +139,8 @@ class MainWindow(QMainWindow):
         self._show_welcome = show_welcome
         self.welcome_overlay = None
         ui_path = getattr(paths, "UI_STATE_PATH", paths.DATA_DIR / "luckytwitch_ui.json")
-        has_saved = ui_path.is_file()
         self._ui_state = load_ui_state(ui_path)
-        if has_saved and getattr(self._ui_state, "language", None):
-            set_language(self._ui_state.language)
-        else:
-            set_language(get_system_language())
+        set_language("en")
         self._login_dialog: TwitchDialog | None = None
         self._shortcuts_dialog: ShortcutsDialog | None = None
         self._last_clipboard_offer: str = ""
@@ -499,18 +495,12 @@ class MainWindow(QMainWindow):
         state = load_ui_state(ui_path)
         self._ui_state = state
         from core.i18n import get_language, get_system_language, set_language
-        if has_saved and getattr(state, "language", None):
-            set_language(state.language)
-        else:
-            set_language(get_system_language())
+        set_language("en")
         if hasattr(self, "tab_options") and hasattr(self.tab_options, "lang_combo"):
-            from core.i18n import SUPPORTED_LANGUAGES
-            cur = get_language()
-            if cur in SUPPORTED_LANGUAGES:
-                idx = list(SUPPORTED_LANGUAGES.keys()).index(cur)
-                self.tab_options.lang_combo.blockSignals(True)
-                self.tab_options.lang_combo.setCurrentIndex(idx)
-                self.tab_options.lang_combo.blockSignals(False)
+            self.tab_options.lang_combo.blockSignals(True)
+            self.tab_options.lang_combo.setCurrentIndex(0)
+            self.tab_options.lang_combo.setEnabled(False)
+            self.tab_options.lang_combo.blockSignals(False)
         self.rail.set_expanded(state.rail_expanded, animate=False)
         if has_saved:
             w = max(state.window_w, MIN_SIZE[0])

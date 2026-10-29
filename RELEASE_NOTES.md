@@ -1,3 +1,11 @@
+## v2.9.1
+
+LuckyTwitch Downloader **v2.9.1** temporarily disables Spanish localization to prevent partial translations across the interface while the full gettext/PO translation architecture and coverage are finalized (per Phase F4b roadmap).
+
+### What's changed in 2.9.1:
+- Interface language is temporarily locked to English only to maintain 100% consistent English text across all tabs, dialogs, and controls.
+- Language selector in Options tab indicates Spanish translation is currently in progress.
+
 ## v2.9.0
 
 LuckyTwitch Downloader **v2.9.0** brings full interface internationalization with official Spanish (Español) localization (Phase F4).

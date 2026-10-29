@@ -719,35 +719,18 @@ class OptionsTab(QWidget):
         row.add_control(self.check_app_updates_btn)
         self.refresh_app_update_state()
 
-        self.interface_card = self._card(f, t("Interface"), t("Language and appearance settings."))
-        self.lang_row = self.interface_card.add_row(t("Language"), t("Select interface language (English / Español)."), divider=False)
-        from core.i18n import SUPPORTED_LANGUAGES, get_language, set_language
-        from core.ui_state import load_ui_state, save_ui_state
+        self.interface_card = self._card(f, "Interface", "Language and appearance settings.")
+        self.lang_row = self.interface_card.add_row(
+            "Language",
+            "Spanish localization is in progress and temporarily disabled (English only).",
+            divider=False,
+        )
         self.lang_combo = ComboBox()
-        for code, name in SUPPORTED_LANGUAGES.items():
-            self.lang_combo.addItem(name, code)
-        cur_lang = get_language()
-        idx = list(SUPPORTED_LANGUAGES.keys()).index(cur_lang) if cur_lang in SUPPORTED_LANGUAGES else 0
-        self.lang_combo.setCurrentIndex(idx)
-
-        def _on_lang_changed(i: int):
-            code = list(SUPPORTED_LANGUAGES.keys())[i]
-            if code != get_language():
-                set_language(code)
-                st = load_ui_state()
-                st.language = code
-                save_ui_state(st)
-                win = self.window()
-                if hasattr(win, "refresh_language"):
-                    win.refresh_language()
-                else:
-                    self.refresh_language()
-                from qt_ui import notify
-                title = t("Language changed")
-                msg = t("Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface.", lang=SUPPORTED_LANGUAGES.get(code, code))
-                notify.info(win, title, msg)
-
-        self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
+        self.lang_combo.addItem("English", "en")
+        self.lang_combo.addItem("Español (In progress)", "es")
+        self.lang_combo.setCurrentIndex(0)
+        self.lang_combo.setEnabled(False)
+        self.lang_combo.setToolTip("Translations are temporarily disabled while full Spanish localization is being finalized.")
         self.lang_row.add_control(self.lang_combo)
 
         card = self._card(

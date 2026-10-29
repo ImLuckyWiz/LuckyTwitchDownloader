@@ -64,11 +64,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     paths.ensure_data_dir()
-    from core.ui_state import load_ui_state
-    from core.i18n import get_system_language, set_language
-    _ui_st = load_ui_state()
-    _active_lang = _ui_st.language if _ui_st and getattr(_ui_st, "language", None) else get_system_language()
-    set_language(_active_lang)
+    from core.i18n import LANG_EN, set_language
+    set_language(LANG_EN)
     link = weblink.find_link(argv[1:])  # started by a luckytwitch:// link?
     if link and weblink.hand_off(link, paths.LINKS_DIR, paths.BEAT_PATH):
         return 0  # the window that is already open took it
