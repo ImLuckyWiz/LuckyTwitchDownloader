@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from core.files import open_in_file_manager
 from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, BORDER_STRONG, ERR, FG, MUTED, OK, WARN, WHITE
 from core.settings import DEFAULTS
+from core.i18n import t
 from core.status import STATUS_COLOURS, log_kind, status_label
 from luckytwitch_engine import stream_dir
 from qt_ui import dialogs, notify
@@ -404,11 +405,11 @@ class QueueTab(QWidget):
         buttons.setSpacing(6)
 
         # Primary group: Start queue / Cancel current
-        self.start_btn = QPushButton("Start queue")
+        self.start_btn = QPushButton(t("Start queue"))
         self.start_btn.setIcon(icon("play", 15, ACCENT_TEXT))
         self.start_btn.setProperty("variant", "accent")
         self.start_btn.clicked.connect(self.start_queue)
-        self.cancel_btn = QPushButton("Cancel current")
+        self.cancel_btn = QPushButton(t("Cancel current"))
         self.cancel_btn.setIcon(icon("stop", 15))
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_current)
@@ -423,7 +424,7 @@ class QueueTab(QWidget):
         buttons.addSpacing(4)
 
         # Secondary group: Retry / Move up / Move down / Remove selected / Clear finished
-        self.retry_btn = QPushButton("Retry")
+        self.retry_btn = QPushButton(t("Retry"))
         self.retry_btn.setIcon(icon("refresh", 15))
         self.retry_btn.setToolTip("Retry failed or cancelled jobs")
         self.retry_btn.clicked.connect(self.retry_failed_or_selected)
@@ -437,10 +438,10 @@ class QueueTab(QWidget):
         self.move_down_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.move_down_btn.setToolTip("Move selected waiting job down")
         self.move_down_btn.clicked.connect(lambda: self.move_selected(1))
-        self.remove_btn = QPushButton("Remove selected")
+        self.remove_btn = QPushButton(t("Remove selected"))
         self.remove_btn.setIcon(icon("trash", 15))
         self.remove_btn.clicked.connect(self.remove_selected)
-        self.clear_btn = QPushButton("Clear finished")
+        self.clear_btn = QPushButton(t("Clear finished"))
         self.clear_btn.setIcon(icon("check", 15))
         self.clear_btn.clicked.connect(self.clear_finished)
 
@@ -456,8 +457,8 @@ class QueueTab(QWidget):
 
         self.concurrency_combo = ComboBox()
         self.concurrency_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.concurrency_combo.addItems(["1 job", "2 parallel jobs", "3 parallel jobs", "4 parallel jobs"])
-        self.concurrency_combo.setToolTip("How many queue jobs can run at the same time")
+        self.concurrency_combo.addItems([t("1 job"), t("2 parallel jobs"), t("3 parallel jobs"), t("4 parallel jobs")])
+        self.concurrency_combo.setToolTip(t("How many queue jobs can run at the same time"))
         self.concurrency_combo.setCurrentIndex(max(0, min(3, self.max_concurrent_jobs - 1)))
 
         def _on_concurrency_changed(idx: int):
@@ -482,7 +483,7 @@ class QueueTab(QWidget):
         self.speed_limit_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         for label, _val in self._speed_limit_choices:
             self.speed_limit_combo.addItem(label)
-        self.speed_limit_combo.setToolTip("Bandwidth limit passed to yt-dlp (--limit-rate)")
+        self.speed_limit_combo.setToolTip(t("Bandwidth limit passed to yt-dlp (--limit-rate)"))
         current_speed_idx = next(
             (i for i, (_l, val) in enumerate(self._speed_limit_choices) if val == self.rate_limit), 0
         )
@@ -498,14 +499,14 @@ class QueueTab(QWidget):
         buttons.addWidget(self.speed_limit_combo)
 
         buttons.addStretch(1)
-        self.folder_btn = QPushButton("Open folder")
+        self.folder_btn = QPushButton(t("Open folder"))
         self.folder_btn.setIcon(icon("folder-open", 15))
         self.folder_btn.clicked.connect(self.open_queue_folder)
         buttons.addWidget(self.folder_btn)
         self.queue_card.body_layout.addLayout(buttons)
 
     def _build_log_card(self) -> None:
-        self.log_card = Card("Log")
+        self.log_card = Card(t("Log"))
         self.scroll.body_layout.addWidget(self.log_card, 1)
 
         # Integrated console toolbar: filters & search on left, autoscroll & actions on right
@@ -515,7 +516,7 @@ class QueueTab(QWidget):
 
         self.filter_buttons: dict[str, QPushButton] = {}
         for key, label in (("all", "All"), ("warn", "Warnings"), ("err", "Errors")):
-            btn = QPushButton(label)
+            btn = QPushButton(t(label))
             btn.setProperty("variant", "chip")
             btn.setCheckable(True)
             btn.setChecked(key == "all")
@@ -525,7 +526,7 @@ class QueueTab(QWidget):
             self.filter_buttons[key] = btn
 
         self.log_search_entry = QLineEdit()
-        self.log_search_entry.setPlaceholderText("Filter log lines\u2026")
+        self.log_search_entry.setPlaceholderText(t("Filter log lines…"))
         self.log_search_entry.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.log_search_entry.setMaximumWidth(240)
         self.log_search_entry.textChanged.connect(self._on_log_search)
@@ -533,24 +534,24 @@ class QueueTab(QWidget):
 
         toolbar.addStretch(1)
 
-        self.autoscroll_btn = QPushButton("Pause autoscroll")
+        self.autoscroll_btn = QPushButton(t("Pause autoscroll"))
         self.autoscroll_btn.setProperty("variant", "chip")
         self.autoscroll_btn.setCheckable(True)
         self.autoscroll_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.autoscroll_btn.toggled.connect(self._on_autoscroll_toggled)
         toolbar.addWidget(self.autoscroll_btn)
 
-        self.save_log_btn = QPushButton("Save log\u2026")
+        self.save_log_btn = QPushButton(t("Save log…"))
         self.save_log_btn.setIcon(icon("download", 14))
         self.save_log_btn.clicked.connect(self.save_log)
         toolbar.addWidget(self.save_log_btn)
 
-        self.copy_btn = QPushButton("Copy log")
+        self.copy_btn = QPushButton(t("Copy log"))
         self.copy_btn.setIcon(icon("copy", 14))
         self.copy_btn.clicked.connect(self.copy_log)
         toolbar.addWidget(self.copy_btn)
 
-        self.clear_log_btn = QPushButton("Clear log")
+        self.clear_log_btn = QPushButton(t("Clear log"))
         self.clear_log_btn.setIcon(icon("trash", 14))
         self.clear_log_btn.clicked.connect(self.clear_log)
         toolbar.addWidget(self.clear_log_btn)
@@ -804,3 +805,33 @@ class QueueTab(QWidget):
         except Exception:  # noqa: BLE001
             pass
         self.open_output_folder(Path(item.job.opts.out_dir))
+
+    def refresh_language(self) -> None:
+        """Update QueueTab text labels dynamically when language changes."""
+        self.start_btn.setText(t("Start queue"))
+        self.cancel_btn.setText(t("Cancel current"))
+        self.retry_btn.setText(t("Retry"))
+        self.remove_btn.setText(t("Remove selected"))
+        self.clear_btn.setText(t("Clear finished"))
+        self.folder_btn.setText(t("Open folder"))
+        self.copy_btn.setText(t("Copy log"))
+        self.save_log_btn.setText(t("Save log…"))
+        self.clear_log_btn.setText(t("Clear log"))
+        self.autoscroll_btn.setText(t("Pause autoscroll"))
+        self.log_search_entry.setPlaceholderText(t("Filter log lines…"))
+        if hasattr(self, "log_card") and getattr(self.log_card, "title_label", None):
+            self.log_card.title_label.setText(t("Log"))
+        if hasattr(self, "queue_card") and getattr(self.queue_card, "title_label", None):
+            self.queue_card.title_label.setText(t("Queue"))
+        cur_concurrency = self.concurrency_combo.currentIndex()
+        self.concurrency_combo.blockSignals(True)
+        self.concurrency_combo.clear()
+        self.concurrency_combo.addItems([t("1 job"), t("2 parallel jobs"), t("3 parallel jobs"), t("4 parallel jobs")])
+        self.concurrency_combo.setCurrentIndex(cur_concurrency)
+        self.concurrency_combo.setToolTip(t("How many queue jobs can run at the same time"))
+        self.concurrency_combo.blockSignals(False)
+        if hasattr(self, "filter_buttons"):
+            labels = {"all": "All", "warn": "Warnings", "err": "Errors"}
+            for k, btn in self.filter_buttons.items():
+                if k in labels:
+                    btn.setText(t(labels[k]))

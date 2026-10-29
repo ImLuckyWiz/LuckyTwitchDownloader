@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 from core.recent import load_recent, save_recent
 from core.paths import MAX_RECENT
 from core.search import VIDEO_KINDS
+from core.i18n import t
 from luckytwitch_engine import fetch_thumbnail, fetch_videos, search_channels
 from qt_ui import dialogs
 from qt_ui.bridge import Bridge
@@ -172,7 +173,7 @@ class SearchTab(QWidget):
         self.search_edit = QLineEdit()
         self.search_edit.returnPressed.connect(self.on_search)
         row.addWidget(self.search_edit, 1)
-        self.search_btn = QPushButton("Search")
+        self.search_btn = QPushButton(t("Search"))
         self.search_btn.setProperty("variant", "accent")
         self.search_btn.clicked.connect(self.on_search)
         row.addWidget(self.search_btn)
@@ -279,7 +280,8 @@ class SearchTab(QWidget):
         head.addWidget(self.grid_mode_btn, 0, Qt.AlignmentFlag.AlignTop)
 
         self.type_combo = ComboBox()
-        self.type_combo.addItems(list(VIDEO_KINDS))
+        for k in VIDEO_KINDS:
+            self.type_combo.addItem(t(k), k)
         self.type_combo.setMinimumContentsLength(16)
         self.type_combo.setSizeAdjustPolicy(ComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.type_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -368,7 +370,7 @@ class SearchTab(QWidget):
 
     @property
     def sv_type(self) -> str:
-        return self.type_combo.currentText()
+        return self.type_combo.currentData() or self.type_combo.currentText()
 
     def set_title(self, text: str) -> None:
         self.title_label.setText(text)
@@ -725,3 +727,14 @@ def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active
     except Exception:
         pass
 
+
+    def refresh_language(self) -> None:
+        """Update SearchTab text labels dynamically when language changes."""
+        self.search_btn.setText(t("Search"))
+        cur_idx = self.type_combo.currentIndex()
+        self.type_combo.blockSignals(True)
+        self.type_combo.clear()
+        for k in VIDEO_KINDS:
+            self.type_combo.addItem(t(k), k)
+        self.type_combo.setCurrentIndex(cur_idx)
+        self.type_combo.blockSignals(False)

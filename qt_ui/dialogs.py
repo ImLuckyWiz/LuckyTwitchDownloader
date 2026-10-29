@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.palette import ACCENT, ERR, MUTED
+from core.i18n import t
 from qt_ui.icons import icon, pixmap
 from qt_ui.theme import mono_font
 
@@ -249,7 +250,7 @@ class HistoryDialog(QDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("historyDialog")
-        self.setWindowTitle("Download History")
+        self.setWindowTitle(t("Download History"))
         self.setModal(True)
         self.resize(760, 480)
 
@@ -259,13 +260,13 @@ class HistoryDialog(QDialog):
 
         # Header row
         header = QHBoxLayout()
-        title_lbl = QLabel("Download History", self)
+        title_lbl = QLabel(t("Download History"), self)
         title_lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
         header.addWidget(title_lbl)
 
         header.addStretch(1)
 
-        self.clear_btn = QPushButton("Clear history", self)
+        self.clear_btn = QPushButton(t("Clear history"), self)
         self.clear_btn.setProperty("variant", "ghost")
         self.clear_btn.clicked.connect(self._on_clear)
         header.addWidget(self.clear_btn)
@@ -276,7 +277,7 @@ class HistoryDialog(QDialog):
         from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
         self.table = QTableWidget(self)
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Downloaded", "Streamer", "Title", "Parts", "Quality", "Actions"])
+        self.table.setHorizontalHeaderLabels([t("Downloaded"), t("Streamer"), t("Title"), t("Parts"), t("Quality"), "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -288,7 +289,7 @@ class HistoryDialog(QDialog):
         self.count_label.setProperty("role", "muted")
         footer.addWidget(self.count_label)
         footer.addStretch(1)
-        close_btn = QPushButton("Close", self)
+        close_btn = QPushButton(t("Close"), self)
         close_btn.setProperty("variant", "accent")
         close_btn.clicked.connect(self.accept)
         footer.addWidget(close_btn)

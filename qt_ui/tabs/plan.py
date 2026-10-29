@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 from core.options import QUALITY_CHOICES, STRATEGIES, build_filter, build_options, flag
 from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, ERR, FG, MUTED, OK, WARN
 from core.settings import DEFAULTS
+from core.i18n import t
 from core.timeline import game_colour
 from luckytwitch_engine import (
     QUALITY_BEST, EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, estimate_bytes, fmt_hms,
@@ -340,14 +341,14 @@ class PlanTab(ScrollPage):
         steps.setProperty("role", "muted")
         olay.addWidget(steps, 1)
 
-        self.onboard_search_btn = QPushButton("Search streamers", self.onboarding_card)
+        self.onboard_search_btn = QPushButton(t("Search streamers"), self.onboarding_card)
         self.onboard_search_btn.setIcon(icon("search", 16))
         self.onboard_search_btn.setProperty("variant", "ghost")
         self.onboard_search_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.onboard_search_btn.clicked.connect(self.search_requested.emit)
         olay.addWidget(self.onboard_search_btn)
 
-        self.onboard_paste_btn = QPushButton("Paste from clipboard", self.onboarding_card)
+        self.onboard_paste_btn = QPushButton(t("Paste from clipboard"), self.onboarding_card)
         self.onboard_paste_btn.setIcon(icon("copy", 16))
         self.onboard_paste_btn.setProperty("variant", "ghost")
         self.onboard_paste_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -553,19 +554,19 @@ class PlanTab(ScrollPage):
         sel_lbl.setProperty("role", "muted")
         sblay.addWidget(sel_lbl)
 
-        self.select_all_clips_btn = QPushButton("Select all")
+        self.select_all_clips_btn = QPushButton(t("Select all"))
         self.select_all_clips_btn.setProperty("variant", "chip")
         self.select_all_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.select_all_clips_btn.clicked.connect(self.select_all_clips)
         sblay.addWidget(self.select_all_clips_btn)
 
-        self.invert_clips_btn = QPushButton("Invert")
+        self.invert_clips_btn = QPushButton(t("Invert"))
         self.invert_clips_btn.setProperty("variant", "chip")
         self.invert_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.invert_clips_btn.clicked.connect(self.invert_clip_selection)
         sblay.addWidget(self.invert_clips_btn)
 
-        self.clear_clips_btn = QPushButton("Clear")
+        self.clear_clips_btn = QPushButton(t("Clear"))
         self.clear_clips_btn.setProperty("variant", "chip")
         self.clear_clips_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.clear_clips_btn.clicked.connect(self.clear_clip_selection)
@@ -612,10 +613,10 @@ class PlanTab(ScrollPage):
         blay = QHBoxLayout(brow)
         blay.setContentsMargins(0, 8, 0, 0)
         blay.setSpacing(6)
-        self.split_btn = QPushButton("Split at selected clip")
+        self.split_btn = QPushButton(t("Split at selected clip"))
         self.split_btn.setIcon(icon("scissors", 16))
         self.split_btn.clicked.connect(self.split_at_clip)
-        self.download_clips_btn = QPushButton("Download only selected clip")
+        self.download_clips_btn = QPushButton(t("Download only selected clip"))
         self.download_clips_btn.setIcon(icon("download", 16))
         self.download_clips_btn.clicked.connect(self.download_clips)
         blay.addWidget(self.split_btn)
@@ -627,10 +628,10 @@ class PlanTab(ScrollPage):
         self.plan_summary_lbl = QLabel("")
         self.plan_summary_lbl.setProperty("role", "muted")
         self.footer_layout.addWidget(self.plan_summary_lbl, 1)
-        self.queue_btn = QPushButton("Add to queue")
+        self.queue_btn = QPushButton(t("Add to queue"))
         self.queue_btn.setIcon(icon("plus", 16))
         self.queue_btn.clicked.connect(self._on_add_to_queue)
-        self.start_btn = QPushButton("Add && start")
+        self.start_btn = QPushButton(t("Add && start"))
         self.start_btn.setIcon(icon("play", 16, "#ffffff"))
         self.start_btn.setProperty("variant", "accent")
         self.start_btn.clicked.connect(self._on_add_and_start)
@@ -1120,3 +1121,15 @@ class PlanTab(ScrollPage):
     def on_frames(self, src, frames) -> None:
         if src is self.source:
             self.timeline.set_frames(frames)
+
+    def refresh_language(self) -> None:
+        """Update PlanTab text labels dynamically when language changes."""
+        self.queue_btn.setText(t("Add to queue"))
+        self.start_btn.setText(t("Add && start"))
+        self.download_clips_btn.setText(t("Download only selected clip"))
+        self.split_btn.setText(t("Split at selected clip"))
+        self.select_all_clips_btn.setText(t("Select all"))
+        self.invert_clips_btn.setText(t("Invert"))
+        self.clear_clips_btn.setText(t("Clear"))
+        self.onboard_search_btn.setText(t("Search streamers"))
+        self.onboard_paste_btn.setText(t("Paste from clipboard"))

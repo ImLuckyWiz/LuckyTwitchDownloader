@@ -39,6 +39,7 @@ from core.options import (
     STRATEGY_NAMES, flag,
 )
 from core.settings import DEFAULTS
+from core.i18n import t
 from luckytwitch_engine import APP_DIR, CHAT_FORMATS, TOOLS_DIR
 from qt_ui import dialogs
 from qt_ui.binder import SettingsBinder
@@ -92,7 +93,7 @@ class OptionsTab(QWidget):
         outer.setSpacing(10)
         left = QVBoxLayout()
         left.setContentsMargins(0, 8, 0, 0)
-        self.nav = SideNav(SECTIONS)
+        self.nav = SideNav([(k, t(label)) for k, label in SECTIONS])
         left.addWidget(self.nav)
         left.addStretch(1)
         outer.addLayout(left)
@@ -718,8 +719,8 @@ class OptionsTab(QWidget):
         row.add_control(self.check_app_updates_btn)
         self.refresh_app_update_state()
 
-        interface_card = self._card(f, "Interface", "Language and appearance settings.")
-        lang_row = interface_card.add_row("Language", "Select interface language (English / Español).", divider=False)
+        self.interface_card = self._card(f, t("Interface"), t("Language and appearance settings."))
+        self.lang_row = self.interface_card.add_row(t("Language"), t("Select interface language (English / Español)."), divider=False)
         from core.i18n import SUPPORTED_LANGUAGES, get_language, set_language
         from core.ui_state import load_ui_state, save_ui_state
         self.lang_combo = ComboBox()
@@ -731,13 +732,23 @@ class OptionsTab(QWidget):
 
         def _on_lang_changed(i: int):
             code = list(SUPPORTED_LANGUAGES.keys())[i]
-            set_language(code)
-            st = load_ui_state()
-            st.language = code
-            save_ui_state(st)
+            if code != get_language():
+                set_language(code)
+                st = load_ui_state()
+                st.language = code
+                save_ui_state(st)
+                win = self.window()
+                if hasattr(win, "refresh_language"):
+                    win.refresh_language()
+                else:
+                    self.refresh_language()
+                from qt_ui import notify
+                title = t("Language changed")
+                msg = t("Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface.", lang=SUPPORTED_LANGUAGES.get(code, code))
+                notify.info(win, title, msg)
 
         self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
-        lang_row.add_control(self.lang_combo)
+        self.lang_row.add_control(self.lang_combo)
 
         card = self._card(
             f, "Links from web pages",
@@ -853,3 +864,20 @@ class OptionsTab(QWidget):
 
     def set_saved_chat_running(self, running: bool) -> None:
         self.saved_chat_btn.setEnabled(not running)
+
+    def refresh_language(self) -> None:
+        """Update OptionsTab text labels dynamically when language changes."""
+        for key, base_lbl in SECTIONS:
+            btn = self.nav.buttons.get(key)
+            if btn is not None:
+                tr = t(base_lbl)
+                count = getattr(btn, "_badge_count", 0)
+                btn.setText(f"{tr} ({count})" if count > 0 else tr)
+        if hasattr(self, "interface_card") and getattr(self.interface_card, "title_label", None):
+            self.interface_card.title_label.setText(t("Interface"))
+            if self.interface_card.subtitle_label:
+                self.interface_card.subtitle_label.setText(t("Language and appearance settings."))
+        if hasattr(self, "lang_row"):
+            self.lang_row.title_label.setText(t("Language"))
+            if hasattr(self.lang_row, "hint_label") and self.lang_row.hint_label:
+                self.lang_row.hint_label.setText(t("Select interface language (English / Español)."))

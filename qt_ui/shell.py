@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.palette import ACCENT, MUTED, OK
+from core.i18n import t
 from luckytwitch_engine import fmt_hms
 from qt_ui.icons import icon
 from qt_ui.motion import Motion, animate_width
@@ -133,7 +134,7 @@ class NavRail(QFrame):
     def _make_button(self, idx: int) -> _RailButton:
         key, _glyph, label, icon_name = RAIL_ITEMS[idx]
         btn = _RailButton(self, idx, key, icon_name)
-        btn.setToolTip(label)
+        btn.setToolTip(t(label))
         btn.clicked.connect(lambda _checked=False, i=idx: self.set_current_index(i, emit=True))
         self.buttons[idx] = btn
         self.buttons_by_key[key] = btn
@@ -205,7 +206,8 @@ class NavRail(QFrame):
     def _refresh_labels(self) -> None:
         for idx, btn in self.buttons.items():
             _key, _glyph, label, _icon = RAIL_ITEMS[idx]
-            display_label = label.replace("&", "&&")
+            display_label = t(label).replace("&", "&&")
+            btn.setToolTip(t(label))
             badge = ""
             if idx == 0 and getattr(self, "search_badge", False):
                 badge = " \u25cf"
@@ -219,7 +221,7 @@ class NavRail(QFrame):
             else:
                 btn.setText(badge.strip())
         self.toggle_btn.setIcon(icon("chevron-left" if self._expanded else "chevron-right", 16))
-        self.toggle_btn.setText("Collapse" if self._expanded else "")
+        self.toggle_btn.setText(t("Collapse") if self._expanded else "")
 
 
 class AnimatedStackedWidget(QStackedWidget):
@@ -344,7 +346,7 @@ class CommandBar(QFrame):
         row.setSpacing(6)
 
         # ICON NEEDED: link
-        self.prompt_label = QLabel("VOD URL or ID:", self)
+        self.prompt_label = QLabel(t("VOD URL or ID:"), self)
         self.prompt_label.setProperty("role", "muted")
         row.addWidget(self.prompt_label)
 
@@ -355,7 +357,7 @@ class CommandBar(QFrame):
 
         # Inline Paste / Clear button (NoFocus so Tab goes vod_entry -> info_btn -> api_btn)
         # ICON NEEDED: clipboard / x
-        self.vod_action_btn = QPushButton("Paste", self)
+        self.vod_action_btn = QPushButton(t("Paste"), self)
         self.vod_action_btn.setProperty("variant", "ghost")
         self.vod_action_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.vod_action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -364,7 +366,7 @@ class CommandBar(QFrame):
         self.vod_action_btn.clicked.connect(self._on_vod_action)
         row.addWidget(self.vod_action_btn)
 
-        self.info_btn = QPushButton("Get info", self)
+        self.info_btn = QPushButton(t("Get info"), self)
         self.info_btn.setProperty("variant", "accent")
         row.addWidget(self.info_btn)
 
@@ -375,12 +377,12 @@ class CommandBar(QFrame):
         self.account_dot.setToolTip("Not signed in to Twitch API")
         row.addWidget(self.account_dot)
 
-        self.api_btn = QPushButton("Twitch API\u2026", self)
+        self.api_btn = QPushButton(t("Twitch API…"), self)
         self.api_btn.setObjectName("apiBtn")
         self.api_btn.setIcon(icon("user", 14))
         row.addWidget(self.api_btn)
 
-        self.history_btn = QPushButton("History", self)
+        self.history_btn = QPushButton(t("History"), self)
         self.history_btn.setObjectName("historyBtn")
         self.history_btn.setIcon(icon("check", 14))
         self.history_btn.setToolTip("View download history")
@@ -388,7 +390,7 @@ class CommandBar(QFrame):
 
         outer.addLayout(row)
 
-        self.info_label = QLabel("No VOD loaded.", self)
+        self.info_label = QLabel(t("No VOD loaded."), self)
         self.info_label.setProperty("role", "muted")
         self.info_label.setWordWrap(True)
         self.info_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -396,6 +398,15 @@ class CommandBar(QFrame):
 
         self._signed_in = False
         self.set_signed_in(False)
+
+    def retranslate_ui(self) -> None:
+        self.prompt_label.setText(t("VOD URL or ID:"))
+        self.info_btn.setText(t("Get info"))
+        self.history_btn.setText(t("History"))
+        self.api_btn.setText(t("Twitch API…"))
+        self._sync_action_btn(self.vod_entry.text())
+        if self.info_label.text() in ("No VOD loaded.", "Ningún VOD cargado."):
+            self.info_label.setText(t("No VOD loaded."))
 
     @property
     def signed_in(self) -> bool:
@@ -419,10 +430,10 @@ class CommandBar(QFrame):
     def _sync_action_btn(self, text: str) -> None:
         if text.strip():
             self.vod_action_btn.setText("\u2715")
-            self.vod_action_btn.setToolTip("Clear VOD field")
+            self.vod_action_btn.setToolTip(t("Clear VOD field"))
         else:
-            self.vod_action_btn.setText("Paste")
-            self.vod_action_btn.setToolTip("Paste from clipboard")
+            self.vod_action_btn.setText(t("Paste"))
+            self.vod_action_btn.setToolTip(t("Paste from clipboard"))
 
     def _on_vod_action(self) -> None:
         if self.vod_entry.text().strip():
@@ -504,7 +515,7 @@ class VodStrip(QFrame):
         self.open_btn.clicked.connect(self.open_on_twitch)
         lay.addWidget(self.open_btn)
 
-        self.clear_btn = QPushButton("Clear", self)
+        self.clear_btn = QPushButton(t("Clear"), self)
         self.clear_btn.setIcon(icon("x", 14))
         self.clear_btn.setProperty("variant", "ghost")
         self.clear_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
