@@ -127,12 +127,13 @@ from core.i18n import (
     LANG_EN,
     LANG_ES,
     SUPPORTED_LANGUAGES,
-    TRANSLATIONS_ES,
     extract_placeholders,
     get_language,
     get_system_language,
     set_language,
     t,
+    tc,
+    tn,
 )
 from core.watchlist import (
     WatchedStreamer,

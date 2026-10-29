@@ -1,0 +1,609 @@
+# LuckyTwitch Downloader: translation for 'es'.
+# Edit with Poedit or by hand, then run `python tools/i18n.py compile`.
+msgid ""
+msgstr ""
+"Project-Id-Version: LuckyTwitch Downloader\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-29 05:17+0000\n"
+"PO-Revision-Date: 2026-10-29 05:17+0000\n"
+"Last-Translator: LuckyTwitch contributors\n"
+"Language: es\n"
+"Language-Team: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: tools/i18n.py (Babel)\n"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/ui_state.py qt_ui/main_window.py qt_ui/shell.py
+msgid "Plan"
+msgstr "Plan"
+
+#: qt_ui/tabs/search.py
+msgid "Search"
+msgstr "Buscar"
+
+#: qt_ui/shell.py
+msgid "History"
+msgstr "Historial"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/main_window.py qt_ui/shell.py
+msgid "Queue & log"
+msgstr "Cola y registros"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/main_window.py qt_ui/shell.py
+msgid "Options"
+msgstr "Opciones"
+
+#: qt_ui/tabs/queue.py
+msgid "Start queue"
+msgstr "Iniciar cola"
+
+#: qt_ui/tabs/queue.py
+msgid "Cancel current"
+msgstr "Cancelar actual"
+
+#: qt_ui/tabs/queue.py
+msgid "Retry"
+msgstr "Reintentar"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Move selected waiting job up"
+msgstr "Mover trabajo en espera arriba"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Move selected waiting job down"
+msgstr "Mover trabajo en espera abajo"
+
+#: qt_ui/tabs/queue.py
+msgid "Remove selected"
+msgstr "Eliminar seleccionado"
+
+#: qt_ui/tabs/queue.py
+msgid "Clear finished"
+msgstr "Limpiar terminados"
+
+#: qt_ui/tabs/queue.py
+msgid "Open folder"
+msgstr "Abrir carpeta"
+
+#: qt_ui/dialogs.py
+msgid "Clear history"
+msgstr "Limpiar historial"
+
+msgid "Search VODs"
+msgstr "Buscar VODs"
+
+#: qt_ui/shell.py
+msgid "Get info"
+msgstr "Obtener información"
+
+msgid "Download"
+msgstr "Descargar"
+
+#: qt_ui/dialogs.py
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Copy"
+msgstr "Copiar"
+
+#: qt_ui/shell.py qt_ui/tabs/plan.py
+msgid "Clear"
+msgstr "Limpiar"
+
+msgid "Back"
+msgstr "Atrás"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "Finish"
+msgstr "Finalizar"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/main_window.py
+msgid "Quit"
+msgstr "Salir"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/dialogs.py qt_ui/update_dialog.py
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/palette.py qt_ui/dialogs.py
+msgid "OK"
+msgstr "Aceptar"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/dialogs.py
+msgid "Load"
+msgstr "Cargar"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Apply"
+msgstr "Aplicar"
+
+#: qt_ui/tabs/queue.py
+msgid "Log"
+msgstr "Registro"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "All"
+msgstr "Todo"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Warnings"
+msgstr "Advertencias"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Errors"
+msgstr "Errores"
+
+#: qt_ui/tabs/queue.py
+msgid "Filter log lines…"
+msgstr "Filtrar líneas de registro…"
+
+#: qt_ui/tabs/queue.py
+msgid "Pause autoscroll"
+msgstr "Pausar desplazamiento automático"
+
+#: qt_ui/tabs/queue.py
+msgid "Save log…"
+msgstr "Guardar registro…"
+
+#: qt_ui/tabs/queue.py
+msgid "Copy log"
+msgstr "Copiar registro"
+
+#: qt_ui/tabs/queue.py
+msgid "Clear log"
+msgstr "Limpiar registro"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Nothing queued."
+msgstr "Nada en cola."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Cancelling…"
+msgstr "Cancelando…"
+
+#: qt_ui/tabs/queue.py
+msgid "1 job"
+msgstr "1 trabajo"
+
+#: qt_ui/tabs/queue.py
+msgid "2 parallel jobs"
+msgstr "2 trabajos paralelos"
+
+#: qt_ui/tabs/queue.py
+msgid "3 parallel jobs"
+msgstr "3 trabajos paralelos"
+
+#: qt_ui/tabs/queue.py
+msgid "4 parallel jobs"
+msgstr "4 trabajos paralelos"
+
+#: qt_ui/tabs/queue.py
+msgid "How many queue jobs can run at the same time"
+msgstr "Cuántos trabajos de cola pueden ejecutarse al mismo tiempo"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/queue.py
+msgid "Unlimited speed"
+msgstr "Velocidad ilimitada"
+
+#: qt_ui/tabs/queue.py
+msgid "Bandwidth limit passed to yt-dlp (--limit-rate)"
+msgstr "Límite de ancho de banda para yt-dlp (--limit-rate)"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py
+msgid "queued"
+msgstr "en cola"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/tabs/queue.py
+msgid "running"
+msgstr "ejecutando"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/tabs/queue.py
+msgid "done"
+msgstr "listo"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py qt_ui/timeline.py
+msgid "failed"
+msgstr "fallido"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py
+msgid "cancelled"
+msgstr "cancelado"
+
+#: qt_ui/dialogs.py
+msgid "Downloaded"
+msgstr "Descargado"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/search_models.py qt_ui/shell.py
+msgid "✓ Downloaded"
+msgstr "✓ Descargado"
+
+msgid "No downloads yet"
+msgstr "Aún no hay descargas"
+
+msgid "Finished downloads will appear here with date, parts and folder location."
+msgstr "Las descargas completadas aparecerán aquí con fecha, partes y ubicación."
+
+#: qt_ui/dialogs.py
+msgid "Download History"
+msgstr "Historial de descargas"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/search_models.py
+msgid "Date"
+msgstr "Fecha"
+
+#: qt_ui/dialogs.py
+msgid "Streamer"
+msgstr "Streamer"
+
+#: qt_ui/dialogs.py
+msgid "Title"
+msgstr "Título"
+
+#: qt_ui/dialogs.py
+msgid "Parts"
+msgstr "Partes"
+
+#: qt_ui/dialogs.py
+msgid "Quality"
+msgstr "Calidad"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/dialogs.py
+msgid "Folder"
+msgstr "Carpeta"
+
+msgid "Clear download history? This cannot be undone."
+msgstr "¿Limpiar el historial de descargas? Esto no se puede deshacer."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/search.py
+msgid "Past broadcasts"
+msgstr "Emisiones pasadas"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/search.py
+msgid "Highlights"
+msgstr "Destacados"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/search.py
+msgid "Uploads"
+msgstr "Subidas"
+
+msgid "Pin streamer"
+msgstr "Fijar streamer"
+
+msgid "Unpin streamer"
+msgstr "Desfijar streamer"
+
+msgid "Pin this streamer to be notified of new VODs"
+msgstr "Fija a este streamer para recibir notificaciones de nuevos VODs"
+
+msgid "Pinned"
+msgstr "Fijado"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Output"
+msgstr "Salida"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Where the finished files go and how they are named."
+msgstr "Dónde se guardan los archivos terminados y cómo se nombran."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Cuts"
+msgstr "Cortes"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "How the VOD is downloaded and cut into parts."
+msgstr "Cómo se descarga el VOD y se corta en partes."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Chapters"
+msgstr "Capítulos"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Premiere Pro"
+msgstr "Premiere Pro"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Markers you can bring into Adobe Premiere Pro next to each part."
+msgstr "Marcadores que puedes llevar a Adobe Premiere Pro junto a cada parte."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Chat"
+msgstr "Chat"
+
+msgid ""
+"Download the chat that went with the stream, or turn it into a video you can put next to the "
+"stream."
+msgstr "Descarga el chat de la transmisión o conviértelo en un video para superponer."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Clips"
+msgstr "Clips"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Used by the «Download only selected clip» button in the Plan tab."
+msgstr "Usado por el botón «Descargar solo el clip seleccionado» en la pestaña Plan."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/main_window.py qt_ui/tabs/options.py
+msgid "Tools"
+msgstr "Herramientas"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "yt-dlp and ffmpeg do the downloading and cutting."
+msgstr "yt-dlp y ffmpeg realizan la descarga y el corte."
+
+#: qt_ui/tabs/options.py
+msgid "Language"
+msgstr "Idioma"
+
+msgid "Interface language"
+msgstr "Idioma de la interfaz"
+
+msgid "Select language for the user interface"
+msgstr "Selecciona el idioma para la interfaz de usuario"
+
+msgid "Dark window bar"
+msgstr "Barra de ventana oscura"
+
+msgid "Use custom dark title bar instead of native frame"
+msgstr "Usar barra de título oscura personalizada en lugar del marco nativo"
+
+#: qt_ui/shell.py
+msgid "VOD URL or ID:"
+msgstr "URL o ID del VOD:"
+
+#: qt_ui/shell.py
+msgid "Paste"
+msgstr "Pegar"
+
+#: qt_ui/shell.py
+msgid "No VOD loaded."
+msgstr "Ningún VOD cargado."
+
+#: qt_ui/main_window.py
+msgid "Ready. Paste a VOD URL or ID and press «Get info»."
+msgstr "Listo. Pega una URL o ID de VOD y presiona «Obtener información»."
+
+#: qt_ui/tabs/options.py
+msgid "Interface"
+msgstr "Interfaz"
+
+#: qt_ui/tabs/options.py
+msgid "Language and appearance settings."
+msgstr "Ajustes de idioma y apariencia."
+
+#: qt_ui/tabs/options.py
+msgid "Select interface language (English / Español)."
+msgstr "Selecciona el idioma de la interfaz (English / Español)."
+
+#: qt_ui/shell.py
+msgid "Twitch API…"
+msgstr "API de Twitch…"
+
+#: qt_ui/shell.py
+msgid "Collapse"
+msgstr "Colapsar"
+
+#: qt_ui/tabs/options.py
+msgid "Language changed"
+msgstr "Idioma cambiado"
+
+msgid "Restart LuckyTwitch to apply all changes across the interface."
+msgstr "Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz."
+
+#: qt_ui/shell.py qt_ui/tabs/plan.py
+msgid "Paste from clipboard"
+msgstr "Pegar desde el portapapeles"
+
+#: qt_ui/shell.py
+msgid "Clear VOD field"
+msgstr "Limpiar campo de VOD"
+
+#: qt_ui/tabs/plan.py
+msgid "Search streamers"
+msgstr "Buscar streamers"
+
+#: qt_ui/tabs/plan.py
+msgid "Add to queue"
+msgstr "Añadir a la cola"
+
+#: qt_ui/tabs/plan.py
+msgid "Add && start"
+msgstr "Añadir e iniciar"
+
+#: qt_ui/tabs/plan.py
+msgid "Select all"
+msgstr "Seleccionar todo"
+
+#: qt_ui/tabs/plan.py
+msgid "Invert"
+msgstr "Invertir"
+
+#: qt_ui/tabs/plan.py
+msgid "Split at selected clip"
+msgstr "Dividir en el clip seleccionado"
+
+#: qt_ui/tabs/plan.py
+msgid "Download only selected clip"
+msgstr "Descargar solo el clip seleccionado"
+
+#: qt_ui/tabs/queue.py
+msgid "Queue"
+msgstr "Cola"
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface."
+msgstr "Idioma cambiado a {lang}. Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Check for yt-dlp updates on startup"
+msgstr "Comprobar actualizaciones de yt-dlp al iniciar"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Recommended: Twitch changes often."
+msgstr "Recomendado: Twitch cambia con frecuencia."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Update yt-dlp"
+msgstr "Actualizar yt-dlp"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Update yt-dlp now"
+msgstr "Actualizar yt-dlp ahora"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Download the latest version now."
+msgstr "Descargar la versión más reciente ahora."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Tools folder"
+msgstr "Carpeta de herramientas"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Open tools folder"
+msgstr "Abrir carpeta de herramientas"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept."
+msgstr "Dónde se guardan yt-dlp, ffmpeg y TwitchDownloaderCLI."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "LuckyTwitch updates"
+msgstr "Actualizaciones de LuckyTwitch"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Check for new versions of LuckyTwitch Downloader."
+msgstr "Comprobar nuevas versiones de LuckyTwitch Downloader."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Check for new versions of LuckyTwitch"
+msgstr "Comprobar nuevas versiones de LuckyTwitch"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Notifies you when a new release is available on GitHub."
+msgstr "Te notifica cuando hay una nueva versión disponible en GitHub."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Version"
+msgstr "Versión"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Check now"
+msgstr "Comprobar ahora"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Check GitHub releases for updates now."
+msgstr "Comprobar actualizaciones en GitHub ahora."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Links from web pages"
+msgstr "Enlaces de páginas web"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Open luckytwitch:// links"
+msgstr "Abrir enlaces luckytwitch://"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "Use this copy"
+msgstr "Usar esta copia"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/tabs/options.py
+msgid "These links currently open another copy of LuckyTwitch. Press the button to use this one."
+msgstr "Estos enlaces abren actualmente otra copia de LuckyTwitch. Presiona el botón para usar esta."
+
+msgid "These links already open this copy of LuckyTwitch."
+msgstr "Estos enlaces ya abren esta copia de LuckyTwitch."
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/twitch_dialog.py
+msgid "Sign in with Twitch"
+msgstr "Iniciar sesión con Twitch"
+
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: qt_ui/twitch_dialog.py
+msgid "Sign out"
+msgstr "Cerrar sesión"
+
+#, python-brace-format
+msgid "Signed in as {user}"
+msgstr "Sesión iniciada como {user}"
+
+msgid "Not signed in"
+msgstr "No has iniciado sesión"
+
+msgid "Check for updates"
+msgstr "Buscar actualizaciones"
+
+#, python-brace-format
+msgid "New version available: {version}"
+msgstr "Nueva versión disponible: {version}"
+
+msgid "You are using the latest version."
+msgstr "Estás usando la versión más reciente."
+

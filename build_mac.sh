@@ -29,6 +29,7 @@ python3 -m nuitka --mode=app \
   --output-folder-name=LuckyTwitch \
   --output-filename=LuckyTwitch \
   --include-data-dir=assets=assets \
+  --include-data-dir=locale=locale \
   --include-data-files=build/version.txt=version.txt \
   --include-package=core \
   --include-package=qt_ui \

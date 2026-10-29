@@ -19,6 +19,7 @@ This directory contains specifications, architectural plans, and upgrade roadmap
 | [`TITLE_CLEANING_AND_NAMING_PLAN.md`](TITLE_CLEANING_AND_NAMING_PLAN.md) | Plan | Done in v2.1.1 | Bot command stripping, title editing in Plan tab, and single-part naming cleanup. |
 | [`UPDATE_DETECTION_PLAN.md`](UPDATE_DETECTION_PLAN.md) | Plan | Done in v2.3.0 | Automated GitHub update detection, update dialog, and Windows silent in-place updater. |
 | [`VERIFICATION_CHECKLIST.md`](VERIFICATION_CHECKLIST.md) | Checklist | In progress | Real-hardware verification matrix across Windows, macOS, and Adobe Premiere Pro (Phase V). |
-| [`I18N_SPANISH_PLAN.md`](I18N_SPANISH_PLAN.md) | Plan | Pending | Finish and harden the Spanish localization (coverage, live switching, engine messages, installer, panel). |
+| [`I18N_SPANISH_PLAN.md`](I18N_SPANISH_PLAN.md) | Plan | In progress (I0 done) | Finish and harden the Spanish localization (coverage, live switching, engine messages, installer, panel). |
+| [`i18n-glossary-es.md`](i18n-glossary-es.md) | Style guide | Active | Spanish style rules and glossary; the terms table is enforced by `python tools/i18n.py check`. |
 | [`PROJECT_AUDIT_2026_10.md`](PROJECT_AUDIT_2026_10.md) | Audit + Plan | Pending | Full project audit of v2.9.0 with findings and a remediation plan (R1 to R5). |
 | [`UPGRADE_REVIEW_2026_10.md`](UPGRADE_REVIEW_2026_10.md) | Review + Plan | Pending | Progress review of the upgrade plan, what was missed, and new feature ideas. |

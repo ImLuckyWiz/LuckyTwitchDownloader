@@ -1,6 +1,6 @@
 # Spanish Localization Plan (Phase F4b: finish and harden the translation)
 
-Status: **Pending (plan only, no code written).** Date of analysis: 2026-10-29, repo at v2.9.0.
+Status: **In progress: phase I0 delivered (see section 8), I1 is next.** Date of analysis: 2026-10-29, repo at v2.9.0.
 
 Decisions taken on 2026-10-29: Spanish uses informal **tú**; the mechanism is **gettext** (`.po`/`.mo`, standard Python `gettext` at runtime, Babel for tooling); translating the Premiere panel is **future work** (phase I10 is deferred and out of scope for now).
 
@@ -123,7 +123,7 @@ Release proposal: **v2.9.1** after I0+I1 (little visible change, safer detection
 * ~~D4~~ **Decided:** the Premiere panel is future work; I10 stays deferred and the panel remains English for now.
 * **D5** Release notes in the update dialog: English only (proposed) or add a Spanish summary line per release.
 * **D6** Next language after Spanish (for example Portuguese)? With gettext it is just another `.po`; only the plural rule and the glossary need care.
-* **D7** Commit the compiled `.mo` files (proposed: yes, with a CI check that they match the `.po`, so running from source and building both just work) or compile them only in the build scripts and CI (cleaner repo, but running from source needs one extra command, otherwise the app silently shows English).
+* ~~D7~~ **Decided (I0):** the compiled `.mo` is committed; `tools/i18n.py check` (and the test suite) fail when it does not match the `.po`, so running from source and building both just work.
 
 ---
 
@@ -134,3 +134,37 @@ Release proposal: **v2.9.1** after I0+I1 (little visible change, safer detection
 3. Qt standard buttons and context menus are Spanish.
 4. The installer, README.es.md and the Linux launcher entry are Spanish; the README wording is accurate.
 5. Both test suites are green on the CI matrix.
+
+---
+
+## 8. Progress log
+
+### Phase I0 delivered (2026-10-29): gettext migration and guard rails, no visible change
+
+What changed:
+
+* `core/i18n.py` now runs on stdlib `gettext` with the same `t()` API plus `tn()` (plurals), `tc()` (context) and `N_()` (mark for extraction). `TRANSLATIONS_ES` is gone (the engine shim no longer re-exports it). A missing or corrupt catalog falls back to English instead of failing.
+* `locale/luckytwitch.pot`, `locale/es/LC_MESSAGES/luckytwitch.po` and the committed `luckytwitch.mo`. The 140 old entries became **139** (the unreachable duplicate `Add & start` was dropped; the code only uses `Add && start`). `.gitattributes` keeps `.po`/`.pot` in LF and `.mo` binary.
+* `babel.cfg` and `tools/i18n.py` (`extract`, `update`, `compile`, `check`, `scan`, `baseline`, `status`). Babel is a dev-only dependency (`requirements-dev.txt`).
+* `docs/i18n-glossary-es.md`: style guide plus a machine-readable glossary that the checker enforces.
+* `tests/test_i18n.py` rewritten: runtime API, catalog hygiene, guard rails tested with synthetic messages, and the ratchets.
+* **Pulled forward from I1:** the three build scripts now bundle `locale/` (`--include-data-dir=locale=locale`). Without it a packaged I0 build would silently show English, which would be a regression from v2.9.0. The frozen-build smoke test and the CI step stay in I1 (the test suite already runs the same checks).
+
+How the guard rails work (what a developer sees):
+
+| You do | `check` / the tests say |
+|---|---|
+| Add a user-facing literal to a widget, dialog, `PlanError` or `ctx.log` without `t()` | fails: wrap it in `t()` (or `N_()` when it is translated later through a variable) |
+| Add `t("New text")` | fails until `python tools/i18n.py update` adds it to the `.pot`/`.po` and it is translated, then `compile` |
+| Change the English text of a wrapped message | the old entry becomes dead and the new one untranslated: run `update`, move the translation |
+| Wrap a literal that was in the baseline | fails with "run `python tools/i18n.py baseline`" (the baseline only shrinks; growth needs `--allow-growth`) |
+| Break a placeholder, `&` accelerator, `…`, final punctuation, line break or edge spaces in the `.po` | fails, with the message named |
+
+Ratchet baselines (`tools/i18n_baseline.json`), the starting point for I2 to I8:
+
+* **570 unwrapped user-facing literals** (437 distinct texts in `qt_ui/`, 90 distinct engine messages in `core/`). The numbers are higher than the estimate in section 1 because f-strings and engine messages are counted too. Each phase removes its surface from the baseline with `python tools/i18n.py baseline`; it must reach zero at I8.
+* **28 "dead" catalog entries**: translations that exist in the `.po` but whose English text is not in the code yet (for example "Save", "Copy", "Pinned", "Signed in as {user}"). They were written in F4 for screens that never used them. Phases I2 to I8 wire them up or delete them; the baseline may only shrink.
+* **0 untranslated** extracted messages.
+* 88 catalog keys reach `t()` only through variables or helpers (tab names, option titles, `card.add_row("...")`). `extract` keeps them in the `.pot` when their exact text is a literal in the code, marked `indirect`. New code should use `t()` or `N_()` explicitly.
+
+Not done in I0 on purpose: detection (`getdefaultlocale`, still present and emitting a DeprecationWarning), live switching, `QTranslator`, the Auto option and the CI step belong to I1. No app version was bumped (no visible change); the plan proposes v2.9.1 after I1, tag `i18n-phase-0` for this step.

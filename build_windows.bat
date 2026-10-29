@@ -36,6 +36,7 @@ python -m nuitka --mode=standalone ^
   --output-folder-name=LuckyTwitch ^
   --output-filename=LuckyTwitch.exe ^
   --include-data-dir=assets=assets ^
+  --include-data-dir=locale=locale ^
   --include-data-files=build\version.txt=version.txt ^
   --include-package=core ^
   --include-package=qt_ui ^

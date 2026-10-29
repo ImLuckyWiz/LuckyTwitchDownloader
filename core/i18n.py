@@ -1,15 +1,30 @@
-"""Internationalization (i18n) catalog and translation helper.
+"""Internationalization (i18n): gettext catalogs with English as the message ID.
 
-Lightweight, dictionary-based catalog with English (en) as the source
-and Spanish (es) translation for user-facing interface text.
+The call sites are ``t("English text")``; the English text is the key of the catalog, so English needs no catalog
+at all. Other languages live in ``locale/<lang>/LC_MESSAGES/luckytwitch.mo`` (compiled from the ``.po`` next to it)
+and are loaded with the standard library ``gettext`` (no extra runtime dependency, no Qt: ``core/`` may call
+``t()`` too). A message that is missing from a catalog falls back to the English text instead of failing.
+
+Helpers:
+
+* ``t(text, **params)``: translate and fill ``{placeholders}``.
+* ``tn(singular, plural, n, **params)``: plural forms (``n`` is also available as ``{n}``).
+* ``tc(context, text, **params)``: same word, different meaning (``tc("verb", "Plan")``).
+* ``N_(text)``: marks a string for extraction and returns it unchanged; translate it later with ``t(variable)``.
+
+Tooling (extract / update / compile / check) lives in ``tools/i18n.py`` and needs Babel (dev only).
 """
 
 from __future__ import annotations
 
+import gettext
 import locale
 import os
 import re
+from pathlib import Path
 from typing import Any
+
+from core.resources import resource_path
 
 LANG_EN = "en"
 LANG_ES = "es"
@@ -20,166 +35,36 @@ SUPPORTED_LANGUAGES = {
 }
 
 DEFAULT_LANGUAGE = LANG_EN
+
+DOMAIN = "luckytwitch"
+LOCALE_DIR: Path = resource_path("locale")
+
 _current_language = DEFAULT_LANGUAGE
+_translations: gettext.NullTranslations = gettext.NullTranslations()
+_cache: dict[str, gettext.NullTranslations] = {}
 
-# Catalog of Spanish translations (source key is English text)
-TRANSLATIONS_ES: dict[str, str] = {
-    # Navigation & Tabs
-    "Plan": "Plan",
-    "Search": "Buscar",
-    "History": "Historial",
-    "Queue & log": "Cola y registros",
-    "Options": "Opciones",
 
-    # Common buttons & controls
-    "Start queue": "Iniciar cola",
-    "Cancel current": "Cancelar actual",
-    "Retry": "Reintentar",
-    "Move selected waiting job up": "Mover trabajo en espera arriba",
-    "Move selected waiting job down": "Mover trabajo en espera abajo",
-    "Remove selected": "Eliminar seleccionado",
-    "Clear finished": "Limpiar terminados",
-    "Open folder": "Abrir carpeta",
-    "Clear history": "Limpiar historial",
-    "Search VODs": "Buscar VODs",
-    "Get info": "Obtener información",
-    "Download": "Descargar",
-    "Close": "Cerrar",
-    "Save": "Guardar",
-    "Copy": "Copiar",
-    "Clear": "Limpiar",
-    "Back": "Atrás",
-    "Next": "Siguiente",
-    "Finish": "Finalizar",
-    "Quit": "Salir",
-    "Cancel": "Cancelar",
-    "OK": "Aceptar",
-    "Load": "Cargar",
-    "Refresh": "Actualizar",
-    "Apply": "Aplicar",
+def set_locale_dir(path: str | os.PathLike[str]) -> None:
+    """Point the loader at another ``locale`` folder (used by tests) and re-load the active language."""
+    global LOCALE_DIR
+    LOCALE_DIR = Path(path)
+    _cache.clear()
+    set_language(_current_language)
 
-    # Queue & log
-    "Log": "Registro",
-    "All": "Todo",
-    "Warnings": "Advertencias",
-    "Errors": "Errores",
-    "Filter log lines…": "Filtrar líneas de registro…",
-    "Pause autoscroll": "Pausar desplazamiento automático",
-    "Save log…": "Guardar registro…",
-    "Copy log": "Copiar registro",
-    "Clear log": "Limpiar registro",
-    "Nothing queued.": "Nada en cola.",
-    "Cancelling…": "Cancelando…",
-    "1 job": "1 trabajo",
-    "2 parallel jobs": "2 trabajos paralelos",
-    "3 parallel jobs": "3 trabajos paralelos",
-    "4 parallel jobs": "4 trabajos paralelos",
-    "How many queue jobs can run at the same time": "Cuántos trabajos de cola pueden ejecutarse al mismo tiempo",
-    "Unlimited speed": "Velocidad ilimitada",
-    "Bandwidth limit passed to yt-dlp (--limit-rate)": "Límite de ancho de banda para yt-dlp (--limit-rate)",
 
-    # Status words & summary
-    "queued": "en cola",
-    "running": "ejecutando",
-    "done": "listo",
-    "failed": "fallido",
-    "cancelled": "cancelado",
-    "Downloaded": "Descargado",
-    "✓ Downloaded": "✓ Descargado",
-    "No downloads yet": "Aún no hay descargas",
-    "Finished downloads will appear here with date, parts and folder location.": "Las descargas completadas aparecerán aquí con fecha, partes y ubicación.",
-
-    # History dialog
-    "Download History": "Historial de descargas",
-    "Date": "Fecha",
-    "Streamer": "Streamer",
-    "Title": "Título",
-    "Parts": "Partes",
-    "Quality": "Calidad",
-    "Folder": "Carpeta",
-    "Clear download history? This cannot be undone.": "¿Limpiar el historial de descargas? Esto no se puede deshacer.",
-
-    # Search & Watch list
-    "Past broadcasts": "Emisiones pasadas",
-    "Highlights": "Destacados",
-    "Uploads": "Subidas",
-    "Pin streamer": "Fijar streamer",
-    "Unpin streamer": "Desfijar streamer",
-    "Pin this streamer to be notified of new VODs": "Fija a este streamer para recibir notificaciones de nuevos VODs",
-    "Pinned": "Fijado",
-
-    # Options tab headings & cards
-    "Output": "Salida",
-    "Where the finished files go and how they are named.": "Dónde se guardan los archivos terminados y cómo se nombran.",
-    "Cuts": "Cortes",
-    "How the VOD is downloaded and cut into parts.": "Cómo se descarga el VOD y se corta en partes.",
-    "Chapters": "Capítulos",
-    "Premiere Pro": "Premiere Pro",
-    "Markers you can bring into Adobe Premiere Pro next to each part.": "Marcadores que puedes llevar a Adobe Premiere Pro junto a cada parte.",
-    "Chat": "Chat",
-    "Download the chat that went with the stream, or turn it into a video you can put next to the stream.": "Descarga el chat de la transmisión o conviértelo en un video para superponer.",
-    "Clips": "Clips",
-    "Used by the «Download only selected clip» button in the Plan tab.": "Usado por el botón «Descargar solo el clip seleccionado» en la pestaña Plan.",
-    "Tools": "Herramientas",
-    "yt-dlp and ffmpeg do the downloading and cutting.": "yt-dlp y ffmpeg realizan la descarga y el corte.",
-    "Language": "Idioma",
-    "Interface language": "Idioma de la interfaz",
-    "Select language for the user interface": "Selecciona el idioma para la interfaz de usuario",
-    "Dark window bar": "Barra de ventana oscura",
-    "Use custom dark title bar instead of native frame": "Usar barra de título oscura personalizada en lugar del marco nativo",
-
-    # Dialogs & General
-    'VOD URL or ID:': 'URL o ID del VOD:',
-    'Paste': 'Pegar',
-    'No VOD loaded.': 'Ningún VOD cargado.',
-    'Ready. Paste a VOD URL or ID and press «Get info».': 'Listo. Pega una URL o ID de VOD y presiona «Obtener información».',
-    'Interface': 'Interfaz',
-    'Language and appearance settings.': 'Ajustes de idioma y apariencia.',
-    'Select interface language (English / Español).': 'Selecciona el idioma de la interfaz (English / Español).',
-    'Twitch API…': 'API de Twitch…',
-    'Collapse': 'Colapsar',
-    'Language changed': 'Idioma cambiado',
-    'Restart LuckyTwitch to apply all changes across the interface.': 'Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz.',
-    'Paste from clipboard': 'Pegar desde el portapapeles',
-    'Clear VOD field': 'Limpiar campo de VOD',
-    'Search streamers': 'Buscar streamers',
-    'Add to queue': 'Añadir a la cola',
-    'Add & start': 'Añadir e iniciar',
-    'Add && start': 'Añadir e iniciar',
-    'Select all': 'Seleccionar todo',
-    'Invert': 'Invertir',
-    'Split at selected clip': 'Dividir en el clip seleccionado',
-    'Download only selected clip': 'Descargar solo el clip seleccionado',
-    'Queue': 'Cola',
-    'Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface.': 'Idioma cambiado a {lang}. Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz.',
-    'Check for yt-dlp updates on startup': 'Comprobar actualizaciones de yt-dlp al iniciar',
-    'Recommended: Twitch changes often.': 'Recomendado: Twitch cambia con frecuencia.',
-    'Update yt-dlp': 'Actualizar yt-dlp',
-    'Update yt-dlp now': 'Actualizar yt-dlp ahora',
-    'Download the latest version now.': 'Descargar la versión más reciente ahora.',
-    'Tools folder': 'Carpeta de herramientas',
-    'Open tools folder': 'Abrir carpeta de herramientas',
-    'Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept.': 'Dónde se guardan yt-dlp, ffmpeg y TwitchDownloaderCLI.',
-    'LuckyTwitch updates': 'Actualizaciones de LuckyTwitch',
-    'Check for new versions of LuckyTwitch Downloader.': 'Comprobar nuevas versiones de LuckyTwitch Downloader.',
-    'Check for new versions of LuckyTwitch': 'Comprobar nuevas versiones de LuckyTwitch',
-    'Notifies you when a new release is available on GitHub.': 'Te notifica cuando hay una nueva versión disponible en GitHub.',
-    'Version': 'Versión',
-    'Check now': 'Comprobar ahora',
-    'Check GitHub releases for updates now.': 'Comprobar actualizaciones en GitHub ahora.',
-    'Links from web pages': 'Enlaces de páginas web',
-    'Open luckytwitch:// links': 'Abrir enlaces luckytwitch://',
-    'Use this copy': 'Usar esta copia',
-    'These links currently open another copy of LuckyTwitch. Press the button to use this one.': 'Estos enlaces abren actualmente otra copia de LuckyTwitch. Presiona el botón para usar esta.',
-    'These links already open this copy of LuckyTwitch.': 'Estos enlaces ya abren esta copia de LuckyTwitch.',
-    "Sign in with Twitch": "Iniciar sesión con Twitch",
-    "Sign out": "Cerrar sesión",
-    "Signed in as {user}": "Sesión iniciada como {user}",
-    "Not signed in": "No has iniciado sesión",
-    "Check for updates": "Buscar actualizaciones",
-    "New version available: {version}": "Nueva versión disponible: {version}",
-    "You are using the latest version.": "Estás usando la versión más reciente.",
-}
+def _load(lang: str) -> gettext.NullTranslations:
+    """Return the translations object of ``lang`` (English or a missing catalog: the null object, keys pass through)."""
+    if lang == LANG_EN:
+        return gettext.NullTranslations()
+    cached = _cache.get(lang)
+    if cached is not None:
+        return cached
+    try:
+        tr: gettext.NullTranslations = gettext.translation(DOMAIN, localedir=str(LOCALE_DIR), languages=[lang])
+    except OSError:  # no .mo for this language, or a corrupt one: show English rather than crash
+        tr = gettext.NullTranslations()
+    _cache[lang] = tr
+    return tr
 
 
 def get_system_language() -> str:
@@ -198,9 +83,10 @@ def get_system_language() -> str:
 
 
 def set_language(lang: str) -> None:
-    """Set active interface language ('en' or 'es')."""
-    global _current_language
+    """Set active interface language ('en' or 'es'); an unsupported code falls back to English."""
+    global _current_language, _translations
     _current_language = lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    _translations = _load(_current_language)
 
 
 def get_language() -> str:
@@ -216,14 +102,34 @@ def extract_placeholders(text: str) -> set[str]:
     return set(_PLACEHOLDER_RE.findall(text))
 
 
+def _fill(text: str, params: dict[str, Any]) -> str:
+    """Fill ``{placeholders}``; a catalog entry with a wrong placeholder must not crash the UI, so it is shown as is."""
+    if not params:
+        return text
+    try:
+        return text.format(**params)
+    except (KeyError, IndexError, ValueError):
+        return text
+
+
 def t(text: str, **kwargs: Any) -> str:
     """Translate user-facing text to the active language and format placeholders."""
-    result = text
-    if _current_language == LANG_ES:
-        result = TRANSLATIONS_ES.get(text, text)
-    if kwargs:
-        try:
-            return result.format(**kwargs)
-        except (KeyError, IndexError, ValueError):
-            return result
-    return result
+    # gettext("") returns the catalog header, so the empty string must never reach it
+    result = _translations.gettext(text) if text else text
+    return _fill(result, kwargs)
+
+
+def tn(singular: str, plural: str, n: int, **kwargs: Any) -> str:
+    """Plural-aware translation: ``tn("{n} clip", "{n} clips", count)``; ``{n}`` is always filled with ``n``."""
+    kwargs["n"] = n
+    return _fill(_translations.ngettext(singular, plural, n), kwargs)
+
+
+def tc(context: str, text: str, **kwargs: Any) -> str:
+    """Translation with a context, for words that mean different things: ``tc("verb", "Plan")`` vs the tab name."""
+    return _fill(_translations.pgettext(context, text), kwargs)
+
+
+def N_(text: str) -> str:
+    """Mark ``text`` for extraction without translating it now (``TABS = (N_("Plan"), ...)``; later ``t(name)``)."""
+    return text

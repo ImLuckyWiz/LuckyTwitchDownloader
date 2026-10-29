@@ -1,3 +1,7 @@
 # Enforce LF endings on shell scripts and macOS command files so they run correctly
 *.sh text eol=lf
 *.command text eol=lf
+# Translation catalogs: LF always; the compiled .mo is binary
+*.po text eol=lf
+*.pot text eol=lf
+*.mo binary
