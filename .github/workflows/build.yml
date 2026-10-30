@@ -72,7 +72,7 @@ jobs:
         include:
           - os: windows-latest
             label: windows
-          - os: macos-14          # Apple Silicon
+          - os: macos-latest          # Apple Silicon
             label: macos-arm64
           - os: ubuntu-22.04      # Linux x86_64
             label: linux-x86_64
