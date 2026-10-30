@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 05:18+0000\n"
+"POT-Creation-Date: 2026-10-30 08:35+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -12,6 +12,10 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: tools/i18n.py (Babel)\n"
+
+#: luckytwitch_qt.py qt_ui/tabs/search.py
+msgid "Search"
+msgstr ""
 
 #: qt_ui/dialogs.py
 msgid "Clear history"
@@ -43,6 +47,10 @@ msgstr ""
 
 #: qt_ui/dialogs.py
 msgid "Title"
+msgstr ""
+
+#: qt_ui/i18n_qt.py qt_ui/tabs/options.py
+msgid "Auto (system)"
 msgstr ""
 
 #: qt_ui/main_window.py
@@ -99,15 +107,6 @@ msgstr ""
 
 #: qt_ui/tabs/options.py
 msgid "Language and appearance settings."
-msgstr ""
-
-#: qt_ui/tabs/options.py
-msgid "Language changed"
-msgstr ""
-
-#: qt_ui/tabs/options.py
-#, python-brace-format
-msgid "Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface."
 msgstr ""
 
 #: qt_ui/tabs/options.py
@@ -216,10 +215,6 @@ msgstr ""
 
 #: qt_ui/tabs/queue.py
 msgid "Start queue"
-msgstr ""
-
-#: qt_ui/tabs/search.py
-msgid "Search"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)

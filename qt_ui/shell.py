@@ -390,7 +390,9 @@ class CommandBar(QFrame):
 
         outer.addLayout(row)
 
-        self.info_label = QLabel(t("No VOD loaded."), self)
+        self._no_vod_text = ""  # the "no VOD" sentence currently shown (empty when the label shows something else)
+        self.info_label = QLabel("", self)
+        self.show_no_vod()
         self.info_label.setProperty("role", "muted")
         self.info_label.setWordWrap(True)
         self.info_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -405,8 +407,13 @@ class CommandBar(QFrame):
         self.history_btn.setText(t("History"))
         self.api_btn.setText(t("Twitch API…"))
         self._sync_action_btn(self.vod_entry.text())
-        if self.info_label.text() in ("No VOD loaded.", "Ningún VOD cargado."):
-            self.info_label.setText(t("No VOD loaded."))
+        if self._no_vod_text and self.info_label.text() == self._no_vod_text:
+            self.show_no_vod()
+
+    def show_no_vod(self) -> None:
+        """Show the empty-state sentence; it is re-translated on a language change while it is still shown."""
+        self._no_vod_text = t("No VOD loaded.")
+        self.info_label.setText(self._no_vod_text)
 
     @property
     def signed_in(self) -> bool:

@@ -1,6 +1,6 @@
 # Spanish Localization Plan (Phase F4b: finish and harden the translation)
 
-Status: **In progress: phase I0 delivered (see section 8), I1 is next.** Date of analysis: 2026-10-29, repo at v2.9.0.
+Status: **In progress: phases I0 and I1 delivered (see section 8), I2 is next.** Date of analysis: 2026-10-29, repo at v2.9.0.
 
 Decisions taken on 2026-10-29: Spanish uses informal **tú**; the mechanism is **gettext** (`.po`/`.mo`, standard Python `gettext` at runtime, Babel for tooling); translating the Premiere panel is **future work** (phase I10 is deferred and out of scope for now).
 
@@ -73,7 +73,7 @@ Each phase ends with both test suites green and a tag `i18n-phase-N`. Phases I2 
 | Phase | Scope | Size |
 |---|---|---|
 | **I0 Gettext migration and guard rails (no visible change)** | Add `babel.cfg`, `tools/i18n.py`, `locale/` layout; convert the 140 existing entries to a `.po`; rewrite `core/i18n.py` on stdlib `gettext` with the same `t()` API plus `tn`/`tc`; adapt `tests/test_i18n.py`. Two checks with a **ratchet baseline** (the current gaps, which may only shrink): (a) **wrapped** messages: after `extract`, no entry in the `.po` may be empty or fuzzy; (b) **unwrapped literals**: an AST scan (same method as this analysis) lists user-facing literals passed to widgets/dialogs without `t()` (about 330 today); a new one fails the test. Catalog tests: no obsolete entries, placeholders equal, `&`/ellipsis/ending punctuation equal, Spanish differs from English unless allow-listed, glossary terms respected. Save the glossary. | M |
-| **I1 Infrastructure** | `bind_text` + `language_changed`; locale helper (numbers/dates); `QTranslator` for Qt strings; fix detection with `QLocale` and drop `getdefaultlocale`; **Auto** option; remove hard-coded Spanish comparisons; keep a short "restart" notice only for what really needs it. **Packaging:** the build scripts (`build_windows.bat`, `build_mac.sh`, `build_linux.sh`) bundle `locale/` into the Nuitka build; CI runs `tools/i18n.py check` and a frozen-build smoke test that loads the Spanish catalog. Tests: switching language updates every bound widget without restart (offscreen); detection with mocked locales (`es_UY`, `es-ES`, `en_US`, `C`); `tn` plural forms 0/1/2. Ship as **v2.9.1**. | M |
+| **I1 Infrastructure** | `bind_text` + `language_changed`; locale helper (numbers/dates); `QTranslator` for Qt strings; fix detection with `QLocale` and drop `getdefaultlocale`; **Auto** option; remove hard-coded Spanish comparisons; keep a short "restart" notice only for what really needs it. **Packaging:** the build scripts (`build_windows.bat`, `build_mac.sh`, `build_linux.sh`) bundle `locale/` into the Nuitka build; CI runs `tools/i18n.py check` and a frozen-build smoke test that loads the Spanish catalog. Tests: switching language updates every bound widget without restart (offscreen); detection with mocked locales (`es_UY`, `es-ES`, `en_US`, `C`); `tn` plural forms 0/1/2. Ship as **v2.9.2** (v2.9.1 was hotfix locking English). | M |
 | **I2 Shell** | `main_window.py` (46), `shell.py` (30), title bar, toasts, status bar, shortcuts dialog, tray notifications. | S |
 | **I3 Plan tab + timeline** | `plan.py` (34), `timeline.py` (40) including context menus and accessible names; all plural/f-string texts. | M |
 | **I4 Search + History + Watch list** | `search.py` (32), history dialog, "✓ Downloaded" badge and tooltips (dates via locale helper). | S |
@@ -85,7 +85,7 @@ Each phase ends with both test suites green and a tag `i18n-phase-N`. Phases I2 
 | **I10 Premiere panel (DEFERRED: future work, decided 2026-10-29)** | Panel strings into a small `strings.js` (en/es). Language source: Premiere's UI locale (`CSInterface.getHostEnvironment().appUILocale`), optionally overridden by a new optional `"language"` field in `.markers.json` (additive, documented in `docs/markers-format.md`). Node tests for key parity. Panel version bump. | M |
 | **I11 QA** | Pseudo-localization mode (env var or `--lang pseudo`: accented, 30% longer text) to expose missed strings and truncation; screenshot walk of every tab/dialog in Spanish at the minimum window size (900x560); native-speaker review by the owner; `docs/I18N_QA_CHECKLIST.md`. | S |
 
-Release proposal: **v2.9.1** after I0+I1 (little visible change, safer detection), a **v2.10.0-beta.1** after I5 for Spanish testers, final **v2.10.0** after I9 and I11 (I10 is deferred).
+Release proposal: **v2.9.2** after I0+I1 (little visible change, safer detection), a **v2.10.0-beta.1** after I5 for Spanish testers, final **v2.10.0** after I9 and I11 (I10 is deferred).
 
 ---
 
@@ -168,3 +168,17 @@ Ratchet baselines (`tools/i18n_baseline.json`), the starting point for I2 to I8:
 * 88 catalog keys reach `t()` only through variables or helpers (tab names, option titles, `card.add_row("...")`). `extract` keeps them in the `.pot` when their exact text is a literal in the code, marked `indirect`. New code should use `t()` or `N_()` explicitly.
 
 Not done in I0 on purpose: detection (`getdefaultlocale`, still present and emitting a DeprecationWarning), live switching, `QTranslator`, the Auto option and the CI step belong to I1. No app version was bumped (no visible change); the plan proposes v2.9.1 after I1, tag `i18n-phase-0` for this step.
+
+### Phase I1 delivered (2026-10-30): live switching, Auto, Qt strings, formatting, packaging check (release v2.9.2)
+
+* `qt_ui/i18n_qt.py` is the Qt side: `apply_language(setting)` (the one entry point: sets the language, swaps the Qt translator, re-applies bindings, emits `language_bus().changed`), `bind_text(widget, "setText", "Text", **params)` / `bind(widget, setter, factory)` (weakly held; a widget bound once never needs a `refresh_language` method), and `format_number` / `format_date` / `format_datetime` (use the language being shown, not the OS).
+* Detection: `core.i18n.get_system_language()` no longer uses the deprecated `locale.getdefaultlocale` (environment in gettext order, then `locale.getlocale()`); the app uses `QLocale.system().uiLanguages()` (`system_language()`), which also copes with `Spanish_Uruguay` style names. `resolve_language()` turns the saved setting into the language to show.
+* **Auto (system)** is a real setting: `UIState.language` defaults to `"auto"`, the picker in Options → Interface has Auto / English / Español, and the saved value is the setting, never the guessed language. Existing files with `en` / `es` keep working.
+* Qt's own strings: `locale/qt/qtbase_es.qm` (copied from PySide6, so frozen builds do not depend on where Nuitka puts Qt translations) with PySide6's own folder as fallback; installed and removed with the language (never stacked).
+* No restart notice any more: the three "Language changed ... Restart" messages were deleted from the catalog (dead entries: 30 to 27).
+* The empty-state line under the command bar no longer compares against a hard-coded Spanish string (`CommandBar.show_no_vod()` remembers what it showed). This also fixed `clear_vod()` and link handling, which put the raw English constant on screen.
+* `human_size` and the disk-space label use `format_number` (`1,4 GB` in Spanish).
+* Packaging: `--i18n-selftest` (loads the Spanish catalog and Qt's Spanish catalog without opening a window; exit code 0/1). `.github/workflows/build.yml` runs `python tools/i18n.py check` and the self-test against the packaged binary on Windows, macOS and Linux. **These CI steps could not be run where this was written**; the first tag build is their first real run. The macOS step also verifies `resource_path` inside `.app`.
+* Not changed on purpose: the per-tab `refresh_language()` methods stay until their tab is migrated (I2 to I7). `QLocale.setDefault` is not called (spin boxes and parsing keep the same behaviour); formatting is explicit through the helpers.
+
+Developer rule from now on: new widget text is either `t(...)` at build time plus a `bind_text` when the widget lives across language changes, or built inside a `refresh_language`/`retranslate` that runs on `language_bus().changed`.

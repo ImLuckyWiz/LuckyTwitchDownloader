@@ -24,12 +24,12 @@ from PySide6.QtWidgets import (
 import weblink
 from core import paths, updates
 from core.config import make_client
-from core.i18n import get_language, get_system_language, set_language, t
+from core.i18n import LANG_AUTO, t
 from core.options import build_filter, build_options, flag, num
 from core.settings import DEFAULTS, save_settings
 from core.ui_state import UIState, load_ui_state, save_ui_state
 from luckytwitch_engine import EngineError, Job, clean_title, clip_cut_text, describe_chat_overlay, fmt_hms, make_plan
-from qt_ui import dialogs, notify
+from qt_ui import dialogs, i18n_qt, notify
 from qt_ui.background_jobs import InfoRunner, SavedChatRunner, ToolsRunner, UpdateCheckRunner, UpdateDownloadRunner
 from qt_ui.bridge import Bridge
 from qt_ui.shell import CommandBar, NavRail, PageStack, ShortcutsDialog, VodStrip
@@ -43,7 +43,6 @@ START_SIZE = (1020, 910)
 MIN_SIZE = (900, 560)
 TAB_NAMES = ("Search", "Plan", "Options", "Queue & log")
 READY_TEXT = "Ready. Paste a VOD URL or ID and press «Get info»."
-NO_VOD_TEXT = "No VOD loaded."
 
 _VOD_URL_RE = re.compile(r"(?:(?:https?://)?(?:www\.|m\.)?twitch\.tv/(?:videos/\d+|\w+/v/\d+)|luckytwitch://\S+)", re.I)
 
@@ -139,8 +138,10 @@ class MainWindow(QMainWindow):
         self._show_welcome = show_welcome
         self.welcome_overlay = None
         ui_path = getattr(paths, "UI_STATE_PATH", paths.DATA_DIR / "luckytwitch_ui.json")
+        has_saved = ui_path.is_file()
         self._ui_state = load_ui_state(ui_path)
-        set_language("en")
+        # the language must be active before any widget is built, so every t() below is already in it
+        i18n_qt.apply_language((getattr(self._ui_state, "language", None) or LANG_AUTO) if has_saved else LANG_AUTO, announce=False)
         self._login_dialog: TwitchDialog | None = None
         self._shortcuts_dialog: ShortcutsDialog | None = None
         self._last_clipboard_offer: str = ""
@@ -357,14 +358,15 @@ class MainWindow(QMainWindow):
         self.bridge.queue_done.connect(self.on_queue_done)
         self.bridge.update_checked.connect(self.on_update_checked)
 
+        i18n_qt.language_bus().changed.connect(self.refresh_language)
         self._setup_shortcuts()
         self._restore_ui_state()
         self.start_link_listener()
         self.set_status(t("Ready. Paste a VOD URL or ID and press «Get info»."))
         dark_titlebar(self)
 
-    def refresh_language(self) -> None:
-        """Dynamically refresh interface labels after a language switch."""
+    def refresh_language(self, _language: str = "") -> None:
+        """Re-translate what was built by hand; runs on every language change (``i18n_qt.language_bus().changed``)."""
         if hasattr(self, "rail"):
             self.rail._refresh_labels()
         if hasattr(self, "command_bar"):
@@ -494,13 +496,11 @@ class MainWindow(QMainWindow):
         has_saved = ui_path.is_file()
         state = load_ui_state(ui_path)
         self._ui_state = state
-        from core.i18n import get_language, get_system_language, set_language
-        set_language("en")
-        if hasattr(self, "tab_options") and hasattr(self.tab_options, "lang_combo"):
-            self.tab_options.lang_combo.blockSignals(True)
-            self.tab_options.lang_combo.setCurrentIndex(0)
-            self.tab_options.lang_combo.setEnabled(False)
-            self.tab_options.lang_combo.blockSignals(False)
+        setting = (getattr(state, "language", None) or LANG_AUTO) if has_saved else LANG_AUTO
+        i18n_qt.apply_language(setting, announce=False)
+        self.refresh_language()
+        if hasattr(self, "tab_options") and hasattr(self.tab_options, "select_language_setting"):
+            self.tab_options.select_language_setting(setting)
         self.rail.set_expanded(state.rail_expanded, animate=False)
         if has_saved:
             w = max(state.window_w, MIN_SIZE[0])
@@ -539,7 +539,6 @@ class MainWindow(QMainWindow):
         has_onboard = self._ui_state.has_completed_onboarding if hasattr(self, "_ui_state") else False
         is_max = self.isMaximized()
         geom = self.normalGeometry() if is_max else self.geometry()
-        from core.i18n import get_language
         state = UIState(
             window_x=geom.x(),
             window_y=geom.y(),
@@ -550,7 +549,7 @@ class MainWindow(QMainWindow):
             rail_expanded=self.rail.expanded,
             has_completed_onboarding=has_onboard,
             custom_titlebar=self.use_custom_titlebar,
-            language=get_language(),
+            language=i18n_qt.current_setting(),
         )
         save_ui_state(state)
 
@@ -830,7 +829,7 @@ class MainWindow(QMainWindow):
         self.source, self.clips, self.clips_loaded = None, [], False
         self.tab_plan.set_title("", raw_title="")
         self.tab_plan.set_formats([], "")
-        self.info_label.setText(NO_VOD_TEXT)
+        self.command_bar.show_no_vod()
         self.vod_strip.clear()
         self.update_preview()
         self.refresh_clips()
@@ -1286,7 +1285,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentWidget(self.tab_plan)
         # forget the VOD that was loaded: if reading the new one fails, its cut points must not be applied to the old one
         self.source, self.clips, self.clips_loaded = None, [], False
-        self.info_label.setText(NO_VOD_TEXT)
+        self.command_bar.show_no_vod()
         self.vod_entry.setText(req.url)
         self.tab_plan.set_cut_text(req.cuts or "")
         self.update_preview()

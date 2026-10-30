@@ -20,7 +20,7 @@ msgstr ""
 msgid "Plan"
 msgstr "Plan"
 
-#: qt_ui/tabs/search.py
+#: luckytwitch_qt.py qt_ui/tabs/search.py
 msgid "Search"
 msgstr "Buscar"
 
@@ -430,13 +430,6 @@ msgstr "API de Twitch…"
 msgid "Collapse"
 msgstr "Colapsar"
 
-#: qt_ui/tabs/options.py
-msgid "Language changed"
-msgstr "Idioma cambiado"
-
-msgid "Restart LuckyTwitch to apply all changes across the interface."
-msgstr "Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz."
-
 #: qt_ui/shell.py qt_ui/tabs/plan.py
 msgid "Paste from clipboard"
 msgstr "Pegar desde el portapapeles"
@@ -476,11 +469,6 @@ msgstr "Descargar solo el clip seleccionado"
 #: qt_ui/tabs/queue.py
 msgid "Queue"
 msgstr "Cola"
-
-#: qt_ui/tabs/options.py
-#, python-brace-format
-msgid "Language changed to {lang}. Restart LuckyTwitch to apply all changes across the interface."
-msgstr "Idioma cambiado a {lang}. Reinicia LuckyTwitch para aplicar todos los cambios en la interfaz."
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/tabs/options.py
@@ -606,4 +594,8 @@ msgstr "Nueva versión disponible: {version}"
 
 msgid "You are using the latest version."
 msgstr "Estás usando la versión más reciente."
+
+#: qt_ui/i18n_qt.py qt_ui/tabs/options.py
+msgid "Auto (system)"
+msgstr "Automático (sistema)"
 

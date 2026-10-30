@@ -30,7 +30,7 @@ from luckytwitch_engine import (
     QUALITY_BEST, EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, estimate_bytes, fmt_hms,
     insert_cut_point, make_chapters, make_plan, muted_overlap, ranges_of, ranges_to_text, resolve_format, toggle_part,
 )
-from qt_ui import dialogs
+from qt_ui import dialogs, i18n_qt
 from qt_ui import timeline as timeline_module
 from qt_ui.background_jobs import FramesRunner
 from qt_ui.binder import SettingsBinder
@@ -53,7 +53,7 @@ def human_size(n: int) -> str:
     if n <= 0:
         return "0 B"
     if n >= 1_000_000_000:
-        return f"{n / 1_000_000_000:.1f} GB"
+        return f"{i18n_qt.format_number(n / 1_000_000_000, 1)} GB"
     if n >= 1_000_000:
         return f"{int(round(n / 1_000_000))} MB"
     if n >= 1_000:

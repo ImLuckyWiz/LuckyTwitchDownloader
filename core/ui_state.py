@@ -29,7 +29,7 @@ class UIState:
     custom_titlebar: bool = True
     max_concurrent_jobs: int = 1
     rate_limit: str = ""
-    language: str = "en"
+    language: str = "auto"  # "auto" (follow the system), "en" or "es"
 
 
 DEFAULT_UI_STATE = UIState()
@@ -56,7 +56,7 @@ def load_ui_state(path: Path | None = None) -> UIState:
                     custom_titlebar=bool(data.get('custom_titlebar', True)),
                     max_concurrent_jobs=int(data.get('max_concurrent_jobs', 1)),
                     rate_limit=str(data.get('rate_limit', '')),
-                    language=str(data.get('language', 'en')),
+                    language=str(data.get('language', 'auto')),
                 )
     except Exception:  # noqa: BLE001
         pass

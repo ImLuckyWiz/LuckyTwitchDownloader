@@ -26,6 +26,7 @@ from typing import Any
 
 from core.resources import resource_path
 
+LANG_AUTO = "auto"  # a setting, not a language: follow the system
 LANG_EN = "en"
 LANG_ES = "es"
 
@@ -67,19 +68,40 @@ def _load(lang: str) -> gettext.NullTranslations:
     return tr
 
 
-def get_system_language() -> str:
-    """Detect system language from environment or locale. Returns 'es' or 'en'."""
-    try:
-        lang = os.environ.get("LANG", "") or os.environ.get("LC_ALL", "")
-        if not lang:
-            loc = locale.getdefaultlocale()[0]
-            if loc:
-                lang = loc
-        if lang and lang.lower().startswith("es"):
-            return LANG_ES
-    except Exception:
-        pass
+def language_from_locale_name(name: str | None) -> str:
+    """Map a locale name (``es_UY.UTF-8``, ``es-ES``, ``Spanish_Uruguay``, ``en_US``, ``C``) to a supported language."""
+    if not name:
+        return LANG_EN
+    low = name.strip().lower()
+    for code in SUPPORTED_LANGUAGES:
+        if low == code or low.startswith((code + "_", code + "-", code + ".", code + "@")):
+            return code
+    if low.startswith("spanish"):  # Windows' C runtime reports English names ("Spanish_Uruguay")
+        return LANG_ES
     return LANG_EN
+
+
+def get_system_language() -> str:
+    """Detect the system language from the environment or the C locale. Returns a supported code ('en' or 'es').
+
+    The Qt layer prefers ``QLocale.system()`` (see ``qt_ui/i18n_qt.py``), which is the reliable source on Windows and
+    macOS; this is the Qt-free fallback used by ``core`` and by the command line.
+    """
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(var, "")
+        if value and value not in ("C", "POSIX"):
+            return language_from_locale_name(value)
+    try:
+        return language_from_locale_name(locale.getlocale()[0])
+    except (ValueError, TypeError):
+        return LANG_EN
+
+
+def resolve_language(setting: str | None, system: str | None = None) -> str:
+    """Turn the saved setting ('auto', 'en', 'es', or garbage) into the language to show."""
+    if setting in SUPPORTED_LANGUAGES:
+        return str(setting)
+    return system if system in SUPPORTED_LANGUAGES else get_system_language()
 
 
 def set_language(lang: str) -> None:

@@ -1,10 +1,22 @@
+## v2.9.2
+
+LuckyTwitch Downloader **v2.9.2** makes the Spanish interface switch instantly and sets the base for finishing the translation (i18n phases I0 and I1).
+
+### What's new in 2.9.2:
+- **Language changes apply at once.** Switching language in **Options → Interface** no longer asks you to restart; the old "restart to apply" notice is gone.
+- **Auto (system) language.** New installs follow the system language, and you can choose *Auto* again at any time. Detection now uses Qt's locale, which is reliable on Windows and macOS (the old check missed many Spanish systems).
+- **Qt's own texts are translated too:** standard dialog buttons (OK / Cancel / Yes / No), context menus and file dialogs follow the interface language.
+- **Numbers and dates follow the language:** file sizes and free disk space show `1,4 GB` in Spanish and `1.4 GB` in English.
+- **Fixed:** the "No VOD loaded." line stayed in English after clearing a VOD or opening a link.
+- **Translations moved to standard gettext catalogs** (`locale/`, editable with Poedit) with automatic checks for placeholders, punctuation, `&` accelerators and a Spanish glossary. No change for users.
+- **Packaging:** every build bundles `locale/`, and the build workflow starts each packaged binary with `--i18n-selftest`, so a build that lost its translations fails instead of shipping in English.
+
 ## v2.9.1
 
-LuckyTwitch Downloader **v2.9.1** temporarily disables Spanish localization to prevent partial translations across the interface while the full gettext/PO translation architecture and coverage are finalized (per Phase F4b roadmap).
+LuckyTwitch Downloader **v2.9.1** temporarily disabled Spanish localization to prevent partial translations across the interface while the full gettext/PO translation architecture and coverage were finalized.
 
 ### What's changed in 2.9.1:
-- Interface language is temporarily locked to English only to maintain 100% consistent English text across all tabs, dialogs, and controls.
-- Language selector in Options tab indicates Spanish translation is currently in progress.
+- Hotfix release locking interface language temporarily to English.
 
 ## v2.9.0
 

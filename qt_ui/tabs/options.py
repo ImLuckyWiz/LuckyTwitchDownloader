@@ -41,7 +41,7 @@ from core.options import (
 from core.settings import DEFAULTS
 from core.i18n import t
 from luckytwitch_engine import APP_DIR, CHAT_FORMATS, TOOLS_DIR
-from qt_ui import dialogs
+from qt_ui import dialogs, i18n_qt
 from qt_ui.binder import SettingsBinder
 from qt_ui.icons import icon
 from qt_ui.widgets import Card, Collapsible, ComboBox, ScrollFrame, SettingRow, SideNav, SpinBox, Toggle, TokenChips, WrapLabel
@@ -294,7 +294,7 @@ class OptionsTab(QWidget):
             if target_dir.exists():
                 free_bytes = shutil.disk_usage(target_dir).free
                 free_gb = free_bytes / (1024 ** 3)
-                self.disk_space_label.setText(f"Drive free space: {free_gb:.1f} GB")
+                self.disk_space_label.setText(f"Drive free space: {i18n_qt.format_number(free_gb, 1)} GB")
             else:
                 self.disk_space_label.setText("Destination folder will be created on first download")
         except Exception:
@@ -719,18 +719,25 @@ class OptionsTab(QWidget):
         row.add_control(self.check_app_updates_btn)
         self.refresh_app_update_state()
 
-        self.interface_card = self._card(f, "Interface", "Language and appearance settings.")
-        self.lang_row = self.interface_card.add_row(
-            "Language",
-            "Spanish localization is in progress and temporarily disabled (English only).",
-            divider=False,
-        )
+        self.interface_card = self._card(f, t("Interface"), t("Language and appearance settings."))
+        self.lang_row = self.interface_card.add_row(t("Language"), t("Select interface language (English / Español)."), divider=False)
+        from core.ui_state import load_ui_state, save_ui_state
         self.lang_combo = ComboBox()
-        self.lang_combo.addItem("English", "en")
-        self.lang_combo.addItem("Español (In progress)", "es")
-        self.lang_combo.setCurrentIndex(0)
-        self.lang_combo.setEnabled(False)
-        self.lang_combo.setToolTip("Translations are temporarily disabled while full Spanish localization is being finalized.")
+        for code, label in i18n_qt.language_choices():
+            self.lang_combo.addItem(label, code)
+        self.select_language_setting(i18n_qt.current_setting())
+
+        def _on_lang_changed(i: int):
+            code = self.lang_combo.itemData(i)
+            if code and code != i18n_qt.current_setting():
+                i18n_qt.apply_language(code)  # live: no restart; windows refresh through the language bus
+                st = load_ui_state()
+                st.language = code
+                save_ui_state(st)
+                if not hasattr(self.window(), "refresh_language"):  # an Options tab used on its own
+                    self.refresh_language()
+
+        self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
         self.lang_row.add_control(self.lang_combo)
 
         card = self._card(
@@ -848,8 +855,17 @@ class OptionsTab(QWidget):
     def set_saved_chat_running(self, running: bool) -> None:
         self.saved_chat_btn.setEnabled(not running)
 
+    def select_language_setting(self, setting: str) -> None:
+        """Show ``setting`` ('auto', 'en', 'es') in the language picker without triggering a switch."""
+        idx = self.lang_combo.findData(setting)
+        self.lang_combo.blockSignals(True)
+        self.lang_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.lang_combo.blockSignals(False)
+
     def refresh_language(self) -> None:
         """Update OptionsTab text labels dynamically when language changes."""
+        if hasattr(self, "lang_combo"):
+            self.lang_combo.setItemText(0, t("Auto (system)"))
         for key, base_lbl in SECTIONS:
             btn = self.nav.buttons.get(key)
             if btn is not None:

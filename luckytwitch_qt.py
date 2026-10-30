@@ -47,6 +47,28 @@ class LuckyApplication(QApplication):
         return super().event(ev)
 
 
+def i18n_selftest() -> int:
+    """``--i18n-selftest``: prove that a (packaged) build finds its Spanish catalog and Qt's Spanish strings.
+
+    The build workflow runs it against the frozen binary: a build that forgot to bundle ``locale/`` would otherwise
+    ship silently in English only. Prints ``i18n ok`` and returns 0, or says what is missing and returns 1.
+    """
+    from core import i18n
+    from qt_ui import i18n_qt
+
+    problems = []
+    i18n.set_language("es")
+    if i18n.t("Search") != "Buscar":
+        problems.append(f"Spanish catalog not found in {i18n.LOCALE_DIR}")
+    if any(i18n_qt.load_qt_translator(name, "es") is None for name in i18n_qt.QT_CATALOGS):
+        problems.append(f"Qt Spanish translations not found in {i18n_qt._qt_translations_dirs()}")
+    if problems:
+        print("i18n FAILED: " + "; ".join(problems))
+        return 1
+    print("i18n ok")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv if argv is None else argv
     if "--help" in argv or "-h" in argv:
@@ -64,12 +86,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     paths.ensure_data_dir()
-    from core.i18n import LANG_EN, set_language
-    set_language(LANG_EN)
+    from core.ui_state import load_ui_state
+    from core.i18n import LANG_AUTO, resolve_language, set_language
+    from qt_ui import i18n_qt
+    _ui_st = load_ui_state()
+    _lang_setting = getattr(_ui_st, "language", None) or LANG_AUTO
+    set_language(resolve_language(_lang_setting, i18n_qt.system_language()))  # early: messages before the window exists
+    if "--i18n-selftest" in argv:
+        return i18n_selftest()
     link = weblink.find_link(argv[1:])  # started by a luckytwitch:// link?
     if link and weblink.hand_off(link, paths.LINKS_DIR, paths.BEAT_PATH):
         return 0  # the window that is already open took it
     app = LuckyApplication(argv)
+    i18n_qt.apply_language(_lang_setting, announce=False)  # also installs Qt's own translations (needs the app object)
     apply_theme(app)
     set_app_icon(app)
     show_welcome = True if "--welcome" in argv else None
