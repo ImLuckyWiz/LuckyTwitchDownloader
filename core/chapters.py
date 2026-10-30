@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from core.errors import PlanError
+from core.i18n import t
 from core.timeline import Range
 from core.timeutil import fmt_hms
 from core.twitch_api import clip_end, clip_start
@@ -78,14 +79,14 @@ def clip_cut_text(
     """Cut text ('H:MM:SS - H:MM:SS') that covers just one clip (plus a little context)."""
     clip_s = clip_start(clip)
     if clip_s is None:
-        raise PlanError("That clip has no position in the VOD.")
+        raise PlanError(t("That clip has no position in the VOD."))
     start = max(0.0, clip_s - pad_before)
     end = float(clip["vod_offset"]) + pad_after
     if duration:
         end = min(end, duration)
     a, b = math.floor(start), math.ceil(end)
     if b <= a:
-        raise PlanError("That clip is outside the VOD.")
+        raise PlanError(t("That clip is outside the VOD."))
     return f"{fmt_hms(a)} - {fmt_hms(b)}"
 
 

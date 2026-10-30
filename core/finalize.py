@@ -40,6 +40,7 @@ from core.download import (
     run_ffmpeg,
 )
 from core.errors import Cancelled, EngineError
+from core.i18n import t
 from core.job import Job, JobOptions
 from core.muted import muted_from_playlist_url
 from core.planning import Part, make_plan
@@ -346,7 +347,7 @@ def split_copy(
         shutil.rmtree(seg_dir)
     seg_dir.mkdir(parents=True)
     listing = seg_dir / "list.csv"
-    times = ",".join(f"{t:.3f}" for t in inner)
+    times = ",".join(f"{b:.3f}" for b in inner)
     map_args = ["-map", "0:a:0"] if audio_only else ["-map", "0:v:0", "-map", "0:a?"]
     _run_ff(
         ctx,
@@ -370,7 +371,7 @@ def split_copy(
     for p in parts:
         i = boundaries.index(p.start)
         if i >= len(rows):
-            raise EngineError(f"Cut point {fmt_hms(p.start)} is past the end of the downloaded video.")
+            raise EngineError(t("Cut point {point} is past the end of the downloaded video.").format(point=fmt_hms(p.start)))
         name, s, e = rows[i][0], float(rows[i][1]), float(rows[i][2])
         result[p.index] = (seg_dir / Path(name).name, s, e)
     return result
@@ -409,17 +410,17 @@ def _load_chapters(ctx: Ctx, job: Job) -> list[Chapter]:
     clips = job.clips
     if clips is None:
         if not job.source.twitch_vod_id:
-            ctx.log("Chapters: not a Twitch VOD URL, skipping.")
+            ctx.log(t("Chapters: not a Twitch VOD URL, skipping."))
             return []
         if job.client is None:
-            ctx.log("Chapters: no Twitch API credentials, skipping.")
+            ctx.log(t("Chapters: no Twitch API credentials, skipping."))
             return []
-        ctx.log("Fetching clips for chapters…")
+        ctx.log(t("Fetching clips for chapters…"))
         clips = fetch_clips_for_vod(job.client, job.source.twitch_vod_id)
     eng = sys.modules.get("luckytwitch_engine")
     _make_ch = getattr(eng, "make_chapters", make_chapters) if eng else make_chapters
     chapters = _make_ch(clips, job.opts.clip_filter)
-    ctx.log(f"Chapters: {len(chapters)} (from {len(clips)} clips found)")
+    ctx.log(t("Chapters: {chapters} (from {clips} clips found)").format(chapters=len(chapters), clips=len(clips)))
     return chapters
 
 
@@ -441,10 +442,10 @@ def _load_muted(ctx: Ctx, job: Job) -> list[Chapter]:
         except EngineError:
             ranges = None
     if ranges is None:
-        ctx.log("Muted audio: could not read which parts Twitch silenced, so no muted markers this time.")
+        ctx.log(t("Muted audio: could not read which parts Twitch silenced, so no muted markers this time."))
         return []
     if ranges:
-        ctx.log(f"Muted audio: {len(ranges)} stretch(es), {fmt_hms(sum(e - s for s, e in ranges))} in total")
+        ctx.log(t("Muted audio: {count} stretch(es), {total} in total").format(count=len(ranges), total=fmt_hms(sum(e - s for s, e in ranges))))
     return muted_chapters(ranges)
 
 
@@ -468,7 +469,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     _uniq = getattr(eng, "unique_path", unique_path) if eng else unique_path
 
     if not _find("ffmpeg"):
-        raise EngineError("ffmpeg was not found. Install it and add it to PATH.")
+        raise EngineError(t("ffmpeg was not found. Install it and add it to PATH."))
 
     plan = make_plan(opts.cut_text, src.duration, opts.strategy, opts.full_threshold)
     ctx.log(
@@ -480,7 +481,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     if fmt:
         ctx.log(describe_quality(fmt, opts.quality))
     elif (opts.quality or "").strip().lower() not in ("", QUALITY_BEST):
-        ctx.log("Quality: this video offers no choice, using the best one.")
+        ctx.log(t("Quality: this video offers no choice, using the best one."))
 
     audio_only = bool(fmt and fmt.audio_only)
     dl_kw = {**fmt_kw, **({"audio_only": True} if audio_only else {})}
@@ -497,14 +498,14 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
     if (opts.chat or opts.chat_render) and not job.single_clip:
         what = "Chat download" if opts.chat else "Chat overlay"
         if not src.twitch_vod_id:
-            ctx.log(f"{what} skipped: it only works for Twitch VODs.")
+            ctx.log(t("{what} skipped: it only works for Twitch VODs.").format(what=what))
         else:
             try:
                 chat_tool = _ensure_tdcli(ctx)
             except Cancelled:
                 raise
             except EngineError as e:
-                ctx.log(f"{what} skipped (the video is still downloaded): {e}")
+                ctx.log(t("{what} skipped (the video is still downloaded): {error}").format(what=what, error=e))
 
     out_dir = Path(opts.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -527,16 +528,16 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         n_clip_chapters = len(clip_chs) if opts.chapters else 0
         chs = fill_gaps(clip_chs, real_end - real_start, opts.clip_filter.gap_title) if opts.chapters else []
         stem = final_dir / part_stem(src, opts, part, total_parts, job.single_clip)
-        t = dict(tags)
+        media_tags = dict(tags)
         if job.single_clip:
-            t["title"] = job.single_clip.get("title") or src.title
-            t["comment"] = job.single_clip.get("url") or src.url
+            media_tags["title"] = job.single_clip.get("title") or src.title
+            media_tags["comment"] = job.single_clip.get("url") or src.url
         elif total_parts > 1:
-            t["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
+            media_tags["title"] = f"{src.title} (part {part.index}/{total_parts})".strip()
         else:
-            t["title"] = src.title.strip()
+            media_tags["title"] = src.title.strip()
         finalize_fn = _fin_audio if audio_only else _fin_part
-        dest = finalize_fn(ctx, file, stem, out_container, chs, t, real_end - real_start, copy)
+        dest = finalize_fn(ctx, file, stem, out_container, chs, media_tags, real_end - real_start, copy)
         if opts.sidecar and n_clip_chapters:
             _write_sidecar(dest, [c for c in chs if c.clips])
         ctx.log(f"✔ {dest.name}" + (f"  ({n_clip_chapters} clip chapters)" if n_clip_chapters else ""))
@@ -550,7 +551,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
         if (want_xml and (xml_clips or game_chs)) or (opts.premiere_plugin and (json_clips or game_chs or muted_chs)):
             probe = _probe(dest)
             if probe is None:
-                ctx.log("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers.")
+                ctx.log(t("Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers."))
             fps, w, h = probe or (30.0, 1920, 1080)
 
             def marker_bits(clips: list[Chapter], muted: list[Chapter] | None = None) -> str:
@@ -561,7 +562,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             if want_xml and (xml_clips or game_chs):
                 markers = sorted(xml_clips + game_chs, key=lambda c: (c.start, c.kind))
                 xml = _write_xml(dest, markers, real_end - real_start, fps, w, h)
-                ctx.log(f"✔ {xml.name}  ({marker_bits(xml_clips)} for Premiere Pro, {fps:g} fps)")
+                ctx.log(t("✔ {name}  ({markers} for Premiere Pro, {fps:g} fps)").format(name=xml.name, markers=marker_bits(xml_clips), fps=fps))
             if opts.premiere_plugin and (json_clips or game_chs or muted_chs):
                 markers = sorted(json_clips + game_chs + muted_chs, key=lambda c: (c.start, c.kind))
                 prefs = {
@@ -569,7 +570,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
                     "pad_after": float(getattr(opts.clip_filter, "pad_after", 0) or 0),
                 }
                 mj = _write_json(dest, markers, real_end - real_start, fps, src, real_start, real_end, preferences=prefs)
-                ctx.log(f"✔ {mj.name}  ({marker_bits(json_clips, muted_chs)} for the Premiere plugin, {fps:g} fps)")
+                ctx.log(t("✔ {name}  ({markers} for the Premiere plugin, {fps:g} fps)").format(name=mj.name, markers=marker_bits(json_clips, muted_chs), fps=fps))
         if chat_tool:
             chat_files_for_part(ctx, chat_tool, src, opts, part, total_parts, dest, real_start, real_end, workdir)
         results.append(dest)
@@ -601,7 +602,7 @@ def run_job(job: Job, ctx: Ctx) -> list[Path]:
             full_suffix = ".m4a" if (audio_only and full.suffix.lower() == ".mp4") else full.suffix
             kept = _uniq(stem.parent / f"{stem.name}{full_suffix}")
             shutil.move(str(full), str(kept))
-            ctx.log(f"Kept full VOD: {kept.name}")
+            ctx.log(t("Kept full VOD: {name}").format(name=kept.name))
     else:
         for i, p in enumerate(plan.parts):
             ctx.check_cancel()

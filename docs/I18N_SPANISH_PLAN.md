@@ -307,3 +307,25 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - Unwrapped baseline dropped from 167 to 98 (all files in `qt_ui/` have reached **0** unwrapped literals).
   - `python tools/i18n.py check` passing with 0 problems.
   - All tests in `test_qt_twitch_dialog.py`, `test_qt_update_dialog.py`, `test_qt_welcome.py`, and `test_i18n.py` passing green.
+
+### Phase I8 delivered (2026-10-30): Engine messages and zero unwrapped baseline (tag i18n-phase-8)
+
+* Engine & background runner localization:
+  - `core/chapters.py`: wrapped chapter errors and format strings.
+  - `core/chat.py`: wrapped chat download messages, fallback warnings, and CLI status.
+  - `core/download.py`: wrapped yt-dlp warnings, HTTP errors, quality fallback, and token status.
+  - `core/finalize.py`: wrapped all user-visible ffmpeg errors, Premiere marker summaries, and output logs. Fixed identifier shadowing of `t`.
+  - `core/planning.py`: wrapped `PlanError` exceptions (*That moment is not inside any of your parts.*, etc.) and renamed parameter `cut_t` to avoid shadowing.
+  - `core/source_info.py`: wrapped Twitch VOD lookup errors and playlist parsing notices.
+  - `core/timeutil.py`: wrapped timestamp parser errors.
+  - `core/tools.py`: wrapped tool updater messages, download failures, extraction errors, and version checks. Avoided loop variable collisions with `t`.
+  - `core/twitch_api.py`: wrapped device auth and token retrieval errors.
+  - `qt_ui/background_jobs.py`: wrapped background tool downloader notifications.
+  - `qt_ui/queue_runner.py`: wrapped worker log messages, cancellation notices, and runner statuses (`N_("running…")`, `N_("done ({} files)")`).
+  - `qt_ui/toast.py`: wrapped dismiss notification accessible name.
+* Catalog and baseline:
+  - **Unwrapped baseline reached 0!** All user-facing strings across `qt_ui/` and `core/` are fully extracted and wrapped.
+  - 92 new engine messages translated in `locale/es/LC_MESSAGES/luckytwitch.po`.
+  - Updated `tests/test_i18n.py` to maintain ratchet integrity when `now` unwrapped dictionary is empty.
+  - `python tools/i18n.py check` passing with 0 problems.
+  - All test suites passing green.

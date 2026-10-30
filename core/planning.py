@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from core.errors import PlanError
+from core.i18n import t
 from core.timeutil import fmt_hms, parse_time
 
 END_WORDS = {"end", "fin", "final", "finish", "finishes", "finished", "eof"}
@@ -52,7 +53,7 @@ def parse_cut_points(text: str, duration: float | None = None) -> list[Part]:
     """
     groups = split_groups(text)
     if not groups:
-        raise PlanError("Write the cut points, e.g.  0:00 - 30:00 - 1:30:00 - end")
+        raise PlanError(t("Write the cut points, e.g.  0:00 - 30:00 - 1:30:00 - end"))
 
     parts: list[tuple[float, float]] = []
     for g in groups:
@@ -60,30 +61,30 @@ def parse_cut_points(text: str, duration: float | None = None) -> list[Part]:
         for tok in g:
             if tok.lower() in END_WORDS:
                 if duration is None:
-                    raise PlanError("«end» needs the VOD length: press «Get info» first.")
+                    raise PlanError(t("«end» needs the VOD length: press «Get info» first."))
                 points.append(duration)
             else:
                 points.append(parse_time(tok))  # type: ignore[arg-type]
         if len(points) < 2:
             raise PlanError(
-                f"«{' '.join(g)}»: a group needs at least two points (use 0 and end)."
+                t("«{group}»: a group needs at least two points (use 0 and end).").format(group=' '.join(g))
             )
         for a, b in zip(points, points[1:]):
             if duration is not None:
                 if a >= duration:
-                    raise PlanError(f"{fmt_hms(a)} is beyond the end of the VOD ({fmt_hms(duration)}).")
+                    raise PlanError(t("{point} is beyond the end of the VOD ({duration}).").format(point=fmt_hms(a), duration=fmt_hms(duration)))
                 if b > duration + 2:
-                    raise PlanError(f"{fmt_hms(b)} is beyond the end of the VOD ({fmt_hms(duration)}).")
+                    raise PlanError(t("{point} is beyond the end of the VOD ({duration}).").format(point=fmt_hms(b), duration=fmt_hms(duration)))
                 b = min(b, duration)
             if b <= a:
-                raise PlanError(f"Cut points must increase: {fmt_hms(a)} → {fmt_hms(b)}.")
+                raise PlanError(t("Cut points must increase: {start} → {end}.").format(start=fmt_hms(a), end=fmt_hms(b)))
             parts.append((a, b))
 
     parts.sort()
     for (a1, b1), (a2, b2) in zip(parts, parts[1:]):
         if a2 < b1:
             raise PlanError(
-                f"Parts overlap: {fmt_hms(a1)}–{fmt_hms(b1)} and {fmt_hms(a2)}–{fmt_hms(b2)}."
+                t("Parts overlap: {p1} and {p2}.").format(p1=f"{fmt_hms(a1)}–{fmt_hms(b1)}", p2=f"{fmt_hms(a2)}–{fmt_hms(b2)}")
             )
     return [Part(i, a, b) for i, (a, b) in enumerate(parts, 1)]
 
@@ -106,13 +107,13 @@ def make_plan(
     return Plan(parts, strategy, coverage, duration)
 
 
-def insert_cut_point(text: str, t: float, duration: float | None) -> str:
+def insert_cut_point(text: str, cut_t: float, duration: float | None) -> str:
     """Insert a split point into the cut text (used by 'split at this clip')."""
-    t = round(t)
+    cut_t = round(cut_t)
     groups = split_groups(text)
     if not groups:
-        end = "end" if duration else fmt_hms(t + 1)
-        return f"0:00:00 - {fmt_hms(t)} - {end}"
+        end = "end" if duration else fmt_hms(cut_t + 1)
+        return f"0:00:00 - {fmt_hms(cut_t)} - {end}"
 
     def val(tok: str) -> float | None:
         if tok.lower() in END_WORDS:
@@ -126,12 +127,12 @@ def insert_cut_point(text: str, t: float, duration: float | None) -> str:
         vals = [val(tok) for tok in g]
         if None in vals or len(vals) < 2:
             continue
-        if vals[0] < t < vals[-1]:  # type: ignore[operator]
-            if t in vals:
+        if vals[0] < cut_t < vals[-1]:  # type: ignore[operator]
+            if cut_t in vals:
                 return text  # already a cut point exactly there: nothing to add (no duplicate boundary)
-            pos = next(i for i, v in enumerate(vals) if v > t)  # type: ignore[operator]
-            g.insert(pos, fmt_hms(t))
+            pos = next(i for i, v in enumerate(vals) if v > cut_t)  # type: ignore[operator]
+            g.insert(pos, fmt_hms(cut_t))
             break
     else:
-        raise PlanError("That moment is not inside any of your parts.")
+        raise PlanError(t("That moment is not inside any of your parts."))
     return "\n".join(" - ".join(g) for g in groups)

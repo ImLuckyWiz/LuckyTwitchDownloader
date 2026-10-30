@@ -20,6 +20,7 @@ from pathlib import Path, PurePosixPath
 import requests
 
 from core.errors import Cancelled, EngineError
+from core.i18n import t
 from core.runtime import (
     EXE,
     TOOLS_DIR,
@@ -131,7 +132,7 @@ def _download_file(ctx: "Ctx", url: str, dest: Path) -> None:
                     size = f"{done / 1048576:.0f}" + (f"/{total / 1048576:.0f}" if total else "") + " MiB"
                     ctx.report(done / total if total else None, f"{size} · {speed:.1f} MiB/s")
     except requests.RequestException as e:
-        raise EngineError(f"Network error while downloading {url.rsplit('/', 1)[-1]}:\n{e}") from e
+        raise EngineError(t("Network error while downloading {file}:\n{error}").format(file=url.rsplit("/", 1)[-1], error=e)) from e
 
 
 def _sha256(path: Path) -> str:
@@ -148,7 +149,7 @@ def _verify_checksum(path: Path, sums_url: str, filename: str) -> None:
         r = _http_get(sums_url)
         r.raise_for_status()
     except requests.RequestException as e:
-        raise EngineError(f"Could not fetch the checksums to verify {filename}:\n{e}") from e
+        raise EngineError(t("Could not fetch the checksums to verify {filename}:\n{error}").format(filename=filename, error=e)) from e
     expected = None
     for line in r.text.splitlines():
         parts = line.split()
@@ -156,9 +157,9 @@ def _verify_checksum(path: Path, sums_url: str, filename: str) -> None:
             expected = parts[0].lower()
             break
     if not expected:
-        raise EngineError(f"No checksum is published for {filename}.")
+        raise EngineError(t("No checksum is published for {filename}.").format(filename=filename))
     if _sha256(path) != expected:
-        raise EngineError(f"Checksum mismatch for {filename}: the download is corrupted, try again.")
+        raise EngineError(t("Checksum mismatch for {filename}: the download is corrupted, try again.").format(filename=filename))
 
 
 def _ytdlp_asset() -> str:
@@ -178,10 +179,10 @@ def latest_ytdlp_tag() -> str:
         finally:
             r.close()
     except requests.RequestException as e:
-        raise EngineError(f"Could not reach GitHub to check yt-dlp:\n{e}") from e
+        raise EngineError(t("Could not reach GitHub to check yt-dlp:\n{error}").format(error=e)) from e
     m = re.search(r"/download/([^/]+)/", location)
     if not m:
-        raise EngineError("Could not find the latest yt-dlp release on GitHub.")
+        raise EngineError(t("Could not find the latest yt-dlp release on GitHub."))
     return m.group(1)
 
 
@@ -192,7 +193,7 @@ def install_ytdlp(ctx: "Ctx", tag: str | None = None) -> str:
     base = f"{YTDLP_RELEASES}/download/{tag}"
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
     tmp = TOOLS_DIR / "yt-dlp.download"
-    ctx.log(f"Downloading yt-dlp {tag}…")
+    ctx.log(t("Downloading yt-dlp {tag}…").format(tag=tag))
     ctx.stage(0.0, 1.0, f"Downloading yt-dlp {tag}")
     try:
         _download_file(ctx, f"{base}/{asset}", tmp)
@@ -201,11 +202,11 @@ def install_ytdlp(ctx: "Ctx", tag: str | None = None) -> str:
         try:
             os.replace(tmp, TOOLS_DIR / ("yt-dlp" + EXE))
         except PermissionError as e:
-            raise EngineError("yt-dlp is in use right now. Wait for running jobs to finish and try again.") from e
+            raise EngineError(t("yt-dlp is in use right now. Wait for running jobs to finish and try again.")) from e
     finally:
         tmp.unlink(missing_ok=True)
     _write_version("yt-dlp", tag)
-    ctx.log(f"yt-dlp {tag} installed.")
+    ctx.log(t("yt-dlp {tag} installed.").format(tag=tag))
     return tag
 
 
@@ -242,17 +243,17 @@ def _extract_ffmpeg(archive: Path) -> None:
                         _write_member(src, name)
                     found.add(name)
     else:
-        with tarfile.open(archive, "r:*") as t:
-            for m in t:
+        with tarfile.open(archive, "r:*") as tf:
+            for m in tf:
                 name = _wanted_member(m.name) if m.isfile() else None
                 if name:
-                    src = t.extractfile(m)
+                    src = tf.extractfile(m)
                     if src is not None:
                         with src:
                             _write_member(src, name)
                         found.add(name)
     if "ffmpeg" + EXE not in found:
-        raise EngineError("The ffmpeg archive did not contain ffmpeg.")
+        raise EngineError(t("The ffmpeg archive did not contain ffmpeg."))
 
 
 def _mac_ffmpeg_sources(tool: str) -> list[tuple[str, str]]:
@@ -274,7 +275,7 @@ def _download_with_retry(ctx: "Ctx", url: str, dest: Path, attempts: int = 3) ->
             if isinstance(e, Cancelled) or n == attempts or not re.search(r"\b(429|50[0-4])\b", str(e)):
                 raise
             wait = 5 * n
-            ctx.log(f"Server busy ({url.split('/')[2]}), retrying in {wait}s…")
+            ctx.log(t("Server busy ({host}), retrying in {wait}s…").format(host=url.split("/")[2], wait=wait))
             for _ in range(wait):
                 ctx.check_cancel()
                 time.sleep(1)
@@ -295,7 +296,7 @@ def _install_ffmpeg_macos(ctx: "Ctx") -> None:
                         member = next((n for n in z.namelist()
                                        if PurePosixPath(n).name == tool and not n.startswith("__MACOSX")), None)
                         if member is None:
-                            raise EngineError(f"The {tool} download did not contain {tool}.")
+                            raise EngineError(t("The {tool} download did not contain {tool}.").format(tool=tool))
                         with z.open(member) as src:
                             _write_member(src, tool)
                 finally:
@@ -305,7 +306,7 @@ def _install_ffmpeg_macos(ctx: "Ctx") -> None:
             if isinstance(e, Cancelled):
                 raise
             errors.append(f"{label}: {str(e).splitlines()[0]}")
-            ctx.log(f"ffmpeg from {label} failed, trying the next source…")
+            ctx.log(t("ffmpeg from {label} failed, trying the next source…").format(label=label))
     raise EngineError("Could not download ffmpeg automatically:\n  " + "\n  ".join(errors) +
                       "\n\nWait a few minutes and try again, or install it with Homebrew:  brew install ffmpeg"
                       f"\n(or copy ffmpeg and ffprobe into {TOOLS_DIR})")
@@ -314,11 +315,11 @@ def _install_ffmpeg_macos(ctx: "Ctx") -> None:
 def install_ffmpeg(ctx: "Ctx") -> None:
     """Download a static ffmpeg + ffprobe build into the tools folder (one-time)."""
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
-    ctx.log("Downloading ffmpeg (one-time download, it can be large)…")
+    ctx.log(t("Downloading ffmpeg (one-time download, it can be large)…"))
     if sys.platform == "darwin":
         _install_ffmpeg_macos(ctx)
         _write_version("ffmpeg", "macos-static")
-        ctx.log("ffmpeg installed.")
+        ctx.log(t("ffmpeg installed."))
         return
     arm = platform.machine().lower() in ("aarch64", "arm64")
     if sys.platform == "win32":
@@ -338,7 +339,7 @@ def install_ffmpeg(ctx: "Ctx") -> None:
     finally:
         archive.unlink(missing_ok=True)
     _write_version("ffmpeg", asset)
-    ctx.log("ffmpeg installed.")
+    ctx.log(t("ffmpeg installed."))
 
 
 def ensure_tools(ctx: "Ctx", update_ytdlp: bool = True, force: bool = False) -> None:
@@ -352,9 +353,9 @@ def ensure_tools(ctx: "Ctx", update_ytdlp: bool = True, force: bool = False) -> 
         install_ffmpeg(ctx)
     else:
         where = "managed by LuckyTwitch" if _is_managed(ffmpeg) else ffmpeg
-        ctx.log(f"ffmpeg is installed ({_run_version(ffmpeg, '-version')}, {where}).")
+        ctx.log(t("ffmpeg is installed ({version}, {where}).").format(version=_run_version(ffmpeg, "-version"), where=where))
     if not find_tool("ffprobe"):
-        ctx.log("Warning: ffprobe was not found next to ffmpeg; some features may fail.")
+        ctx.log(t("Warning: ffprobe was not found next to ffmpeg; some features may fail."))
 
     ytdlp = find_tool("yt-dlp")
     if not ytdlp or (force and not _is_managed(ytdlp)):
@@ -363,7 +364,7 @@ def ensure_tools(ctx: "Ctx", update_ytdlp: bool = True, force: bool = False) -> 
     if not update_ytdlp and not force:
         return
     if not _is_managed(ytdlp):
-        ctx.log(f"Using the yt-dlp found at {ytdlp} (update it yourself if downloads break).")
+        ctx.log(t("Using the yt-dlp found at {path} (update it yourself if downloads break).").format(path=ytdlp))
         return
     try:
         latest = latest_ytdlp_tag()
@@ -371,11 +372,11 @@ def ensure_tools(ctx: "Ctx", update_ytdlp: bool = True, force: bool = False) -> 
         if force or current != latest:
             install_ytdlp(ctx, latest)
         else:
-            ctx.log(f"yt-dlp is up to date ({current}).")
+            ctx.log(t("yt-dlp is up to date ({version}).").format(version=current))
     except Cancelled:
         raise
     except EngineError as e:
-        ctx.log(f"Could not update yt-dlp (using the installed one): {e}")
+        ctx.log(t("Could not update yt-dlp (using the installed one): {error}").format(error=e))
 
 
 def tdcli_dir() -> Path:
@@ -417,17 +418,17 @@ def pick_tdcli_asset(names: list[str], plat: str | None = None, machine: str | N
 
 
 def _tdcli_release(tag: str) -> dict:
-    for t in (tag, "v" + tag):
+    for candidate_tag in (tag, "v" + tag):
         try:
-            r = _http_get(f"https://api.github.com/repos/{TDCLI_REPO}/releases/tags/{t}")
+            r = _http_get(f"https://api.github.com/repos/{TDCLI_REPO}/releases/tags/{candidate_tag}")
         except requests.RequestException as e:
-            raise EngineError(f"Could not reach GitHub to download TwitchDownloaderCLI:\n{e}") from e
+            raise EngineError(t("Could not reach GitHub to download TwitchDownloaderCLI:\n{error}").format(error=e)) from e
         if r.status_code == 404:
             continue
         if not r.ok:
-            raise EngineError(f"GitHub refused the TwitchDownloaderCLI lookup (HTTP {r.status_code}). Try again in a few minutes.")
+            raise EngineError(t("GitHub refused the TwitchDownloaderCLI lookup (HTTP {code}). Try again in a few minutes.").format(code=r.status_code))
         return r.json()
-    raise EngineError(f"TwitchDownloaderCLI {tag} was not found on GitHub.")
+    raise EngineError(t("TwitchDownloaderCLI {tag} was not found on GitHub.").format(tag=tag))
 
 
 def _extract_tdcli(archive: Path, dest: Path) -> None:
@@ -436,7 +437,7 @@ def _extract_tdcli(archive: Path, dest: Path) -> None:
         files = [i for i in z.infolist() if not i.is_dir()]
         main = next((i for i in files if PurePosixPath(i.filename.replace("\\", "/")).name == _TDCLI_EXE), None)
         if main is None:
-            raise EngineError("The TwitchDownloaderCLI download did not contain the program.")
+            raise EngineError(t("The TwitchDownloaderCLI download did not contain the program."))
         root = PurePosixPath(main.filename.replace("\\", "/")).parent
         dest.mkdir(parents=True)
         base = dest.resolve()
@@ -457,7 +458,7 @@ def _extract_tdcli(archive: Path, dest: Path) -> None:
 def install_tdcli(ctx: "Ctx", tag: str = TDCLI_VERSION) -> None:
     """Download the pinned TwitchDownloaderCLI release from GitHub into the tools folder."""
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
-    ctx.log(f"Downloading TwitchDownloaderCLI {tag} (needed for chat, one-time download)…")
+    ctx.log(t("Downloading TwitchDownloaderCLI {tag} (needed for chat, one-time download)…").format(tag=tag))
     ctx.stage(0.0, 1.0, f"Downloading TwitchDownloaderCLI {tag}")
     release = _tdcli_release(tag)
     assets = [a for a in release.get("assets", []) if isinstance(a, dict) and a.get("name")]
@@ -466,7 +467,7 @@ def install_tdcli(ctx: "Ctx", tag: str = TDCLI_VERSION) -> None:
               f"and put the program in:\n{tdcli_dir()}")
     asset = next((a for a in assets if a["name"] == name), None)
     if not asset or not asset.get("browser_download_url"):
-        raise EngineError(f"There is no TwitchDownloaderCLI build for this system in release {tag}.\n{manual}")
+        raise EngineError(t("There is no TwitchDownloaderCLI build for this system in release {tag}.\n{manual}").format(tag=tag, manual=manual))
     archive = TOOLS_DIR / "TwitchDownloaderCLI.zip.download"
     staging = TOOLS_DIR / "TwitchDownloaderCLI.new"
     shutil.rmtree(staging, ignore_errors=True)
@@ -475,24 +476,24 @@ def install_tdcli(ctx: "Ctx", tag: str = TDCLI_VERSION) -> None:
         digest = str(asset.get("digest") or "")
         if digest.startswith("sha256:"):
             if _sha256(archive) != digest[len("sha256:"):].lower():
-                raise EngineError("Checksum mismatch for TwitchDownloaderCLI: the download is corrupted, try again.")
+                raise EngineError(t("Checksum mismatch for TwitchDownloaderCLI: the download is corrupted, try again."))
         else:
-            ctx.log("GitHub published no checksum for TwitchDownloaderCLI, so it was not verified.")
+            ctx.log(t("GitHub published no checksum for TwitchDownloaderCLI, so it was not verified."))
         try:
             _extract_tdcli(archive, staging)
         except zipfile.BadZipFile as e:
-            raise EngineError("The TwitchDownloaderCLI download is not a valid zip file, try again.") from e
+            raise EngineError(t("The TwitchDownloaderCLI download is not a valid zip file, try again.")) from e
         try:
             if tdcli_dir().exists():
                 shutil.rmtree(tdcli_dir())
             os.replace(staging, tdcli_dir())
         except OSError as e:
-            raise EngineError("TwitchDownloaderCLI is in use right now. Wait for running jobs to finish and try again.") from e
+            raise EngineError(t("TwitchDownloaderCLI is in use right now. Wait for running jobs to finish and try again.")) from e
     finally:
         archive.unlink(missing_ok=True)
         shutil.rmtree(staging, ignore_errors=True)
     _write_version("tdcli", tag)
-    ctx.log(f"TwitchDownloaderCLI {tag} installed.")
+    ctx.log(t("TwitchDownloaderCLI {tag} installed.").format(tag=tag))
 
 
 def ensure_tdcli(ctx: "Ctx") -> str:
@@ -503,5 +504,5 @@ def ensure_tdcli(ctx: "Ctx") -> str:
     install_tdcli(ctx)
     path = find_tdcli()
     if not path:
-        raise EngineError("TwitchDownloaderCLI was installed but could not be found.")
+        raise EngineError(t("TwitchDownloaderCLI was installed but could not be found."))
     return path

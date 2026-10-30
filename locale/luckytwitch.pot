@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 07:54-0300\n"
+"POT-Creation-Date: 2026-10-30 08:17-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -12,6 +12,245 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: tools/i18n.py (Babel)\n"
+
+#: core/chapters.py qt_ui/tabs/plan.py
+msgid "That clip has no position in the VOD."
+msgstr ""
+
+#: core/chapters.py
+msgid "That clip is outside the VOD."
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "Chat for part {part} failed (the video is fine): {error}"
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "Chat overlay for part {part} failed (the video is fine): {error}"
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "Chat overlay for part {part} skipped: the chat could not be downloaded."
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "Could not read the chat file: {error}"
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid ""
+"Could not run TwitchDownloaderCLI:\n"
+"{error}"
+msgstr ""
+
+#: core/chat.py
+msgid "This chat file has no messages, so there is nothing to draw."
+msgstr ""
+
+#: core/chat.py
+msgid "This is not a chat file saved by TwitchDownloader (a «.chat.json»)."
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "{what} finished but the file is empty."
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "✔ {name}  (chat from {start} to {end} of the VOD)"
+msgstr ""
+
+#: core/chat.py
+#, python-brace-format
+msgid "✔ {name}  ({width}x{height}, {fps} fps, {label}; starts together with the part)"
+msgstr ""
+
+#: core/download.py
+#, python-brace-format
+msgid "Could not get the playlist address: {error}"
+msgstr ""
+
+#: core/download.py core/source_info.py
+#, python-brace-format
+msgid ""
+"Could not run yt-dlp:\n"
+"{error}"
+msgstr ""
+
+#: core/download.py
+#, python-brace-format
+msgid ""
+"Could not use the segment download ({reason}); using the old method. Markers may be up to 10 s "
+"off."
+msgstr ""
+
+#: core/download.py
+msgid "Full VOD already downloaded in the work folder, reusing it."
+msgstr ""
+
+#: core/download.py
+#, python-brace-format
+msgid ""
+"Part {index} ({start}–{end}) came out empty. Try again, or use strategy «full» to download the "
+"whole VOD and split it."
+msgstr ""
+
+#: core/download.py core/finalize.py
+msgid "ffmpeg was not found. Install it and add it to PATH."
+msgstr ""
+
+#: core/download.py
+msgid "the downloaded file is empty"
+msgstr ""
+
+#: core/download.py
+msgid "the video address is not an HLS playlist"
+msgstr ""
+
+#: core/download.py
+msgid "yt-dlp finished but no video file was found."
+msgstr ""
+
+#: core/download.py
+#, python-brace-format
+msgid "yt-dlp gave {n} address instead of one playlist"
+msgid_plural "yt-dlp gave {n} addresses instead of one playlist"
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/download.py
+#, python-brace-format
+msgid "yt-dlp: {line}"
+msgstr ""
+
+#: core/finalize.py
+msgid "Chapters: no Twitch API credentials, skipping."
+msgstr ""
+
+#: core/finalize.py
+msgid "Chapters: not a Twitch VOD URL, skipping."
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "Chapters: {chapters} (from {clips} clips found)"
+msgstr ""
+
+#: core/finalize.py
+msgid "Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers."
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "Cut point {point} is past the end of the downloaded video."
+msgstr ""
+
+#: core/finalize.py
+msgid "Fetching clips for chapters…"
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "Kept full VOD: {name}"
+msgstr ""
+
+#: core/finalize.py
+msgid "Muted audio: could not read which parts Twitch silenced, so no muted markers this time."
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "Muted audio: {count} stretch(es), {total} in total"
+msgstr ""
+
+#: core/finalize.py
+msgid "Quality: this video offers no choice, using the best one."
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "{what} skipped (the video is still downloaded): {error}"
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "{what} skipped: it only works for Twitch VODs."
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "✔ {name}  ({markers} for Premiere Pro, {fps:g} fps)"
+msgstr ""
+
+#: core/finalize.py
+#, python-brace-format
+msgid "✔ {name}  ({markers} for the Premiere plugin, {fps:g} fps)"
+msgstr ""
+
+#: core/planning.py
+#, python-brace-format
+msgid "Cut points must increase: {start} → {end}."
+msgstr ""
+
+#: core/planning.py
+#, python-brace-format
+msgid "Parts overlap: {p1} and {p2}."
+msgstr ""
+
+#: core/planning.py
+msgid "That moment is not inside any of your parts."
+msgstr ""
+
+#: core/planning.py
+msgid "Write the cut points, e.g.  0:00 - 30:00 - 1:30:00 - end"
+msgstr ""
+
+#: core/planning.py
+#, python-brace-format
+msgid "{point} is beyond the end of the VOD ({duration})."
+msgstr ""
+
+#: core/planning.py
+msgid "«end» needs the VOD length: press «Get info» first."
+msgstr ""
+
+#: core/planning.py
+#, python-brace-format
+msgid "«{group}»: a group needs at least two points (use 0 and end)."
+msgstr ""
+
+#: core/source_info.py
+msgid "Paste a VOD URL or ID."
+msgstr ""
+
+#: core/source_info.py
+msgid "Paste a single VOD URL or ID (not multi-line text)."
+msgstr ""
+
+#: core/source_info.py
+#, python-brace-format
+msgid ""
+"yt-dlp could not read that URL:\n"
+"{error}"
+msgstr ""
+
+#: core/source_info.py
+msgid "yt-dlp did not report the video length for that URL."
+msgstr ""
+
+#: core/source_info.py
+msgid "yt-dlp returned unreadable data for that URL."
+msgstr ""
+
+#: core/source_info.py
+msgid "yt-dlp took too long to read that URL."
+msgstr ""
 
 #: core/status.py qt_ui/queue_model.py
 msgid "done"
@@ -24,8 +263,207 @@ msgid_plural "{n} files"
 msgstr[0] ""
 msgstr[1] ""
 
+#: core/timeutil.py
+#, python-brace-format
+msgid "Invalid time: «{time}». Use H:MM:SS, MM:SS, seconds or 1h30m."
+msgstr ""
+
+#: core/tools.py
+msgid "Checksum mismatch for TwitchDownloaderCLI: the download is corrupted, try again."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Checksum mismatch for {filename}: the download is corrupted, try again."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid ""
+"Could not fetch the checksums to verify {filename}:\n"
+"{error}"
+msgstr ""
+
+#: core/tools.py
+msgid "Could not find the latest yt-dlp release on GitHub."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid ""
+"Could not reach GitHub to check yt-dlp:\n"
+"{error}"
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid ""
+"Could not reach GitHub to download TwitchDownloaderCLI:\n"
+"{error}"
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Could not update yt-dlp (using the installed one): {error}"
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Downloading TwitchDownloaderCLI {tag} (needed for chat, one-time download)…"
+msgstr ""
+
+#: core/tools.py
+msgid "Downloading ffmpeg (one-time download, it can be large)…"
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Downloading yt-dlp {tag}…"
+msgstr ""
+
+#: core/tools.py
+msgid "GitHub published no checksum for TwitchDownloaderCLI, so it was not verified."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "GitHub refused the TwitchDownloaderCLI lookup (HTTP {code}). Try again in a few minutes."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid ""
+"Network error while downloading {file}:\n"
+"{error}"
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "No checksum is published for {filename}."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Server busy ({host}), retrying in {wait}s…"
+msgstr ""
+
+#: core/tools.py
+msgid "The TwitchDownloaderCLI download did not contain the program."
+msgstr ""
+
+#: core/tools.py
+msgid "The TwitchDownloaderCLI download is not a valid zip file, try again."
+msgstr ""
+
+#: core/tools.py
+msgid "The ffmpeg archive did not contain ffmpeg."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "The {tool} download did not contain {tool}."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid ""
+"There is no TwitchDownloaderCLI build for this system in release {tag}.\n"
+"{manual}"
+msgstr ""
+
+#: core/tools.py
+msgid "TwitchDownloaderCLI is in use right now. Wait for running jobs to finish and try again."
+msgstr ""
+
+#: core/tools.py
+msgid "TwitchDownloaderCLI was installed but could not be found."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "TwitchDownloaderCLI {tag} installed."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "TwitchDownloaderCLI {tag} was not found on GitHub."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "Using the yt-dlp found at {path} (update it yourself if downloads break)."
+msgstr ""
+
+#: core/tools.py
+msgid "Warning: ffprobe was not found next to ffmpeg; some features may fail."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "ffmpeg from {label} failed, trying the next source…"
+msgstr ""
+
+#: core/tools.py
+msgid "ffmpeg installed."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "ffmpeg is installed ({version}, {where})."
+msgstr ""
+
+#: core/tools.py
+msgid "yt-dlp is in use right now. Wait for running jobs to finish and try again."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "yt-dlp is up to date ({version})."
+msgstr ""
+
+#: core/tools.py
+#, python-brace-format
+msgid "yt-dlp {tag} installed."
+msgstr ""
+
+#: core/twitch_api.py
+#, python-brace-format
+msgid ""
+"Could not reach Twitch:\n"
+"{error}"
+msgstr ""
+
+#: core/twitch_api.py
+msgid "The sign-in code expired. Start again."
+msgstr ""
+
+#: core/twitch_api.py
+msgid "Twitch API: VOD not found (deleted or private?)."
+msgstr ""
+
+#: core/twitch_api.py
+#, python-brace-format
+msgid ""
+"Twitch refused the sign-in request:\n"
+"{last}"
+msgstr ""
+
+#: core/twitch_api.py
+#, python-brace-format
+msgid "Twitch sign-in failed: {error}"
+msgstr ""
+
 #: luckytwitch_qt.py qt_ui/tabs/search.py
 msgid "Search"
+msgstr ""
+
+#: qt_ui/background_jobs.py qt_ui/main_window.py
+msgid "Chat overlay"
+msgstr ""
+
+#: qt_ui/background_jobs.py
+#, python-brace-format
+msgid "Downloading {tag}"
 msgstr ""
 
 #: qt_ui/dialogs.py
@@ -157,10 +595,6 @@ msgstr ""
 
 #: qt_ui/main_window.py
 msgid "Chat files (*.json);;All files (*.*)"
-msgstr ""
-
-#: qt_ui/main_window.py
-msgid "Chat overlay"
 msgstr ""
 
 #: qt_ui/main_window.py
@@ -409,6 +843,20 @@ msgstr ""
 
 #: qt_ui/queue_model.py
 msgid "waiting"
+msgstr ""
+
+#: qt_ui/queue_runner.py
+#, python-brace-format
+msgid "ERROR: {error}"
+msgstr ""
+
+#: qt_ui/queue_runner.py
+#, python-brace-format
+msgid "done ({} files)"
+msgstr ""
+
+#: qt_ui/queue_runner.py
+msgid "running…"
 msgstr ""
 
 #: qt_ui/search_models.py
@@ -1482,10 +1930,6 @@ msgid "Stream title…"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
-msgid "That clip has no position in the VOD."
-msgstr ""
-
-#: qt_ui/tabs/plan.py
 msgid "This VOD has no clips."
 msgstr ""
 
@@ -2133,6 +2577,10 @@ msgstr ""
 
 #: qt_ui/titlebar.py
 msgid "Restore"
+msgstr ""
+
+#: qt_ui/toast.py
+msgid "Dismiss notification"
 msgstr ""
 
 #: qt_ui/twitch_dialog.py

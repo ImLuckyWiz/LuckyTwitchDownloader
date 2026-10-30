@@ -11,6 +11,7 @@ from typing import Callable
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from core.i18n import t
 from core.palette import ACCENT, ERR, OK, WARN
 
 KIND_COLOURS = {
@@ -76,7 +77,7 @@ class ToastCard(QFrame):
         self.close_btn.setProperty("variant", "ghost")
         self.close_btn.setFixedSize(22, 22)
         self.close_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.close_btn.setAccessibleName("Dismiss notification")
+        self.close_btn.setAccessibleName(t("Dismiss notification"))
         self.close_btn.clicked.connect(self.dismiss)
         top.addWidget(self.close_btn)
         blay.addLayout(top)

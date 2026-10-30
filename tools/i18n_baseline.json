@@ -31,6 +31,7 @@
   "Chat",
   "Clip",
   "Clips",
+  "ERROR: {error}",
   "Error",
   "Error.",
   "MP4 (Universal && Premiere)",
@@ -39,129 +40,9 @@
   "Streamer",
   "Streamer:",
   "VOD",
-  "Video"
+  "Video",
+  "yt-dlp: {line}"
  ],
  "untranslated": [],
- "unwrapped": {
-  "core/chapters.py": {
-   "That clip has no position in the VOD.": 1,
-   "That clip is outside the VOD.": 1
-  },
-  "core/chat.py": {
-   "Chat for part {} failed (the video is fine): {}": 1,
-   "Chat overlay for part {} failed (the video is fine): {}": 1,
-   "Chat overlay for part {} skipped: the chat could not be downloaded.": 1,
-   "Could not read the chat file: {}": 1,
-   "Could not run TwitchDownloaderCLI:\n{}": 1,
-   "This chat file has no messages, so there is nothing to draw.": 1,
-   "This is not a chat file saved by TwitchDownloader (a «.chat.json»).": 1,
-   "{} finished but the file is empty.": 1,
-   "✔ {}  (chat from {} to {} of the VOD)": 1,
-   "✔ {}  ({}x{}, {} fps, {}; starts together with the part)": 1
-  },
-  "core/download.py": {
-   "Could not get the playlist address: {}": 1,
-   "Could not run yt-dlp:\n{}": 1,
-   "Could not use the segment download ({}); using the old method. Markers may be up to 10 s off.": 1,
-   "Full VOD already downloaded in the work folder, reusing it.": 1,
-   "Part {} ({}–{}) came out empty. Try again, or use strategy «full» to download the whole VOD and split it.": 1,
-   "ffmpeg was not found. Install it and add it to PATH.": 1,
-   "the downloaded file is empty": 1,
-   "the video address is not an HLS playlist": 1,
-   "yt-dlp finished but no video file was found.": 1,
-   "yt-dlp gave {} address(es) instead of one playlist": 1,
-   "yt-dlp: {}": 1
-  },
-  "core/finalize.py": {
-   "Chapters: no Twitch API credentials, skipping.": 1,
-   "Chapters: not a Twitch VOD URL, skipping.": 1,
-   "Chapters: {} (from {} clips found)": 1,
-   "Could not read the frame rate with ffprobe; assuming 30 fps for the Premiere markers.": 1,
-   "Cut point {} is past the end of the downloaded video.": 1,
-   "Fetching clips for chapters…": 1,
-   "Kept full VOD: {}": 1,
-   "Muted audio: could not read which parts Twitch silenced, so no muted markers this time.": 1,
-   "Muted audio: {} stretch(es), {} in total": 1,
-   "Quality: this video offers no choice, using the best one.": 1,
-   "ffmpeg was not found. Install it and add it to PATH.": 1,
-   "{} skipped (the video is still downloaded): {}": 1,
-   "{} skipped: it only works for Twitch VODs.": 1,
-   "✔ {}  ({} for Premiere Pro, {} fps)": 1,
-   "✔ {}  ({} for the Premiere plugin, {} fps)": 1
-  },
-  "core/planning.py": {
-   "Cut points must increase: {} → {}.": 1,
-   "Parts overlap: {}–{} and {}–{}.": 1,
-   "That moment is not inside any of your parts.": 1,
-   "Write the cut points, e.g.  0:00 - 30:00 - 1:30:00 - end": 1,
-   "{} is beyond the end of the VOD ({}).": 2,
-   "«end» needs the VOD length: press «Get info» first.": 1,
-   "«{}»: a group needs at least two points (use 0 and end).": 1
-  },
-  "core/source_info.py": {
-   "Could not run yt-dlp:\n{}": 1,
-   "Paste a VOD URL or ID.": 1,
-   "Paste a single VOD URL or ID (not multi-line text).": 1,
-   "yt-dlp could not read that URL:\n{}": 1,
-   "yt-dlp did not report the video length for that URL.": 1,
-   "yt-dlp returned unreadable data for that URL.": 1,
-   "yt-dlp took too long to read that URL.": 1
-  },
-  "core/timeutil.py": {
-   "Invalid time: «{}». Use H:MM:SS, MM:SS, seconds or 1h30m.": 1
-  },
-  "core/tools.py": {
-   "Checksum mismatch for TwitchDownloaderCLI: the download is corrupted, try again.": 1,
-   "Checksum mismatch for {}: the download is corrupted, try again.": 1,
-   "Could not fetch the checksums to verify {}:\n{}": 1,
-   "Could not find the latest yt-dlp release on GitHub.": 1,
-   "Could not reach GitHub to check yt-dlp:\n{}": 1,
-   "Could not reach GitHub to download TwitchDownloaderCLI:\n{}": 1,
-   "Could not update yt-dlp (using the installed one): {}": 1,
-   "Downloading TwitchDownloaderCLI {} (needed for chat, one-time download)…": 1,
-   "Downloading ffmpeg (one-time download, it can be large)…": 1,
-   "Downloading yt-dlp {}…": 1,
-   "GitHub published no checksum for TwitchDownloaderCLI, so it was not verified.": 1,
-   "GitHub refused the TwitchDownloaderCLI lookup (HTTP {}). Try again in a few minutes.": 1,
-   "Network error while downloading {}:\n{}": 1,
-   "No checksum is published for {}.": 1,
-   "Server busy ({}), retrying in {}s…": 1,
-   "The TwitchDownloaderCLI download did not contain the program.": 1,
-   "The TwitchDownloaderCLI download is not a valid zip file, try again.": 1,
-   "The ffmpeg archive did not contain ffmpeg.": 1,
-   "The {} download did not contain {}.": 1,
-   "There is no TwitchDownloaderCLI build for this system in release {}.\n{}": 1,
-   "TwitchDownloaderCLI is in use right now. Wait for running jobs to finish and try again.": 1,
-   "TwitchDownloaderCLI was installed but could not be found.": 1,
-   "TwitchDownloaderCLI {} installed.": 1,
-   "TwitchDownloaderCLI {} was not found on GitHub.": 1,
-   "Using the yt-dlp found at {} (update it yourself if downloads break).": 1,
-   "Warning: ffprobe was not found next to ffmpeg; some features may fail.": 1,
-   "ffmpeg from {} failed, trying the next source…": 1,
-   "ffmpeg installed.": 2,
-   "ffmpeg is installed ({}, {}).": 1,
-   "yt-dlp is in use right now. Wait for running jobs to finish and try again.": 1,
-   "yt-dlp is up to date ({}).": 1,
-   "yt-dlp {} installed.": 1
-  },
-  "core/twitch_api.py": {
-   "Could not reach Twitch:\n{}": 1,
-   "The sign-in code expired. Start again.": 1,
-   "Twitch API: VOD not found (deleted or private?).": 1,
-   "Twitch refused the sign-in request:\n{}": 1,
-   "Twitch sign-in failed: {}": 1
-  },
-  "qt_ui/background_jobs.py": {
-   "Chat overlay": 1,
-   "Downloading {}": 1
-  },
-  "qt_ui/queue_runner.py": {
-   "ERROR: {}": 1,
-   "done ({} files)": 1,
-   "running…": 1
-  },
-  "qt_ui/toast.py": {
-   "Dismiss notification": 1
-  }
- }
+ "unwrapped": {}
 }

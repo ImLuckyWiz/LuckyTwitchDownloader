@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 
 from core.errors import PlanError
+from core.i18n import t
 
 
 def parse_time(text: str) -> float | None:
@@ -20,7 +21,7 @@ def parse_time(text: str) -> float | None:
         return int(h or 0) * 3600 + int(mi or 0) * 60 + float(s or 0)
     parts = text.split(":")
     if len(parts) > 3 or not all(re.fullmatch(r"\d+(\.\d+)?", p) for p in parts):
-        raise PlanError(f"Invalid time: «{text}». Use H:MM:SS, MM:SS, seconds or 1h30m.")
+        raise PlanError(t("Invalid time: «{time}». Use H:MM:SS, MM:SS, seconds or 1h30m.").format(time=text))
     total = 0.0
     for p in parts:
         total = total * 60 + float(p)

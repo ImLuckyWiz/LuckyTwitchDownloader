@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from core.errors import Cancelled, EngineError
+from core.i18n import t
 from core.premiere_export import probe_video
 from core.runtime import Ctx, _NO_WINDOW, _tool_env, find_tool
 from core.timeutil import fmt_hms
@@ -103,7 +104,7 @@ def _run_tdcli(ctx: Ctx, cmd: list[str], dest: Path, what: str,
             creationflags=_NO_WINDOW, start_new_session=sys.platform != "win32",
         )
     except OSError as e:
-        raise EngineError(f"Could not run TwitchDownloaderCLI:\n{e}") from e
+        raise EngineError(t("Could not run TwitchDownloaderCLI:\n{error}").format(error=e)) from e
     ctx.proc = proc
     tail: list[str] = []
     warnings: list[str] = []
@@ -129,7 +130,7 @@ def _run_tdcli(ctx: Ctx, cmd: list[str], dest: Path, what: str,
         if proc.returncode != 0:
             raise EngineError(f"{what} failed: " + tdcli_error(tail))
         if not dest.is_file() or dest.stat().st_size == 0:
-            raise EngineError(f"{what} finished but the file is empty.")
+            raise EngineError(t("{what} finished but the file is empty.").format(what=what))
         ok = True
         return warnings
     finally:
@@ -295,13 +296,13 @@ def read_chat_info(path: Path) -> ChatFileInfo:
         with open(path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
     except (OSError, ValueError) as e:
-        raise EngineError(f"Could not read the chat file: {e}") from e
+        raise EngineError(t("Could not read the chat file: {error}").format(error=e)) from e
     comments = data.get("comments") if isinstance(data, dict) else None
     video = data.get("video") if isinstance(data, dict) else None
     if not isinstance(comments, list) or not isinstance(video, dict):
-        raise EngineError("This is not a chat file saved by TwitchDownloader (a «.chat.json»).")
+        raise EngineError(t("This is not a chat file saved by TwitchDownloader (a «.chat.json»)."))
     if not comments:
-        raise EngineError("This chat file has no messages, so there is nothing to draw.")
+        raise EngineError(t("This chat file has no messages, so there is nothing to draw."))
 
     def seconds(value, fallback: float) -> float:
         return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else fallback
@@ -448,18 +449,18 @@ def chat_files_for_part(ctx: Ctx, tool: str, src: SourceInfo, opts: JobOptions, 
                 chat_file = _dl_chat(
                     ctx, tool, vod_id, real_start, real_end,
                     dest.with_suffix(f".chat.{chat_fmt}"), opts.chat_embed, cache)
-                ctx.log(f"✔ {chat_file.name}  (chat from {fmt_hms(real_start)} to {fmt_hms(real_end)} of the VOD)")
+                ctx.log(t("✔ {name}  (chat from {start} to {end} of the VOD)").format(name=chat_file.name, start=fmt_hms(real_start), end=fmt_hms(real_end)))
                 if chat_fmt == "json":
                     chat_json = chat_file
             except Cancelled:
                 raise
             except EngineError as e:
                 chat_failed = True
-                ctx.log(f"Chat for part {part.index} failed (the video is fine): {e}")
+                ctx.log(t("Chat for part {part} failed (the video is fine): {error}").format(part=part.index, error=e))
         if not opts.chat_render:
             return
         if chat_failed:
-            ctx.log(f"Chat overlay for part {part.index} skipped: the chat could not be downloaded.")
+            ctx.log(t("Chat overlay for part {part} skipped: the chat could not be downloaded.").format(part=part.index))
             return
         try:
             if chat_json is None:  # the saved chat is not a .json (or not wanted): the overlay needs its own copy
@@ -474,12 +475,11 @@ def chat_files_for_part(ctx: Ctx, tool: str, src: SourceInfo, opts: JobOptions, 
                 ctx, tool, chat_json, dest.with_suffix(".chat-overlay" + CHAT_RENDER_EXT[mode]), mode=mode, look=look,
                 width=width, height=height, font_size=opts.chat_render_font_size, fps=fps,
                 smooth=opts.chat_render_smooth, cache_dir=cache, lead=lead)
-            ctx.log(f"✔ {out.name}  ({width}x{height}, {fps} fps, {CHAT_RENDER_LABELS[mode]}; "
-                    f"starts together with the part)")
+            ctx.log(t("✔ {name}  ({width}x{height}, {fps} fps, {label}; starts together with the part)").format(name=out.name, width=width, height=height, fps=fps, label=CHAT_RENDER_LABELS[mode]))
         except Cancelled:
             raise
         except EngineError as e:
-            ctx.log(f"Chat overlay for part {part.index} failed (the video is fine): {e}")
+            ctx.log(t("Chat overlay for part {part} failed (the video is fine): {error}").format(part=part.index, error=e))
     finally:
         if temp_json and chat_json is not None:
             chat_json.unlink(missing_ok=True)

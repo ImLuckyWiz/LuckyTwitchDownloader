@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject
 
 from luckytwitch_engine import Cancelled, Ctx, run_job
 from qt_ui.bridge import Bridge
+from core.i18n import N_, t
 from qt_ui.queue_model import QueueItem, QueueModel
 
 
@@ -91,18 +92,18 @@ class QueueRunner(QObject):
                     log=lambda m, item_label=it.label: bridge.log.emit(
                         f"[{item_label}] {m}" if concurrency > 1 else m
                     ),
-                    progress=lambda f, t, item_id=it.iid: on_item_progress(item_id, f, t),
+                    progress=lambda f, msg, item_id=it.iid: on_item_progress(item_id, f, msg),
                 )
                 with self._lock:
                     self.active_contexts[it.iid] = ctx
                     self.ctx = ctx
 
                 bridge.job.emit(cur_n, total)
-                bridge.item.emit(it.iid, "running…")
+                bridge.item.emit(it.iid, N_("running…"))
                 try:
                     results = run_job(it.job, ctx)
                     it.files = [str(p) for p in results]
-                    bridge.item.emit(it.iid, f"done ({len(results)} files)")
+                    bridge.item.emit(it.iid, N_("done ({} files)").format(len(results)))
                 except Cancelled:
                     bridge.item.emit(it.iid, "cancelled")
                     bridge.log.emit(f"Cancelled: {it.label}" if concurrency > 1 else "Cancelled.")
@@ -111,7 +112,7 @@ class QueueRunner(QObject):
                         break
                 except Exception as e:  # noqa: BLE001
                     bridge.item.emit(it.iid, "failed")
-                    bridge.log.emit(f"ERROR: {e}")
+                    bridge.log.emit(t("ERROR: {error}").format(error=e))
                 finally:
                     with self._lock:
                         self.active_contexts.pop(it.iid, None)
@@ -120,13 +121,13 @@ class QueueRunner(QObject):
         def coordinator():
             workers = []
             for _ in range(concurrency):
-                t = threading.Thread(target=worker_loop, daemon=True)
-                workers.append(t)
-                t.start()
+                th = threading.Thread(target=worker_loop, daemon=True)
+                workers.append(th)
+                th.start()
             with self._lock:
                 self.workers = workers
-            for t in workers:
-                t.join()
+            for th in workers:
+                th.join()
             with self._lock:
                 self.workers = []
                 self.active_contexts.clear()

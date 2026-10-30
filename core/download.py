@@ -19,6 +19,7 @@ from urllib.parse import urljoin
 import requests
 
 from core.errors import Cancelled, EngineError
+from core.i18n import t, tn
 from core.planning import Part
 from core.runtime import Ctx, _NO_WINDOW, _tool_env, find_tool
 from core.source_info import YTDLP_MISSING
@@ -147,7 +148,7 @@ def run_ffmpeg(ctx: Ctx, args: list[str], total: float | None = None) -> str:
     _find = getattr(eng, "find_tool", find_tool) if eng else find_tool
     ffmpeg = _find("ffmpeg")
     if not ffmpeg:
-        raise EngineError("ffmpeg was not found. Install it and add it to PATH.")
+        raise EngineError(t("ffmpeg was not found. Install it and add it to PATH."))
     cmd = [ffmpeg, "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats"] + args
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     ctx.check_cancel()
@@ -346,7 +347,7 @@ def run_ytdlp(
             start_new_session=sys.platform != "win32",
         )
     except OSError as e:
-        raise EngineError(f"Could not run yt-dlp:\n{e}") from e
+        raise EngineError(t("Could not run yt-dlp:\n{error}").format(error=e)) from e
     ctx.proc = proc
     last_real = [time.monotonic()]
     stop = threading.Event()
@@ -370,7 +371,7 @@ def run_ytdlp(
                 continue
             tail.append(line)
             if line.startswith(("WARNING", "ERROR")):
-                ctx.log(f"yt-dlp: {line}")
+                ctx.log(t("yt-dlp: {line}").format(line=line))
         proc.wait()
     finally:
         stop.set()
@@ -406,7 +407,7 @@ def download_full(
     done = workdir / "full.done"
     existing = _find_media(workdir)
     if done.exists() and existing:
-        ctx.log("Full VOD already downloaded in the work folder, reusing it.")
+        ctx.log(t("Full VOD already downloaded in the work folder, reusing it."))
         return existing
     kw = {}
     if format_id is not None:
@@ -418,7 +419,7 @@ def download_full(
     _ytdlp(ctx, ["-o", _out_template(workdir, "full"), url], threads, **kw)
     media = _find_media(workdir)
     if not media:
-        raise EngineError("yt-dlp finished but no video file was found.")
+        raise EngineError(t("yt-dlp finished but no video file was found."))
     done.write_text("ok")
     return media
 
@@ -450,10 +451,7 @@ def download_section(
     _ytdlp(ctx, args + [url], threads, total_secs=part.duration, watch_dir=pdir, **kw)
     media = _find_media(pdir)
     if not media or media.stat().st_size < 4096:
-        raise EngineError(
-            f"Part {part.index} ({fmt_hms(part.start)}–{fmt_hms(part.end)}) came out empty. "
-            "Try again, or use strategy «full» to download the whole VOD and split it."
-        )
+        raise EngineError(t("Part {index} ({start}–{end}) came out empty. Try again, or use strategy «full» to download the whole VOD and split it.").format(index=part.index, start=fmt_hms(part.start), end=fmt_hms(part.end)))
     return media
 
 
@@ -616,13 +614,13 @@ def get_playlist_url(ctx: Ctx, url: str, format_id: str | None = None) -> str:
             env=_tool_env(), creationflags=_NO_WINDOW, timeout=120,
         )
     except (OSError, subprocess.TimeoutExpired) as e:
-        raise EngineError(f"Could not get the playlist address: {e}") from e
+        raise EngineError(t("Could not get the playlist address: {error}").format(error=e)) from e
     ctx.check_cancel()
     urls = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
     if proc.returncode != 0 or len(urls) != 1:
-        raise EngineError(f"yt-dlp gave {len(urls)} address(es) instead of one playlist")
+        raise EngineError(tn("yt-dlp gave {n} address instead of one playlist", "yt-dlp gave {n} addresses instead of one playlist", len(urls)))
     if not urls[0].startswith("http") or ".m3u8" not in urls[0].split("?", 1)[0]:
-        raise EngineError("the video address is not an HLS playlist")
+        raise EngineError(t("the video address is not an HLS playlist"))
     return urls[0]
 
 
@@ -668,12 +666,12 @@ def download_section_aligned(
             total=real_end - real_start,
         )
         if not out.exists() or out.stat().st_size < 4096:
-            raise EngineError("the downloaded file is empty")
+            raise EngineError(t("the downloaded file is empty"))
     except Cancelled:
         raise
     except (EngineError, requests.RequestException, ValueError, OSError) as e:
         # Keep every line of the message (ffmpeg's real error comes after the "ffmpeg failed:" header).
         reason = " | ".join(ln.strip() for ln in str(e).splitlines() if ln.strip())[:500] or type(e).__name__
-        ctx.log(f"Could not use the segment download ({reason}); using the old method. Markers may be up to 10 s off.")
+        ctx.log(t("Could not use the segment download ({reason}); using the old method. Markers may be up to 10 s off.").format(reason=reason))
         return None
     return out, real_start, real_end

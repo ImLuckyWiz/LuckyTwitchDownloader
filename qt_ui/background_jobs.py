@@ -20,6 +20,7 @@ from luckytwitch_engine import (
     Cancelled, Ctx, JobOptions, describe_tools, ensure_tdcli, ensure_tools, fetch_clips_for_vod, get_source_info,
     load_storyboard_frames, render_existing_chat,
 )
+from core.i18n import t
 from qt_ui.bridge import Bridge
 
 
@@ -82,7 +83,7 @@ class SavedChatRunner:
         def work():
             out, error = None, ""
             try:
-                ctx.stage(0.0, 1.0, "Chat overlay")
+                ctx.stage(0.0, 1.0, t("Chat overlay"))
                 tool = ensure_tdcli(ctx)
                 with tempfile.TemporaryDirectory(prefix="luckytwitch_chat_") as cache:
                     out = render_existing_chat(ctx, tool, chat, opts, Path(cache))
@@ -210,7 +211,7 @@ class UpdateDownloadRunner:
             from core import updates
             error = ""
             try:
-                ctx.stage(0.0, 1.0, f"Downloading {info.tag}")
+                ctx.stage(0.0, 1.0, t("Downloading {tag}").format(tag=info.tag))
                 updates.download_installer(ctx, info, dest)
                 if not updates.verify_download(dest, info.asset_size, info.sha256):
                     try:

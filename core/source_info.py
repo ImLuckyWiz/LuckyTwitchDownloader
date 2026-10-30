@@ -17,6 +17,7 @@ from typing import Callable
 import requests
 
 from core.errors import EngineError
+from core.i18n import t
 from core.muted import fetch_muted_ranges
 from core.timeline import Range
 
@@ -129,9 +130,9 @@ def get_source_info(text: str) -> SourceInfo:
 
     url = normalize_url(text)
     if not url:
-        raise EngineError("Paste a VOD URL or ID.")
+        raise EngineError(t("Paste a VOD URL or ID."))
     if "\n" in url or "\r" in url:
-        raise EngineError("Paste a single VOD URL or ID (not multi-line text).")
+        raise EngineError(t("Paste a single VOD URL or ID (not multi-line text)."))
     ytdlp = find_tool("yt-dlp") if find_tool else None
     if not ytdlp:
         raise EngineError(YTDLP_MISSING)
@@ -148,15 +149,15 @@ def get_source_info(text: str) -> SourceInfo:
             timeout=180,
         )
     except subprocess.TimeoutExpired as e:
-        raise EngineError("yt-dlp took too long to read that URL.") from e
+        raise EngineError(t("yt-dlp took too long to read that URL.")) from e
     except OSError as e:
-        raise EngineError(f"Could not run yt-dlp:\n{e}") from e
+        raise EngineError(t("Could not run yt-dlp:\n{error}").format(error=e)) from e
     if proc.returncode != 0:
-        raise EngineError(f"yt-dlp could not read that URL:\n{proc.stderr.strip()[-800:]}")
+        raise EngineError(t("yt-dlp could not read that URL:\n{error}").format(error=proc.stderr.strip()[-800:]))
     try:
         info = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
-        raise EngineError("yt-dlp returned unreadable data for that URL.") from e
+        raise EngineError(t("yt-dlp returned unreadable data for that URL.")) from e
     src = parse_source_info(info, url)
     if src.twitch_vod_id:  # one more small request; a failure only means "no muted ranges to show"
         src.muted = fetch_muted_ranges(info.get("formats"), src.duration)
@@ -166,7 +167,7 @@ def get_source_info(text: str) -> SourceInfo:
 def parse_source_info(info: dict, url: str) -> SourceInfo:
     """Turn yt-dlp's --dump-single-json output into a SourceInfo (no I/O, so it is easy to test)."""
     if not info.get("duration"):
-        raise EngineError("yt-dlp did not report the video length for that URL.")
+        raise EngineError(t("yt-dlp did not report the video length for that URL."))
     duration = float(info["duration"])
     d = info.get("upload_date") or ""
     date = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else ""

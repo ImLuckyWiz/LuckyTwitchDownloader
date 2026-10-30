@@ -351,8 +351,9 @@ def test_unwrapped_literals_ratchet_has_no_new_gaps():
 
 def test_ratchet_detects_a_new_gap(monkeypatch):
     now = tool.scan_unwrapped()
-    first_file = next(iter(now))
-    fake = {**now, first_file: {**now[first_file], "A brand new English sentence": 1}}
+    first_file = next(iter(now)) if now else "core/chat.py"
+    current_entries = now.get(first_file, {})
+    fake = {**now, first_file: {**current_entries, "A brand new English sentence": 1}}
     monkeypatch.setattr(tool, "scan_unwrapped", lambda: fake)
     problems = tool.unwrapped_problems()
     assert any("A brand new English sentence" in p for p in problems)
@@ -360,6 +361,12 @@ def test_ratchet_detects_a_new_gap(monkeypatch):
 
 def test_ratchet_demands_shrinking_when_a_gap_is_fixed(monkeypatch):
     now = tool.scan_unwrapped()
+    if not now:
+        real_load = tool.load_baseline
+        monkeypatch.setattr(tool, "load_baseline", lambda: {**real_load(), "unwrapped": {"core/chat.py": {"Old fixed string": 1}}})
+        problems = tool.unwrapped_problems()
+        assert any("tools/i18n.py baseline" in p for p in problems)
+        return
     first_file = next(iter(now))
     text = next(iter(now[first_file]))
     shrunk = {**now, first_file: {k: v for k, v in now[first_file].items() if k != text}}
@@ -371,7 +378,8 @@ def test_ratchet_demands_shrinking_when_a_gap_is_fixed(monkeypatch):
 def test_baseline_refuses_to_grow(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(tool, "BASELINE_PATH", tmp_path / "baseline.json")
     tool.BASELINE_PATH.write_text('{"identical_ok": [], "unwrapped": {}, "dead": [], "untranslated": []}', encoding="utf-8")
-    assert tool.cmd_baseline(allow_growth=False) == 1  # the real gaps are not in this empty baseline
+    monkeypatch.setattr(tool, "scan_unwrapped", lambda: {"core/chat.py": {"Some new gap": 1}})
+    assert tool.cmd_baseline(allow_growth=False) == 1  # the gaps are not in this empty baseline
     assert "may only shrink" in capsys.readouterr().out
     assert tool.cmd_baseline(allow_growth=True) == 0
 

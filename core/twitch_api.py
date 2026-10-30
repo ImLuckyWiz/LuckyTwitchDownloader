@@ -12,6 +12,7 @@ from typing import Callable
 import requests
 
 from core.errors import Cancelled, EngineError
+from core.i18n import t
 from core.timeutil import parse_twitch_duration
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
@@ -120,13 +121,13 @@ def device_login_start(client_id: str = TWITCH_CLIENT_ID) -> dict:
         try:
             r = requests.post(DEVICE_URL, data={"client_id": client_id, "scopes": scopes}, timeout=20)
         except requests.RequestException as e:
-            raise EngineError(f"Could not reach Twitch:\n{e}") from e
+            raise EngineError(t("Could not reach Twitch:\n{error}").format(error=e)) from e
         if r.ok:
             data = r.json()
             data["scopes"] = scopes
             return data
         last = r.text[:300]
-    raise EngineError(f"Twitch refused the sign-in request:\n{last}")
+    raise EngineError(t("Twitch refused the sign-in request:\n{last}").format(last=last))
 
 
 def device_login_poll(start: dict, client_id: str = TWITCH_CLIENT_ID,
@@ -164,8 +165,8 @@ def device_login_poll(start: dict, client_id: str = TWITCH_CLIENT_ID,
         if "slow" in msg.lower():
             interval += 5
             continue
-        raise EngineError(f"Twitch sign-in failed: {msg or r.status_code}")
-    raise EngineError("The sign-in code expired. Start again.")
+        raise EngineError(t("Twitch sign-in failed: {error}").format(error=msg or r.status_code))
+    raise EngineError(t("The sign-in code expired. Start again."))
 
 
 def _iso_z(dt: datetime) -> str:
@@ -195,7 +196,7 @@ def fetch_clips_for_vod(client: TwitchClient, vod_id: str) -> list[dict]:
     """All clips that belong to this VOD, sorted by position in the VOD."""
     data = client.get("videos", {"id": vod_id}).get("data", [])
     if not data:
-        raise EngineError("Twitch API: VOD not found (deleted or private?).")
+        raise EngineError(t("Twitch API: VOD not found (deleted or private?)."))
     video = data[0]
     start = datetime.strptime(video["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     end = start + timedelta(seconds=parse_twitch_duration(video["duration"]) + 300)
