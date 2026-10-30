@@ -1,3 +1,17 @@
+## v2.10.0
+
+LuckyTwitch Downloader **v2.10.0** delivers complete, production-ready Spanish (Español) localization across the entire application, with zero untranslated strings, bilingual settings search, localized installer, and full Spanish documentation.
+
+### What's new in 2.10.0:
+- **100% Spanish Interface Localization:** Every tab (Plan, Search, Queue & Log, Options), all dialogs (Twitch API, Updates, Download History, First-run Welcome), menus, toasts, and status chips are fully translated into Spanish.
+- **Backend & Engine Errors Localized:** All user-facing engine errors (`PlanError`, `EngineError`), worker progress, and output messages are localized into Spanish with zero unwrapped English literals remaining in the codebase.
+- **Bilingual Settings Search:** In **Options**, you can now search using either Spanish terms (e.g. *descargas*, *carpeta*, *calidad*, *cortes*) or English keywords (e.g. *downloads*, *folder*, *quality*, *cuts*).
+- **Dynamic Instant Language Switching:** Change language anytime in **Options → Interface → Language** (Auto / English / Español) with immediate live retranslation across all open views—no restart needed.
+- **Localized Windows Installer & Linux Launcher:** The Inno Setup installer now provides full Spanish language selection and localized shortcut/protocol tasks; the Linux `.desktop` launcher includes Spanish descriptions.
+- **Spanish User Documentation:** Added [`README.es.md`](README.es.md) with comprehensive Spanish documentation covering all features, shortcuts, and setup instructions.
+- **Pseudo-Localization Mode:** Added `--lang pseudo` CLI flag and `LUCKYTWITCH_LANG=pseudo` environment variable to assist translators and QA in detecting layout clipping or unwrapped text.
+- **Architecture & Guard Rails:** GNU gettext (`.po` / `.mo`) catalogs with automated CI hygiene checks ensuring placeholder consistency, accelerator alignment, and zero string drift.
+
 ## v2.9.2
 
 LuckyTwitch Downloader **v2.9.2** makes the Spanish interface switch instantly and sets the base for finishing the translation (i18n phases I0 and I1).
