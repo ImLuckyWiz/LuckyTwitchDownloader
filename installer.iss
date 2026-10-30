@@ -36,9 +36,25 @@ SetupIconFile=assets\icon.ico
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 
+[Languages]
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+
+[CustomMessages]
+en.CreateDesktopIcon=Create a desktop shortcut
+es.CreateDesktopIcon=Crear un acceso directo en el escritorio
+en.ShortcutsGroup=Shortcuts:
+es.ShortcutsGroup=Accesos directos:
+en.WebLinksDesc=Open luckytwitch:// links from web pages with LuckyTwitch
+es.WebLinksDesc=Abrir enlaces luckytwitch:// desde páginas web con LuckyTwitch
+en.LinksGroup=Links:
+es.LinksGroup=Enlaces:
+en.LaunchApp=Launch {#EffectiveAppName}
+es.LaunchApp=Ejecutar {#EffectiveAppName}
+
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
-Name: "weblinks"; Description: "Open luckytwitch:// links from web pages with LuckyTwitch"; GroupDescription: "Links:"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:ShortcutsGroup}"
+Name: "weblinks"; Description: "{cm:WebLinksDesc}"; GroupDescription: "{cm:LinksGroup}"
 
 [Files]
 Source: "dist\LuckyTwitch\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion

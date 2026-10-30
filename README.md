@@ -2,6 +2,8 @@
 
 Download Twitch VODs (or any link yt-dlp supports) and cut them into parts by timestamps, with optional chapters built from the VOD's Twitch clips. Runs on Windows, macOS, and Linux.
 
+*Read this in Spanish: [README.es.md](README.es.md)*
+
 ## Download
 
 Get the latest version from the [Releases](../../releases) page:
