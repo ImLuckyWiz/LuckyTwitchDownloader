@@ -22,7 +22,9 @@ from PySide6.QtWidgets import (
 
 from core.palette import BG, BG2, FG, MUTED, WHITE
 from core.resources import resource_path
+from core.i18n import t
 from qt_ui.icons import icon
+from qt_ui.i18n_qt import language_bus
 
 TITLEBAR_HEIGHT = 32
 CLOSE_HOVER_BG = "#c42b1c"
@@ -163,29 +165,37 @@ class CustomTitleBar(QWidget):
         layout.addStretch()
 
         # Window controls
-        self.min_btn = CaptionButton("window-minimize", "Minimize", is_close=False, parent=self)
+        self.min_btn = CaptionButton("window-minimize", t("Minimize"), is_close=False, parent=self)
         self.min_btn.clicked.connect(self._on_minimize)
         layout.addWidget(self.min_btn)
 
-        self.max_btn = CaptionButton("window-maximize", "Maximize", is_close=False, parent=self)
+        self.max_btn = CaptionButton("window-maximize", t("Maximize"), is_close=False, parent=self)
         self.max_btn.clicked.connect(self._on_maximize)
         layout.addWidget(self.max_btn)
 
-        self.close_btn = CaptionButton("x", "Close", is_close=True, parent=self)
+        self.close_btn = CaptionButton("x", t("Close"), is_close=True, parent=self)
         self.close_btn.clicked.connect(self._on_close)
         layout.addWidget(self.close_btn)
 
+        language_bus().changed.connect(self.retranslate_ui)
+
     def set_title(self, title: str) -> None:
         self.title_label.setText(title)
+
+    def retranslate_ui(self) -> None:
+        """Retranslate titlebar tooltips on language change."""
+        self.min_btn.setToolTip(t("Minimize"))
+        self.close_btn.setToolTip(t("Close"))
+        self.update_maximized_state(self.window.isMaximized())
 
     def update_maximized_state(self, is_maximized: bool) -> None:
         """Update maximize / restore button icon and tooltip based on window state."""
         if is_maximized:
             self.max_btn.set_icon_name("window-restore")
-            self.max_btn.setToolTip("Restore")
+            self.max_btn.setToolTip(t("Restore"))
         else:
             self.max_btn.set_icon_name("window-maximize")
-            self.max_btn.setToolTip("Maximize")
+            self.max_btn.setToolTip(t("Maximize"))
 
     def _on_minimize(self) -> None:
         self.minimize_clicked.emit()

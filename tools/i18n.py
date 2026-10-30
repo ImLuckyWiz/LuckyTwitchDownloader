@@ -24,6 +24,14 @@ match the English text; Spanish differs from English unless allow-listed; glossa
 
 from __future__ import annotations
 
+import sys
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import argparse
 import ast
 import collections

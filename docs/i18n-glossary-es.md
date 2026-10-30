@@ -35,7 +35,7 @@ right (accents and capitals do not matter). The list is read by the checker; add
 | strategy | estrategia | |
 | quality | calidad | |
 | split | dividir | verb |
-| cut point | punto de corte | |
+| cut point | punto de corte / puntos de corte | |
 | settings | ajustes / opciones | the tab itself stays "Opciones" |
 
 ## Words that are the same in both languages

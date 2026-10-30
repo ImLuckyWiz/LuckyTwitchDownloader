@@ -1,6 +1,6 @@
 # Spanish Localization Plan (Phase F4b: finish and harden the translation)
 
-Status: **In progress: phases I0 and I1 delivered (see section 8), I2 is next.** Date of analysis: 2026-10-29, repo at v2.9.0.
+Status: **In progress: phases I0, I1, and I2 delivered (see section 8), I3 is next.** Date of analysis: 2026-10-29, repo at v2.9.2.
 
 Decisions taken on 2026-10-29: Spanish uses informal **tú**; the mechanism is **gettext** (`.po`/`.mo`, standard Python `gettext` at runtime, Babel for tooling); translating the Premiere panel is **future work** (phase I10 is deferred and out of scope for now).
 
@@ -182,3 +182,20 @@ Not done in I0 on purpose: detection (`getdefaultlocale`, still present and emit
 * Not changed on purpose: the per-tab `refresh_language()` methods stay until their tab is migrated (I2 to I7). `QLocale.setDefault` is not called (spin boxes and parsing keep the same behaviour); formatting is explicit through the helpers.
 
 Developer rule from now on: new widget text is either `t(...)` at build time plus a `bind_text` when the widget lives across language changes, or built inside a `refresh_language`/`retranslate` that runs on `language_bus().changed`.
+
+
+### Phase I2 delivered (2026-10-30): Shell localization (tag i18n-phase-2)
+
+* qt_ui/titlebar.py: Caption buttons (*Minimize*, *Maximize*, *Restore*, *Close*) fully localized with dynamic updates via language_bus().changed.
+* qt_ui/shell.py:
+  - NavRail: toggle button tooltips, accessible names, and accessible descriptions (Navigate to {tab} tab).
+  - CommandBar: placeholder text, inline action button tooltips/accessible descriptions, API account status tooltips (Signed in to Twitch API, etc.), history button tooltip.
+  - VodStrip: VOD, ✓ Downloaded badge, Open on Twitch, Clear loaded VOD, and download date tooltip (Downloaded on {date}).
+  - ShortcutsDialog: window title, heading, descriptions, and close button localized into natural Latin American Spanish.
+* qt_ui/main_window.py: All 55 shell messages wrapped with 	(...):
+  - Status line feedback: reading VOD info, loading VOD, link opening, queue finished, tools setup.
+  - Toasts and dialogs: clipboard detection (Twitch VOD in clipboard), update notifications (● Update available · {version}), saved chat overlay, job completion, and confirm quit dialog.
+* Catalog and baseline:
+  - 88 new strings translated into locale/es/LC_MESSAGES/luckytwitch.po following docs/i18n-glossary-es.md.
+  - Ratchet baseline unwrapped literals dropped from 570 down to 477 (qt_ui/shell.py, qt_ui/titlebar.py, and qt_ui/main_window.py now have 0 unwrapped literals).
+  - All 1,589 tests passing, python tools/i18n.py check passing cleanly with 0 problems.

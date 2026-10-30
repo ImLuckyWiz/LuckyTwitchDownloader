@@ -288,7 +288,7 @@ class MainWindow(QMainWindow):
         self.update_pill.setProperty("variant", "pill")
         self.update_pill.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.update_pill.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_pill.setToolTip("A new version of LuckyTwitch is available.")
+        self.update_pill.setToolTip(t("A new version of LuckyTwitch is available."))
         self.update_pill.setVisible(False)
         self.update_pill.clicked.connect(self.open_update_dialog)
         status_row.addWidget(self.update_pill)
@@ -297,7 +297,7 @@ class MainWindow(QMainWindow):
         self.activity_pill.setProperty("variant", "pill")
         self.activity_pill.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.activity_pill.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.activity_pill.setToolTip("Open Queue & log")
+        self.activity_pill.setToolTip(t("Open Queue & log"))
         self.activity_pill.setVisible(False)
         self.activity_pill.clicked.connect(self.show_queue_tab)
         status_row.addWidget(self.activity_pill)
@@ -590,11 +590,11 @@ class MainWindow(QMainWindow):
             self.vod_entry.setText(raw)
             self.on_get_info()
         else:
-            self.set_status("Please drop a valid video URL, a VOD ID, or a streamer name.")
+            self.set_status(t("Please drop a valid video URL, a VOD ID, or a streamer name."))
             dialogs.warning(
                 self,
-                "Invalid input",
-                "The dropped text is not a valid video URL, a VOD ID, or a streamer name.",
+                t("Invalid input"),
+                t("The dropped text is not a valid video URL, a VOD ID, or a streamer name."),
             )
 
     def paste_vod_from_clipboard(self) -> None:
@@ -627,7 +627,7 @@ class MainWindow(QMainWindow):
             self.vod_entry.setText(vod)
             self.on_get_info()
 
-        notify.info(self, "Twitch VOD in clipboard", vod, action=("Load VOD", _load))
+        notify.info(self, t("Twitch VOD in clipboard"), vod, action=(t("Load VOD"), _load))
         return True
 
     def event(self, event) -> bool:
@@ -761,25 +761,25 @@ class MainWindow(QMainWindow):
                 self.progress.setValue(pct)
             self.set_status(f"{self._job_prefix}{text}  \u2014  {frac * 100:.0f}%")
             if frac > 0 or self._job_prefix:
-                prefix = self._job_prefix.rstrip(": ") or "Running"
+                prefix = self._job_prefix.rstrip(": ") or t("Running")
                 self.activity_pill.setText(f"{prefix} \u00b7 {pct}%")
                 self._set_activity_pill_visible(True)
             else:
                 self._set_activity_pill_visible(False)
 
     def on_job(self, n: int, total: int) -> None:
-        self._job_prefix = f"Job {n}/{total}: " if total > 1 else ""
-        self.activity_pill.setText(f"Job {n}/{total}")
+        self._job_prefix = t("Job {n}/{total}: ", n=n, total=total) if total > 1 else ""
+        self.activity_pill.setText(t("Job {n}/{total}", n=n, total=total))
         self._set_activity_pill_visible(True)
 
     def on_queue_done(self) -> None:
         self.set_progress(0, "")
         self._job_prefix = ""
         self._set_activity_pill_visible(False)
-        self.set_status("Queue finished.")
+        self.set_status(t("Queue finished."))
         notify.system_notify(
-            self, "Queue finished", "All queued downloads have finished.",
-            action=("Open folder", self.tab_queue.open_output_folder),
+            self, t("Queue finished"), t("All queued downloads have finished."),
+            action=(t("Open folder"), self.tab_queue.open_output_folder),
         )
 
     def queue_blocked_reason(self) -> str:
@@ -884,13 +884,13 @@ class MainWindow(QMainWindow):
         self.tools_busy = True
         self.info_btn.setEnabled(False)
         self.tab_options.set_tools_running(True)
-        self.set_status("Preparing tools (yt-dlp, ffmpeg)…")
+        self.set_status(t("Preparing tools (yt-dlp, ffmpeg)…"))
         update = force or flag(self.settings, "auto_update")
         self.tools_ctx = self.tools_runner.start(update, force)
 
     def update_tools_now(self) -> None:
         if self.tab_queue.runner.is_running():
-            dialogs.info(self, "Running", "Wait for the running job to finish (or cancel it) first.")
+            dialogs.info(self, t("Running"), t("Wait for the running job to finish (or cancel it) first."))
             return
         self.start_tools_setup(force=True)
 
@@ -902,8 +902,8 @@ class MainWindow(QMainWindow):
         self.set_progress(0, "")
         if error:
             self.log(f"Tools: {error}")
-            self.set_status("Some tools are missing. See the log.")
-            dialogs.warning(self, "Tools", error)
+            self.set_status(t("Some tools are missing. See the log."))
+            dialogs.warning(self, t("Tools"), error)
         else:
             self.set_status(t("Ready. Paste a VOD URL or ID and press «Get info»."))
 
@@ -920,7 +920,7 @@ class MainWindow(QMainWindow):
                 return
         if self.tab_queue.runner.is_running() or self.tools_busy:
             if force:
-                notify.info(self, "Check updates", "Cannot check for updates while downloads or tools are busy.")
+                notify.info(self, t("Check updates"), t("Cannot check for updates while downloads or tools are busy."))
             return
 
         self._checking_updates_manually = force
@@ -935,7 +935,7 @@ class MainWindow(QMainWindow):
         if error:
             self.log(f"Updates: could not check: {error}")
             if manual:
-                notify.info(self, "Check updates", f"Could not check for updates: {error}")
+                notify.info(self, t("Check updates"), t("Could not check for updates: {error}", error=error))
             return
 
         if info:
@@ -943,16 +943,16 @@ class MainWindow(QMainWindow):
             state = updates.load_state()
             is_skipped = state.get("skipped_tag") == info.tag
             if not is_skipped:
-                self.update_pill.setText(f"● Update available · {info.tag}")
+                self.update_pill.setText(t("● Update available · {version}", version=info.tag))
                 self._set_update_pill_visible(True)
                 if state.get("notified_tag") != info.tag:
                     state["notified_tag"] = info.tag
                     updates.save_state(state)
                     cur = paths.BUNDLED_VERSION or "current version"
                     notify.info(
-                        self, "Update available",
-                        f"LuckyTwitch {info.tag} is out (you have {cur}).",
-                        action=("View update", lambda: self.open_update_dialog(info)),
+                        self, t("Update available"),
+                        t("LuckyTwitch {version} is out (you have {current}).", version=info.tag, current=cur),
+                        action=(t("View update"), lambda: self.open_update_dialog(info)),
                         duration_ms=12000,
                     )
             else:
@@ -963,7 +963,7 @@ class MainWindow(QMainWindow):
             self._set_update_pill_visible(False)
             if manual:
                 cur = paths.BUNDLED_VERSION or "current version"
-                notify.info(self, "Up to date", f"LuckyTwitch is up to date ({cur}).")
+                notify.info(self, t("Up to date"), t("LuckyTwitch is up to date ({version}).", version=cur))
 
     def open_update_dialog(self, info=None) -> None:
         target = info or self._update_info
@@ -985,21 +985,21 @@ class MainWindow(QMainWindow):
     def render_saved_chat(self) -> None:
         """Options → Chat → «Draw the overlay from a saved chat»: pick a «.chat.json», confirm, draw it (no download)."""
         if self.tab_queue.runner.is_running() or self.tools_busy or self.saved_chat_busy:
-            dialogs.info(self, "Busy", "Wait for the running job (or the tools setup) to finish first.")
+            dialogs.info(self, t("Busy"), t("Wait for the running job (or the tools setup) to finish first."))
             return
         opts = self.build_options()
         folder = Path(opts.out_dir)
-        path = dialogs.open_file(self, "Choose a saved chat (.chat.json)", str(folder) if folder.is_dir() else "",
-                                 "Chat files (*.json);;All files (*.*)")
+        path = dialogs.open_file(self, t("Choose a saved chat (.chat.json)"), str(folder) if folder.is_dir() else "",
+                                 t("Chat files (*.json);;All files (*.*)"))
         if not path:
             return
         chat = Path(path)
         try:
             summary = describe_chat_overlay(chat, opts)
         except EngineError as e:
-            dialogs.error(self, "Chat overlay", str(e))
+            dialogs.error(self, t("Chat overlay"), str(e))
             return
-        if not dialogs.ask_ok_cancel(self, "Draw the chat overlay?", summary + "\n\nIt can take a while for a long chat."):
+        if not dialogs.ask_ok_cancel(self, t("Draw the chat overlay?"), summary + "\n\n" + t("It can take a while for a long chat.")):
             return
         self.start_saved_chat_render(chat, opts)
 
@@ -1008,7 +1008,7 @@ class MainWindow(QMainWindow):
         self.tab_queue.set_running(True)  # «Start queue» off, «Cancel current» on (the log and the button live there)
         self.tab_options.set_saved_chat_running(True)
         self.show_queue_tab()
-        self.set_status("Chat overlay…")
+        self.set_status(t("Chat overlay…"))
         self.saved_chat_ctx = self.saved_chat_runner.start(chat, opts)
 
     def cancel_saved_chat(self) -> bool:
@@ -1027,11 +1027,11 @@ class MainWindow(QMainWindow):
         if error:
             cancelled = error == "Cancelled."
             self.log("Cancelled." if cancelled else f"Chat overlay: {error}")
-            self.set_status("Chat overlay cancelled." if cancelled else "Chat overlay failed. See the log.")
+            self.set_status(t("Chat overlay cancelled.") if cancelled else t("Chat overlay failed. See the log."))
             if not cancelled:
-                dialogs.error(self, "Chat overlay", error)
+                dialogs.error(self, t("Chat overlay"), error)
         else:
-            self.set_status(f"Chat overlay ready: {Path(out).name}")
+            self.set_status(t("Chat overlay ready: {file}", file=Path(out).name))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt name)
         if self.tools_ctx:
@@ -1040,7 +1040,7 @@ class MainWindow(QMainWindow):
             self.saved_chat_ctx.cancel()  # no orphan ffmpeg / TwitchDownloaderCLI after the window is gone
         runner = self.tab_queue.runner
         if runner.is_running():
-            if not dialogs.ask_yes_no(self, "Quit", "A job is running. Cancel it and quit?"):
+            if not dialogs.ask_yes_no(self, t("Quit"), t("A job is running. Cancel it and quit?")):
                 event.ignore()
                 return
             if runner.ctx:
@@ -1080,18 +1080,18 @@ class MainWindow(QMainWindow):
             self.tab_search.on_search()
             return
         if not is_valid_url(text):
-            self.set_status("Please enter a valid video URL, a VOD ID, or a streamer name.")
+            self.set_status(t("Please enter a valid video URL, a VOD ID, or a streamer name."))
             dialogs.warning(
                 self,
-                "Invalid input",
-                "Please enter a valid video URL, a VOD ID, or a streamer name.",
+                t("Invalid input"),
+                t("Please enter a valid video URL, a VOD ID, or a streamer name."),
             )
             return
         if self.tools_busy:
-            self.set_status("Still preparing yt-dlp / ffmpeg, one moment…")
+            self.set_status(t("Still preparing yt-dlp / ffmpeg, one moment…"))
             return
         self.set_info_busy(True)
-        self.set_status("Reading VOD info…")
+        self.set_status(t("Reading VOD info…"))
         self._info_from_link, self._link_pending = self._link_pending, None
         self.info_runner.start(text, self.client)
 
@@ -1107,12 +1107,12 @@ class MainWindow(QMainWindow):
             self.info_btn.setEnabled(False)
             self._info_own_bar = not self.tab_queue.runner.is_running()
             if self._info_own_bar:
-                self.set_progress(-1, "Reading VOD info…")
+                self.set_progress(-1, t("Reading VOD info…"))
             self._info_animate()
             self._info_timer.start()
             return
         self._info_timer.stop()
-        self.info_btn.setText("Get info")
+        self.info_btn.setText(t("Get info"))
         self.info_btn.setEnabled(True)
         if self._info_own_bar:
             self.set_progress(0, "")
@@ -1145,10 +1145,10 @@ class MainWindow(QMainWindow):
         self.update_preview()
         self.refresh_clips()
         self.tab_options.refresh_name_examples()
-        self.set_status("VOD loaded. Set your cut points and add it to the queue.")
+        self.set_status(t("VOD loaded. Set your cut points and add it to the queue."))
         if self._info_from_link is not None:
             what = f" ({self._info_from_link})" if self._info_from_link else ""
-            self.set_status(f"VOD opened from a link{what}. Check the cut points, then add it to the queue.")
+            self.set_status(t("VOD opened from a link{details}. Check the cut points, then add it to the queue.", details=what))
             self._info_from_link = None
         if warn:
             self.log(warn)
@@ -1157,8 +1157,8 @@ class MainWindow(QMainWindow):
         self._info_from_link = None
         self.set_info_busy(False)
         self.info_btn.setEnabled(True)
-        self.set_status("Error.")
-        dialogs.error(self, "Error", msg)
+        self.set_status(t("Error."))
+        dialogs.error(self, t("Error"), msg)
 
     # ---------------------------- adding to the queue ---------------------------- #
     def _current_vod_thumb(self):
@@ -1170,13 +1170,13 @@ class MainWindow(QMainWindow):
 
     def add_to_queue(self, start: bool = False) -> None:
         if not self.source:
-            dialogs.info(self, "No VOD", "Paste a VOD and press «Get info» first.")
+            dialogs.info(self, t("No VOD"), t("Paste a VOD and press «Get info» first."))
             return
         opts = self.build_options()
         try:
             plan = make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
         except EngineError as e:
-            dialogs.warning(self, "Cut points", str(e))
+            dialogs.warning(self, t("Cut points"), str(e))
             return
         job = Job(self.source, opts, clips=self.clips if self.clips_loaded else None, client=self.client)
         label = f"{self.source.uploader} \u00b7 {self.source.title}"[:70]
@@ -1188,18 +1188,18 @@ class MainWindow(QMainWindow):
         if start:
             self.tab_queue.start_queue()
         else:
-            msg = f"Added to queue ({len(self.tab_queue.items)} item(s))."
+            msg = t("Added to queue ({count} item(s)).", count=len(self.tab_queue.items))
             self.set_status(msg)
-            notify.success(self, "Added to queue", label, action=("Go to Queue", self.show_queue_tab))
+            notify.success(self, t("Added to queue"), label, action=(t("Go to Queue"), self.show_queue_tab))
 
     def download_clips(self) -> None:
         """Queue each selected clip as its own download (just that clip, named after the clip)."""
         sel = self.tab_plan.selected_clip_rows()
         if not sel:
-            dialogs.info(self, "Select a clip", "Select a clip in the table first.")
+            dialogs.info(self, t("Select a clip"), t("Select a clip in the table first."))
             return
         if not self.source:
-            dialogs.info(self, "No VOD", "Press «Get info» first.")
+            dialogs.info(self, t("No VOD"), t("Press «Get info» first."))
             return
         base = self.build_options()
         before = num(self.settings, "clip_pad_before", float, 3)
@@ -1208,7 +1208,7 @@ class MainWindow(QMainWindow):
         thumb = self._current_vod_thumb()
         for row in sel:
             clip = self.clips[row]
-            title = clip.get("title") or "Clip"
+            title = clip.get("title") or t("Clip")
             try:
                 cut = clip_cut_text(clip, self.source.duration, before, after)
                 opts = replace(
@@ -1218,7 +1218,7 @@ class MainWindow(QMainWindow):
                 )
                 make_plan(opts.cut_text, self.source.duration, opts.strategy, opts.full_threshold)
             except EngineError as e:
-                dialogs.warning(self, "Clip", f"«{title}»: {e}")
+                dialogs.warning(self, t("Clip"), f"«{title}»: {e}")
                 continue
             job = Job(self.source, opts, single_clip=clip)
             label = f"{self.source.uploader} \u00b7 Clip: {title}"[:70]
@@ -1228,11 +1228,10 @@ class MainWindow(QMainWindow):
             self._sync_queue_badge()
             if self.settings:
                 save_settings(self.settings)
-            self.set_status(f"Added {added} clip(s) to the queue ({len(self.tab_queue.items)} item(s)). "
-                            "Open «Queue & log» and press «Start queue».")
+            self.set_status(t("Added {clips} clip(s) to the queue ({items} item(s)). Open «Queue & log» and press «Start queue».", clips=added, items=len(self.tab_queue.items)))
             notify.success(
-                self, "Clips added", f"Added {added} clip(s) to the queue.",
-                action=("Go to Queue", self.show_queue_tab),
+                self, t("Clips added"), t("Added {n} clip(s) to the queue.", n=added),
+                action=(t("Go to Queue"), self.show_queue_tab),
             )
 
     # ---------------------------- luckytwitch:// links ---------------------------- #
@@ -1270,15 +1269,15 @@ class MainWindow(QMainWindow):
         except weblink.LinkError as e:
             self.bring_to_front()
             self.log(f"Link not opened: {e}")
-            dialogs.warning(self, "Link", str(e))
+            dialogs.warning(self, t("Link"), str(e))
             return
         self.bring_to_front()
         if self.tools_busy or self._info_busy:
             if waits >= 180:
                 self.log("Link not opened: the app stayed busy for too long.")
-                dialogs.warning(self, "Link", "The app was busy for too long to open that link. Try it again.")
+                dialogs.warning(self, t("Link"), t("The app was busy for too long to open that link. Try it again."))
                 return
-            self.set_status("The link will open in a moment…")
+            self.set_status(t("The link will open in a moment…"))
             self._link_retry_args = (text, waits + 1)
             self._link_retry_timer.start()
             return

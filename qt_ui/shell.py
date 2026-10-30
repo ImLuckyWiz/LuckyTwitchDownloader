@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from core.palette import ACCENT, MUTED, OK
 from core.i18n import t
+from qt_ui.i18n_qt import language_bus
 from luckytwitch_engine import fmt_hms
 from qt_ui.icons import icon
 from qt_ui.motion import Motion, animate_width
@@ -64,7 +65,7 @@ class _RailButton(QPushButton):
         self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.setMinimumHeight(40)
         self.setAccessibleName(RAIL_ITEMS.get(index, ("", "", "", ""))[2] or key.capitalize())
-        self.setAccessibleDescription(f"Navigate to {self.accessibleName()} tab")
+        self.setAccessibleDescription(t("Navigate to {tab} tab", tab=self.accessibleName()))
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         if event.key() == Qt.Key.Key_Down:
@@ -122,9 +123,10 @@ class NavRail(QFrame):
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.toggle_btn.setMinimumHeight(36)
-        self.toggle_btn.setToolTip("Expand or collapse navigation rail")
-        self.toggle_btn.setAccessibleName("Toggle navigation sidebar")
-        self.toggle_btn.setAccessibleDescription("Expand or collapse the sidebar navigation rail")
+        self.toggle_btn.setToolTip(t("Expand or collapse navigation rail"))
+        self.toggle_btn.setAccessibleName(t("Toggle navigation sidebar"))
+        self.toggle_btn.setAccessibleDescription(t("Expand or collapse the sidebar navigation rail"))
+        language_bus().changed.connect(self._refresh_labels)
         self.toggle_btn.clicked.connect(self.toggle_expanded)
         lay.addWidget(self.toggle_btn)
 
@@ -222,6 +224,9 @@ class NavRail(QFrame):
                 btn.setText(badge.strip())
         self.toggle_btn.setIcon(icon("chevron-left" if self._expanded else "chevron-right", 16))
         self.toggle_btn.setText(t("Collapse") if self._expanded else "")
+        self.toggle_btn.setToolTip(t("Expand or collapse navigation rail"))
+        self.toggle_btn.setAccessibleName(t("Toggle navigation sidebar"))
+        self.toggle_btn.setAccessibleDescription(t("Expand or collapse the sidebar navigation rail"))
 
 
 class AnimatedStackedWidget(QStackedWidget):
@@ -351,7 +356,7 @@ class CommandBar(QFrame):
         row.addWidget(self.prompt_label)
 
         self.vod_entry = QLineEdit(self)
-        self.vod_entry.setPlaceholderText("Paste a Twitch VOD link or ID\u2026")
+        self.vod_entry.setPlaceholderText(t("Paste a Twitch VOD link or ID…"))
         self.vod_entry.textChanged.connect(self._sync_action_btn)
         row.addWidget(self.vod_entry, 1)
 
@@ -361,8 +366,8 @@ class CommandBar(QFrame):
         self.vod_action_btn.setProperty("variant", "ghost")
         self.vod_action_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.vod_action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.vod_action_btn.setToolTip("Paste from clipboard")
-        self.vod_action_btn.setAccessibleName("Paste VOD URL or clear input")
+        self.vod_action_btn.setToolTip(t("Paste from clipboard"))
+        self.vod_action_btn.setAccessibleName(t("Paste VOD URL or clear input"))
         self.vod_action_btn.clicked.connect(self._on_vod_action)
         row.addWidget(self.vod_action_btn)
 
@@ -374,7 +379,7 @@ class CommandBar(QFrame):
         # ICON NEEDED: twitch / user-check
         self.account_dot = QLabel("\u25cb", self)
         self.account_dot.setObjectName("accountDot")
-        self.account_dot.setToolTip("Not signed in to Twitch API")
+        self.account_dot.setToolTip(t("Not signed in to Twitch API"))
         row.addWidget(self.account_dot)
 
         self.api_btn = QPushButton(t("Twitch API…"), self)
@@ -385,7 +390,7 @@ class CommandBar(QFrame):
         self.history_btn = QPushButton(t("History"), self)
         self.history_btn.setObjectName("historyBtn")
         self.history_btn.setIcon(icon("check", 14))
-        self.history_btn.setToolTip("View download history")
+        self.history_btn.setToolTip(t("View download history"))
         row.addWidget(self.history_btn)
 
         outer.addLayout(row)
@@ -403,10 +408,14 @@ class CommandBar(QFrame):
 
     def retranslate_ui(self) -> None:
         self.prompt_label.setText(t("VOD URL or ID:"))
+        self.vod_entry.setPlaceholderText(t("Paste a Twitch VOD link or ID…"))
+        self.vod_action_btn.setAccessibleName(t("Paste VOD URL or clear input"))
         self.info_btn.setText(t("Get info"))
         self.history_btn.setText(t("History"))
+        self.history_btn.setToolTip(t("View download history"))
         self.api_btn.setText(t("Twitch API…"))
         self._sync_action_btn(self.vod_entry.text())
+        self.set_signed_in(self._signed_in)
         if self._no_vod_text and self.info_label.text() == self._no_vod_text:
             self.show_no_vod()
 
@@ -425,13 +434,13 @@ class CommandBar(QFrame):
         if self._signed_in:
             self.account_dot.setText("\u25cf")
             self.account_dot.setStyleSheet(f"color: {OK}; font-weight: bold;")
-            self.account_dot.setToolTip("Signed in to Twitch API")
-            self.api_btn.setToolTip("Signed in to Twitch API (click to manage credentials)")
+            self.account_dot.setToolTip(t("Signed in to Twitch API"))
+            self.api_btn.setToolTip(t("Signed in to Twitch API (click to manage credentials)"))
         else:
             self.account_dot.setText("\u25cb")
             self.account_dot.setStyleSheet(f"color: {MUTED};")
-            self.account_dot.setToolTip("Not signed in to Twitch API")
-            self.api_btn.setToolTip("Sign in with Twitch API credentials")
+            self.account_dot.setToolTip(t("Not signed in to Twitch API"))
+            self.api_btn.setToolTip(t("Sign in with Twitch API credentials"))
         _polish(self.api_btn)
 
     def _sync_action_btn(self, text: str) -> None:
@@ -475,7 +484,7 @@ class VodStrip(QFrame):
         lay.setContentsMargins(8, 4, 8, 4)
         lay.setSpacing(10)
 
-        self.thumb_label = QLabel("VOD", self)
+        self.thumb_label = QLabel(t("VOD"), self)
         self.thumb_label.setObjectName("vodThumb")
         self.thumb_label.setFixedSize(64, 36)
         self.thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -496,29 +505,19 @@ class VodStrip(QFrame):
         text_col.addWidget(self.meta_label)
         lay.addLayout(text_col, 1)
 
-        self.downloaded_badge = QLabel("✓ Downloaded", self)
+        self.downloaded_badge = QLabel(t("✓ Downloaded"), self)
         self.downloaded_badge.setObjectName("vodDownloadedBadge")
         self.downloaded_badge.setStyleSheet("color: #4fbf80; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: rgba(79, 191, 128, 0.15);")
         self.downloaded_badge.setVisible(False)
         lay.addWidget(self.downloaded_badge)
 
-        self.downloaded_badge = QLabel("✓ Downloaded", self)
-
-        self.downloaded_badge.setObjectName("vodDownloadedBadge")
-
-        self.downloaded_badge.setStyleSheet("color: #4fbf80; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: rgba(79, 191, 128, 0.15);")
-
-        self.downloaded_badge.setVisible(False)
-
-        lay.addWidget(self.downloaded_badge)
 
 
-
-        self.open_btn = QPushButton("Open on Twitch", self)
+        self.open_btn = QPushButton(t("Open on Twitch"), self)
         self.open_btn.setIcon(icon("external-link", 14))
         self.open_btn.setProperty("variant", "ghost")
         self.open_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.open_btn.setAccessibleName("Open VOD on Twitch in browser")
+        self.open_btn.setAccessibleName(t("Open VOD on Twitch in browser"))
         self.open_btn.clicked.connect(self.open_on_twitch)
         lay.addWidget(self.open_btn)
 
@@ -526,7 +525,7 @@ class VodStrip(QFrame):
         self.clear_btn.setIcon(icon("x", 14))
         self.clear_btn.setProperty("variant", "ghost")
         self.clear_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.clear_btn.setAccessibleName("Clear loaded VOD")
+        self.clear_btn.setAccessibleName(t("Clear loaded VOD"))
         self.clear_btn.clicked.connect(self.clear_requested.emit)
         lay.addWidget(self.clear_btn)
 
@@ -555,30 +554,15 @@ class VodStrip(QFrame):
         self.meta_label.setText("  \u00b7  ".join(b for b in bits if b))
 
         vod_id = str(getattr(src, "twitch_vod_id", "") or getattr(src, "vod_id", "") or "")
-
-        from core import history
-
-        hist = history.is_downloaded(vod_id)
-
-        if hist and hasattr(self, "downloaded_badge"):
-
-            self.downloaded_badge.setToolTip(f"Downloaded on {hist.downloaded_at}")
-
-            self.downloaded_badge.setVisible(True)
-
-        elif hasattr(self, "downloaded_badge"):
-
-            self.downloaded_badge.setVisible(False)
-        vod_id = str(getattr(src, "twitch_vod_id", "") or getattr(src, "vod_id", "") or "")
         from core import history
         hist = history.is_downloaded(vod_id)
         if hist and hasattr(self, "downloaded_badge"):
-            self.downloaded_badge.setToolTip(f"Downloaded on {hist.downloaded_at}")
+            self.downloaded_badge.setToolTip(t("Downloaded on {date}", date=hist.downloaded_at))
             self.downloaded_badge.setVisible(True)
         elif hasattr(self, "downloaded_badge"):
             self.downloaded_badge.setVisible(False)
         self.thumb_label.setPixmap(QPixmap())
-        self.thumb_label.setText("VOD")
+        self.thumb_label.setText(t("VOD"))
         from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
         if Motion.enabled() and self.parentWidget() and self.parentWidget().isVisible():
             self.setMaximumHeight(0)
@@ -608,7 +592,7 @@ class VodStrip(QFrame):
         self.title_label.setText("")
         self.meta_label.setText("")
         self.thumb_label.setPixmap(QPixmap())
-        self.thumb_label.setText("VOD")
+        self.thumb_label.setText(t("VOD"))
         from qt_ui.motion import DURATION_NORMAL, Motion, animate_height
         if Motion.enabled() and self.isVisible():
             def _after_clear():
@@ -632,27 +616,29 @@ class VodStrip(QFrame):
 class ShortcutsDialog(QDialog):
     """Compact keyboard shortcut reference sheet opened with ``F1`` (Phase 9b, B8)."""
 
-    SHORTCUTS: tuple[tuple[str, str], ...] = (
-        ("Ctrl+L", "Focus and select the VOD URL / ID bar"),
-        ("Ctrl+1 / 2 / 3 / 4", "Switch to Search, Plan, Options, or Queue & log"),
-        ("Ctrl+,", "Open Options (Settings)"),
-        ("Ctrl+Enter", "Add current VOD to queue and start (on Plan)"),
-        ("Ctrl+Shift+Enter", "Add current VOD to queue without starting (on Plan)"),
-        ("Space / I / O / S", "Timeline playhead / mark in / mark out / split (on Timeline)"),
-        ("Ctrl+Z / Ctrl+Y", "Undo / redo timeline edit"),
-        ("F1", "Show this keyboard shortcuts sheet"),
-    )
+    @classmethod
+    def get_shortcuts(cls) -> list[tuple[str, str]]:
+        return [
+            ("Ctrl+L", t("Focus and select the VOD URL / ID bar")),
+            ("Ctrl+1 / 2 / 3 / 4", t("Switch to Search, Plan, Options, or Queue & log")),
+            ("Ctrl+,", t("Open Options (Settings)")),
+            ("Ctrl+Enter", t("Add current VOD to queue and start (on Plan)")),
+            ("Ctrl+Shift+Enter", t("Add current VOD to queue without starting (on Plan)")),
+            ("Space / I / O / S", t("Timeline playhead / mark in / mark out / split (on Timeline)")),
+            ("Ctrl+Z / Ctrl+Y", t("Undo / redo timeline edit")),
+            ("F1", t("Show this keyboard shortcuts sheet")),
+        ]
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowTitle("Keyboard shortcuts")
+        self.setWindowTitle(t("Keyboard shortcuts"))
         self.setObjectName("shortcutsDialog")
         self.setMinimumWidth(460)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
         lay.setSpacing(10)
 
-        heading = QLabel("Keyboard shortcuts", self)
+        heading = QLabel(t("Keyboard shortcuts"), self)
         heading.setProperty("role", "heading")
         lay.addWidget(heading)
 
@@ -662,7 +648,7 @@ class ShortcutsDialog(QDialog):
         clay.setContentsMargins(12, 10, 12, 10)
         clay.setSpacing(6)
 
-        for keys, desc in self.SHORTCUTS:
+        for keys, desc in self.get_shortcuts():
             row = QHBoxLayout()
             row.setSpacing(12)
             k_lbl = QLabel(keys, card)
@@ -678,7 +664,7 @@ class ShortcutsDialog(QDialog):
 
         brow = QHBoxLayout()
         brow.addStretch(1)
-        self.close_btn = QPushButton("Close", self)
+        self.close_btn = QPushButton(t("Close"), self)
         self.close_btn.setProperty("variant", "accent")
         self.close_btn.clicked.connect(self.accept)
         brow.addWidget(self.close_btn)

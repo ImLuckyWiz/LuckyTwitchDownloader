@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 08:35+0000\n"
+"POT-Creation-Date: 2026-10-30 06:05-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Clear history"
 msgstr ""
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/shell.py qt_ui/titlebar.py
 msgid "Close"
 msgstr ""
 
@@ -54,7 +54,282 @@ msgid "Auto (system)"
 msgstr ""
 
 #: qt_ui/main_window.py
+msgid "A job is running. Cancel it and quit?"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "A new version of LuckyTwitch is available."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Added to queue"
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Added to queue ({count} item(s))."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Added {clips} clip(s) to the queue ({items} item(s)). Open «Queue & log» and press «Start queue»."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Added {n} clip(s) to the queue."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "All queued downloads have finished."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Busy"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Cannot check for updates while downloads or tools are busy."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Chat files (*.json);;All files (*.*)"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Chat overlay"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Chat overlay cancelled."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Chat overlay failed. See the log."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Chat overlay ready: {file}"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Chat overlay…"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Check updates"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Choose a saved chat (.chat.json)"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Clip"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Clips added"
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Could not check for updates: {error}"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Cut points"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Draw the chat overlay?"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Error"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Error."
+msgstr ""
+
+#: qt_ui/main_window.py qt_ui/shell.py
+msgid "Get info"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Go to Queue"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Invalid input"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "It can take a while for a long chat."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Job {n}/{total}"
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "Job {n}/{total}: "
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Link"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Load VOD"
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "LuckyTwitch is up to date ({version})."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "LuckyTwitch {version} is out (you have {current})."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "No VOD"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Open Queue & log"
+msgstr ""
+
+#: qt_ui/main_window.py qt_ui/tabs/queue.py
+msgid "Open folder"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Paste a VOD and press «Get info» first."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Please drop a valid video URL, a VOD ID, or a streamer name."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Please enter a valid video URL, a VOD ID, or a streamer name."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Preparing tools (yt-dlp, ffmpeg)…"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Press «Get info» first."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Queue finished"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Queue finished."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Quit"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Reading VOD info…"
+msgstr ""
+
+#: qt_ui/main_window.py
 msgid "Ready. Paste a VOD URL or ID and press «Get info»."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Running"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Select a clip"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Select a clip in the table first."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Some tools are missing. See the log."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Still preparing yt-dlp / ffmpeg, one moment…"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "The app was busy for too long to open that link. Try it again."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "The dropped text is not a valid video URL, a VOD ID, or a streamer name."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "The link will open in a moment…"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Tools"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Twitch VOD in clipboard"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Up to date"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Update available"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "VOD loaded. Set your cut points and add it to the queue."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "VOD opened from a link{details}. Check the cut points, then add it to the queue."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "View update"
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Wait for the running job (or the tools setup) to finish first."
+msgstr ""
+
+#: qt_ui/main_window.py
+msgid "Wait for the running job to finish (or cancel it) first."
+msgstr ""
+
+#: qt_ui/main_window.py
+#, python-brace-format
+msgid "● Update available · {version}"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Add current VOD to queue and start (on Plan)"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Add current VOD to queue without starting (on Plan)"
 msgstr ""
 
 #: qt_ui/shell.py qt_ui/tabs/plan.py
@@ -66,11 +341,28 @@ msgid "Clear VOD field"
 msgstr ""
 
 #: qt_ui/shell.py
+msgid "Clear loaded VOD"
+msgstr ""
+
+#: qt_ui/shell.py
 msgid "Collapse"
 msgstr ""
 
 #: qt_ui/shell.py
-msgid "Get info"
+#, python-brace-format
+msgid "Downloaded on {date}"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Expand or collapse navigation rail"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Expand or collapse the sidebar navigation rail"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Focus and select the VOD URL / ID bar"
 msgstr ""
 
 #: qt_ui/shell.py
@@ -78,11 +370,44 @@ msgid "History"
 msgstr ""
 
 #: qt_ui/shell.py
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: qt_ui/shell.py
+#, python-brace-format
+msgid "Navigate to {tab} tab"
+msgstr ""
+
+#: qt_ui/shell.py
 msgid "No VOD loaded."
 msgstr ""
 
 #: qt_ui/shell.py
+msgid "Not signed in to Twitch API"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Open Options (Settings)"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Open VOD on Twitch in browser"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Open on Twitch"
+msgstr ""
+
+#: qt_ui/shell.py
 msgid "Paste"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Paste VOD URL or clear input"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Paste a Twitch VOD link or ID…"
 msgstr ""
 
 #: qt_ui/shell.py qt_ui/tabs/plan.py
@@ -90,11 +415,55 @@ msgid "Paste from clipboard"
 msgstr ""
 
 #: qt_ui/shell.py
+msgid "Show this keyboard shortcuts sheet"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Sign in with Twitch API credentials"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Signed in to Twitch API"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Signed in to Twitch API (click to manage credentials)"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Switch to Search, Plan, Options, or Queue & log"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Timeline playhead / mark in / mark out / split (on Timeline)"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "Toggle navigation sidebar"
+msgstr ""
+
+#: qt_ui/shell.py
 msgid "Twitch API…"
 msgstr ""
 
 #: qt_ui/shell.py
+msgid "Undo / redo timeline edit"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "VOD"
+msgstr ""
+
+#: qt_ui/shell.py
 msgid "VOD URL or ID:"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "View download history"
+msgstr ""
+
+#: qt_ui/shell.py
+msgid "✓ Downloaded"
 msgstr ""
 
 #: qt_ui/tabs/options.py
@@ -190,10 +559,6 @@ msgid "Log"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
-msgid "Open folder"
-msgstr ""
-
-#: qt_ui/tabs/queue.py
 msgid "Pause autoscroll"
 msgstr ""
 
@@ -215,6 +580,18 @@ msgstr ""
 
 #: qt_ui/tabs/queue.py
 msgid "Start queue"
+msgstr ""
+
+#: qt_ui/titlebar.py
+msgid "Maximize"
+msgstr ""
+
+#: qt_ui/titlebar.py
+msgid "Minimize"
+msgstr ""
+
+#: qt_ui/titlebar.py
+msgid "Restore"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
@@ -293,23 +670,8 @@ msgid "Queue & log"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/main_window.py
-msgid "Quit"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/main_window.py qt_ui/tabs/options.py
-msgid "Tools"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/search_models.py
 msgid "Date"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/search_models.py qt_ui/shell.py
-msgid "✓ Downloaded"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
