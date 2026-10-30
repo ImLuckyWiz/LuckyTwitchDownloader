@@ -33,6 +33,7 @@
   "Clips",
   "Error",
   "Error.",
+  "MP4 (Universal && Premiere)",
   "Plan",
   "Premiere Pro",
   "Streamer",
@@ -154,9 +155,6 @@
    "Chat overlay": 1,
    "Downloading {}": 1
   },
-  "qt_ui/icons.py": {
-   "unknown icon %r (available: %s)": 1
-  },
   "qt_ui/queue_runner.py": {
    "ERROR: {}": 1,
    "done ({} files)": 1,
@@ -164,79 +162,6 @@
   },
   "qt_ui/toast.py": {
    "Dismiss notification": 1
-  },
-  "qt_ui/twitch_dialog.py": {
-   "Advanced: use your own Twitch app instead": 1,
-   "Client ID:": 1,
-   "Client Secret:": 1,
-   "Close": 1,
-   "Contacting Twitch…": 1,
-   "Copied!": 1,
-   "Copy activation code to clipboard": 1,
-   "Copy code": 2,
-   "Error": 1,
-   "Fill in both fields.": 1,
-   "Missing data": 1,
-   "Network error": 1,
-   "Not signed in.": 1,
-   "Open page again": 1,
-   "Save own app": 1,
-   "Saved in: {}": 1,
-   "Sign in with Twitch": 1,
-   "Sign out": 1,
-   "Signed in with Twitch.": 1,
-   "Twitch API credentials saved.": 1,
-   "Twitch account removed.": 1,
-   "Twitch sign-in": 1,
-   "Using your own Twitch app (Client ID / Secret below).": 1,
-   "✔ Signed in with Twitch. Clips are available.": 1
-  },
-  "qt_ui/update_dialog.py": {
-   "Busy": 1,
-   "Cancel": 1,
-   "Close": 1,
-   "Could not start the installer.": 1,
-   "Downloading LuckyTwitch {}...": 1,
-   "Install and restart": 1,
-   "Install now": 1,
-   "Later": 3,
-   "LuckyTwitch will close, update and reopen.\nSettings, Twitch login and tools are kept.\n\nDo you want to proceed?": 1,
-   "LuckyTwitch {}   (you have {})": 1,
-   "Open release page": 2,
-   "Release page": 1,
-   "Skip {}": 1,
-   "Update available": 2,
-   "Update cancelled.": 1,
-   "Update now": 1,
-   "Update ready to install.": 1,
-   "Wait for running downloads or tool tasks to finish before updating.": 1,
-   "What's new": 1,
-   "Your settings, Twitch login and tools are kept.": 1
-  },
-  "qt_ui/welcome/overlay.py": {
-   "Fast Twitch VODs, precision clip cutting, and animated chat overlays.": 1,
-   "LuckyTwitch Downloader": 1,
-   "Press Esc or Enter to launch": 1,
-   "Start Using LuckyTwitch →": 1
-  },
-  "qt_ui/welcome/setup_card.py": {
-   "Best compatibility with video editors, media players, and mobile devices": 1,
-   "Browse…": 1,
-   "Download Folder:": 1,
-   "MKV (Crash-Resistant)": 1,
-   "MP4 (Universal && Premiere)": 1,
-   "Path where downloaded videos and clips are saved": 1,
-   "Preferred Format:": 1,
-   "QUICK SETUP (ESSENTIALS)": 1,
-   "Select Download Folder": 1,
-   "Stream-safe format: survives unexpected system crashes or power interruptions": 1,
-   "Twitch Account (Optional):": 1
-  },
-  "qt_ui/widgets.py": {
-   "Information": 1,
-   "Modified from default": 1,
-   "Reset": 1,
-   "Reset to default": 1
   }
  }
 }

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import paths, updates
+from core.i18n import t
 from qt_ui.theme import dark_titlebar
 from qt_ui.widgets import Card, WrapLabel
 
@@ -24,12 +25,12 @@ from qt_ui.widgets import Card, WrapLabel
 def clean_release_notes(notes: str, max_chars: int = 2500) -> str:
     """Strip raw HTML and markdown images from release notes and cap length."""
     if not notes:
-        return "No release notes provided."
+        return t("No release notes provided.")
     text = re.sub(r"<[^>]+>", "", notes)
     text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", text)
     text = text.strip()
     if len(text) > max_chars:
-        text = text[:max_chars].rstrip() + "\n\n… (Read the full notes on GitHub)"
+        text = text[:max_chars].rstrip() + "\n\n… " + t("(Read the full notes on GitHub)")
     return text
 
 
@@ -42,7 +43,7 @@ class UpdateDialog(QDialog):
         self._bridge = None
         self._runner = None
 
-        self.setWindowTitle("Update available")
+        self.setWindowTitle(t("Update available"))
         self.setModal(True)
         self.resize(540, 480)
         dark_titlebar(self)
@@ -54,17 +55,17 @@ class UpdateDialog(QDialog):
         # Header
         head_box = QVBoxLayout()
         head_box.setSpacing(4)
-        title_lbl = QLabel("Update available")
+        title_lbl = QLabel(t("Update available"))
         title_lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
-        current_ver = paths.BUNDLED_VERSION or "dev build"
-        sub_lbl = QLabel(f"LuckyTwitch {info.tag}   (you have {current_ver})")
+        current_ver = paths.BUNDLED_VERSION or t("dev build")
+        sub_lbl = QLabel(t("LuckyTwitch {tag}   (you have {cur})").format(tag=info.tag, cur=current_ver))
         sub_lbl.setProperty("role", "muted")
         head_box.addWidget(title_lbl)
         head_box.addWidget(sub_lbl)
         root.addLayout(head_box)
 
         # Release notes card
-        card = Card(title="What's new", padding=14, parent=self)
+        card = Card(title=t("What's new"), padding=14, parent=self)
 
         scroll = QScrollArea(card)
         scroll.setWidgetResizable(True)
@@ -99,7 +100,7 @@ class UpdateDialog(QDialog):
         root.addWidget(self.progress_container)
 
         # Muted reassurance notice
-        notice_lbl = QLabel("Your settings, Twitch login and tools are kept.")
+        notice_lbl = QLabel(t("Your settings, Twitch login and tools are kept."))
         notice_lbl.setProperty("role", "muted")
         root.addWidget(notice_lbl)
 
@@ -107,23 +108,23 @@ class UpdateDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
 
-        self.btn_update = QPushButton("Update now")
+        self.btn_update = QPushButton(t("Update now"))
         self.btn_update.setProperty("variant", "primary")
         self.btn_update.setDefault(True)
         self.btn_update.clicked.connect(self.on_update_now)
         btn_row.addWidget(self.btn_update)
 
-        self.btn_release_page = QPushButton("Release page")
+        self.btn_release_page = QPushButton(t("Release page"))
         self.btn_release_page.clicked.connect(self.on_release_page)
         btn_row.addWidget(self.btn_release_page)
 
-        self.btn_later = QPushButton("Later")
+        self.btn_later = QPushButton(t("Later"))
         self.btn_later.clicked.connect(self.on_cancel_or_later)
         btn_row.addWidget(self.btn_later)
 
         btn_row.addStretch(1)
 
-        self.btn_skip = QPushButton(f"Skip {info.tag}")
+        self.btn_skip = QPushButton(t("Skip {tag}").format(tag=info.tag))
         self.btn_skip.clicked.connect(self.on_skip)
         btn_row.addWidget(self.btn_skip)
 
@@ -148,7 +149,7 @@ class UpdateDialog(QDialog):
                 is_busy = True
             if is_busy:
                 from qt_ui import dialogs
-                dialogs.info(self, "Busy", "Wait for running downloads or tool tasks to finish before updating.")
+                dialogs.info(self, t("Busy"), t("Wait for running downloads or tool tasks to finish before updating."))
                 return
 
         self._start_download()
@@ -160,10 +161,10 @@ class UpdateDialog(QDialog):
         dest = updates.get_update_temp_dir() / f"LuckyTwitch-Setup-{self.info.tag}.exe"
         self.progress_container.setVisible(True)
         self.progress_bar.setValue(0)
-        self.progress_label.setText(f"Downloading LuckyTwitch {self.info.tag}...")
+        self.progress_label.setText(t("Downloading LuckyTwitch {tag}...").format(tag=self.info.tag))
         self.btn_update.setEnabled(False)
         self.btn_skip.setEnabled(False)
-        self.btn_later.setText("Cancel")
+        self.btn_later.setText(t("Cancel"))
 
         self._bridge = Bridge()
         self._bridge.progress.connect(self._on_download_progress)
@@ -180,8 +181,8 @@ class UpdateDialog(QDialog):
         if error:
             self.progress_bar.setVisible(False)
             self.progress_label.setText(error)
-            self.btn_later.setText("Close")
-            self.btn_update.setText("Open release page")
+            self.btn_later.setText(t("Close"))
+            self.btn_update.setText(t("Open release page"))
             self.btn_update.setEnabled(True)
             try:
                 self.btn_update.clicked.disconnect()
@@ -194,13 +195,13 @@ class UpdateDialog(QDialog):
         from qt_ui import dialogs
         proceed = dialogs.ask_yes_no(
             self,
-            "Install and restart",
-            "LuckyTwitch will close, update and reopen.\nSettings, Twitch login and tools are kept.\n\nDo you want to proceed?",
+            t("Install and restart"),
+            t("LuckyTwitch will close, update and reopen.\nSettings, Twitch login and tools are kept.\n\nDo you want to proceed?"),
         )
         if not proceed:
-            self.progress_label.setText("Update ready to install.")
-            self.btn_later.setText("Later")
-            self.btn_update.setText("Install now")
+            self.progress_label.setText(t("Update ready to install."))
+            self.btn_later.setText(t("Later"))
+            self.btn_update.setText(t("Install now"))
             self.btn_update.setEnabled(True)
             try:
                 self.btn_update.clicked.disconnect()
@@ -218,8 +219,8 @@ class UpdateDialog(QDialog):
 
         ok = updates.launch_installer(dest_str)
         if not ok:
-            self.progress_label.setText("Could not start the installer.")
-            self.btn_update.setText("Open release page")
+            self.progress_label.setText(t("Could not start the installer."))
+            self.btn_update.setText(t("Open release page"))
             self.btn_update.setEnabled(True)
             try:
                 self.btn_update.clicked.disconnect()
@@ -236,8 +237,8 @@ class UpdateDialog(QDialog):
         if self._download_ctx:
             self._download_ctx.cancel()
             self._download_ctx = None
-            self.progress_label.setText("Update cancelled.")
-            self.btn_later.setText("Later")
+            self.progress_label.setText(t("Update cancelled."))
+            self.btn_later.setText(t("Later"))
             self.btn_update.setEnabled(True)
             self.btn_skip.setEnabled(True)
             return

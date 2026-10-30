@@ -84,7 +84,7 @@ msgstr "Obtener información"
 msgid "Download"
 msgstr "Descargar"
 
-#: qt_ui/dialogs.py qt_ui/shell.py qt_ui/titlebar.py
+#: qt_ui/dialogs.py qt_ui/shell.py qt_ui/titlebar.py qt_ui/twitch_dialog.py qt_ui/update_dialog.py
 msgid "Close"
 msgstr "Cerrar"
 
@@ -111,8 +111,7 @@ msgstr "Finalizar"
 msgid "Quit"
 msgstr "Salir"
 
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/dialogs.py qt_ui/update_dialog.py
+#: qt_ui/update_dialog.py
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -525,12 +524,10 @@ msgstr "Estos enlaces abren actualmente otra copia de LuckyTwitch. Presiona el b
 msgid "These links already open this copy of LuckyTwitch."
 msgstr "Estos enlaces ya abren esta copia de LuckyTwitch."
 
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/twitch_dialog.py
 msgid "Sign in with Twitch"
 msgstr "Iniciar sesión con Twitch"
 
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/twitch_dialog.py
 msgid "Sign out"
 msgstr "Cerrar sesión"
@@ -589,7 +586,7 @@ msgstr "Se añadieron {n} clip(s) a la cola."
 msgid "All queued downloads have finished."
 msgstr "Todas las descargas en cola han finalizado."
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/update_dialog.py
 msgid "Busy"
 msgstr "Ocupado"
 
@@ -651,7 +648,7 @@ msgstr "Puntos de corte"
 msgid "Draw the chat overlay?"
 msgstr "¿Generar la superposición de chat?"
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/twitch_dialog.py
 msgid "Error"
 msgstr "Error"
 
@@ -779,7 +776,7 @@ msgstr "VOD de Twitch en el portapapeles"
 msgid "Up to date"
 msgstr "Actualizado"
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/update_dialog.py
 msgid "Update available"
 msgstr "Actualización disponible"
 
@@ -1070,7 +1067,7 @@ msgstr "Calidad: {quality} · Solo audio: se guarda como .m4a o .mp3 (Opciones).
 msgid "Quality: {quality}{size}"
 msgstr "Calidad: {quality}{size}"
 
-#: qt_ui/tabs/plan.py
+#: qt_ui/tabs/plan.py qt_ui/widgets.py
 msgid "Reset"
 msgstr "Restablecer"
 
@@ -1407,7 +1404,7 @@ msgstr "{count} · {duration} en total"
 msgid "Actions"
 msgstr "Acciones"
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/twitch_dialog.py
 msgid "Copied!"
 msgstr "¡Copiado!"
 
@@ -1817,7 +1814,7 @@ msgstr ""
 msgid "Bigger file, but it works offline."
 msgstr "Archivo más grande, pero funciona sin conexión."
 
-#: qt_ui/tabs/options.py
+#: qt_ui/tabs/options.py qt_ui/welcome/setup_card.py
 msgid "Browse…"
 msgstr "Examinar…"
 
@@ -2357,4 +2354,265 @@ msgstr "Versión de desarrollo"
 #: qt_ui/tabs/options.py
 msgid "Development build (updates not checked automatically)"
 msgstr "Versión de desarrollo (las actualizaciones no se comprueban automáticamente)"
+
+#: qt_ui/icons.py
+#, python-brace-format
+msgid "unknown icon {name!r} (available: {avail})"
+msgstr "ícono desconocido {name!r} (disponibles: {avail})"
+
+#: qt_ui/twitch_dialog.py
+msgid "Advanced: use your own Twitch app instead"
+msgstr "Avanzado: usar tu propia aplicación de Twitch en su lugar"
+
+#: qt_ui/twitch_dialog.py
+msgid "Client ID:"
+msgstr "ID de cliente:"
+
+#: qt_ui/twitch_dialog.py
+msgid "Client Secret:"
+msgstr "Secreto de cliente:"
+
+#: qt_ui/twitch_dialog.py
+msgid "Contacting Twitch…"
+msgstr "Contactando a Twitch…"
+
+#: qt_ui/twitch_dialog.py
+msgid "Copy activation code to clipboard"
+msgstr "Copiar código de activación al portapapeles"
+
+#: qt_ui/twitch_dialog.py
+msgid "Copy code"
+msgstr "Copiar código"
+
+#: qt_ui/twitch_dialog.py
+msgid "Fill in both fields."
+msgstr "Completa ambos campos."
+
+#: qt_ui/twitch_dialog.py
+msgid "Missing data"
+msgstr "Faltan datos"
+
+#: qt_ui/twitch_dialog.py
+msgid "Network error"
+msgstr "Error de red"
+
+#: qt_ui/twitch_dialog.py
+msgid "Not signed in."
+msgstr "No has iniciado sesión."
+
+#: qt_ui/twitch_dialog.py
+msgid "Open page again"
+msgstr "Abrir página de nuevo"
+
+#: qt_ui/twitch_dialog.py
+msgid "Save own app"
+msgstr "Guardar app propia"
+
+#: qt_ui/twitch_dialog.py
+#, python-brace-format
+msgid "Saved in: {path}"
+msgstr "Guardado en: {path}"
+
+#: qt_ui/twitch_dialog.py
+msgid "Sign in again"
+msgstr "Iniciar sesión de nuevo"
+
+#: qt_ui/twitch_dialog.py
+msgid "Signed in with Twitch."
+msgstr "Sesión iniciada con Twitch."
+
+#: qt_ui/twitch_dialog.py
+msgid "Twitch API"
+msgstr "API de Twitch"
+
+#: qt_ui/twitch_dialog.py
+msgid "Twitch API credentials saved."
+msgstr "Credenciales de la API de Twitch guardadas."
+
+#: qt_ui/twitch_dialog.py
+msgid "Twitch account removed."
+msgstr "Cuenta de Twitch eliminada."
+
+#: qt_ui/twitch_dialog.py
+msgid "Twitch sign-in"
+msgstr "Inicio de sesión de Twitch"
+
+#: qt_ui/twitch_dialog.py
+msgid "Using your own Twitch app (Client ID / Secret below)."
+msgstr "Usando tu propia aplicación de Twitch (ID / Secreto de cliente a continuación)."
+
+#: qt_ui/twitch_dialog.py
+msgid "✔ Signed in with Twitch. Clips are available."
+msgstr "✔ Sesión iniciada con Twitch. Los clips están disponibles."
+
+#: qt_ui/update_dialog.py
+msgid "(Read the full notes on GitHub)"
+msgstr "(Lee las notas completas en GitHub)"
+
+#: qt_ui/update_dialog.py
+msgid "Could not start the installer."
+msgstr "No se pudo iniciar el instalador."
+
+#: qt_ui/update_dialog.py
+#, python-brace-format
+msgid "Downloading LuckyTwitch {tag}..."
+msgstr "Descargando LuckyTwitch {tag}..."
+
+#: qt_ui/update_dialog.py
+msgid "Install and restart"
+msgstr "Instalar y reiniciar"
+
+#: qt_ui/update_dialog.py
+msgid "Install now"
+msgstr "Instalar ahora"
+
+#: qt_ui/update_dialog.py
+msgid "Later"
+msgstr "Más tarde"
+
+#: qt_ui/update_dialog.py
+msgid ""
+"LuckyTwitch will close, update and reopen.\n"
+"Settings, Twitch login and tools are kept.\n"
+"\n"
+"Do you want to proceed?"
+msgstr ""
+"LuckyTwitch se cerrará, se actualizará y se volverá a abrir.\n"
+"Se conservan tus ajustes, inicio de sesión de Twitch y herramientas.\n"
+"\n"
+"¿Deseas continuar?"
+
+#: qt_ui/update_dialog.py
+#, python-brace-format
+msgid "LuckyTwitch {tag}   (you have {cur})"
+msgstr "LuckyTwitch {tag}   (tienes {cur})"
+
+#: qt_ui/update_dialog.py
+msgid "No release notes provided."
+msgstr "No se proporcionaron notas de la versión."
+
+#: qt_ui/update_dialog.py
+msgid "Open release page"
+msgstr "Abrir página de la versión"
+
+#: qt_ui/update_dialog.py
+msgid "Release page"
+msgstr "Página de la versión"
+
+#: qt_ui/update_dialog.py
+#, python-brace-format
+msgid "Skip {tag}"
+msgstr "Omitir {tag}"
+
+#: qt_ui/update_dialog.py
+msgid "Update cancelled."
+msgstr "Actualización cancelada."
+
+#: qt_ui/update_dialog.py
+msgid "Update now"
+msgstr "Actualizar ahora"
+
+#: qt_ui/update_dialog.py
+msgid "Update ready to install."
+msgstr "Actualización lista para instalar."
+
+#: qt_ui/update_dialog.py
+msgid "Wait for running downloads or tool tasks to finish before updating."
+msgstr "Espera a que terminen las descargas o tareas de herramientas en curso antes de actualizar."
+
+#: qt_ui/update_dialog.py
+msgid "What's new"
+msgstr "Novedades"
+
+#: qt_ui/update_dialog.py
+msgid "Your settings, Twitch login and tools are kept."
+msgstr "Se conservan tus ajustes, inicio de sesión de Twitch y herramientas."
+
+#: qt_ui/update_dialog.py
+msgid "dev build"
+msgstr "versión de desarrollo"
+
+#: qt_ui/welcome/overlay.py
+msgid "Fast Twitch VODs, precision clip cutting, and animated chat overlays."
+msgstr "VODs de Twitch rápidos, corte de clips de precisión y superposiciones de chat animadas."
+
+#: qt_ui/welcome/overlay.py
+msgid "LuckyTwitch Downloader"
+msgstr "Descargador LuckyTwitch"
+
+#: qt_ui/welcome/overlay.py
+msgid "Press Esc or Enter to launch"
+msgstr "Presiona Esc o Enter para iniciar"
+
+#: qt_ui/welcome/overlay.py
+msgid "Start Using LuckyTwitch →"
+msgstr "Comenzar a usar LuckyTwitch →"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Best compatibility with video editors, media players, and mobile devices"
+msgstr "Mayor compatibilidad con editores de video, reproductores multimedia y dispositivos móviles"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Download Folder:"
+msgstr "Carpeta de descarga:"
+
+#: qt_ui/welcome/setup_card.py
+msgid "MKV (Crash-Resistant)"
+msgstr "MKV (Resistente a bloqueos)"
+
+#: qt_ui/welcome/setup_card.py
+msgid "MP4 (Universal && Premiere)"
+msgstr "MP4 (Universal && Premiere)"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Manage Account…"
+msgstr "Administrar cuenta…"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Not signed in (Guest)"
+msgstr "Sin iniciar sesión (Invitado)"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Path where downloaded videos and clips are saved"
+msgstr "Ruta donde se guardan los videos y clips descargados"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Preferred Format:"
+msgstr "Formato preferido:"
+
+#: qt_ui/welcome/setup_card.py
+msgid "QUICK SETUP (ESSENTIALS)"
+msgstr "CONFIGURACIÓN RÁPIDA (ESENCIALES)"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Select Download Folder"
+msgstr "Seleccionar carpeta de descarga"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Sign in with Twitch…"
+msgstr "Iniciar sesión con Twitch…"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Signed in to Twitch"
+msgstr "Sesión iniciada en Twitch"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Stream-safe format: survives unexpected system crashes or power interruptions"
+msgstr "Formato seguro para transmisiones: sobrevive a bloqueos inesperados del sistema o cortes de energía"
+
+#: qt_ui/welcome/setup_card.py
+msgid "Twitch Account (Optional):"
+msgstr "Cuenta de Twitch (Opcional):"
+
+#: qt_ui/widgets.py
+msgid "Information"
+msgstr "Información"
+
+#: qt_ui/widgets.py
+msgid "Modified from default"
+msgstr "Modificado del valor predeterminado"
+
+#: qt_ui/widgets.py
+msgid "Reset to default"
+msgstr "Restablecer al valor predeterminado"
 

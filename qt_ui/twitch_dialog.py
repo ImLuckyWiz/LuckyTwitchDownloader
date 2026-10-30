@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import paths
+from core.i18n import t
 from core.config import (
     clear_credentials, load_credentials, make_client, read_config, save_credentials, save_login_tokens,
 )
@@ -54,7 +55,7 @@ class TwitchDialog(QDialog):
     def __init__(self, host, parent: QWidget | None = None):
         super().__init__(parent)
         self.host = host
-        self.setWindowTitle(TITLE)
+        self.setWindowTitle(t("Twitch API"))
         self.setModal(True)
         self.state = {"busy": False, "url": ""}
         self.cancel_ev = threading.Event()
@@ -70,7 +71,7 @@ class TwitchDialog(QDialog):
         box.setSpacing(0)
         box.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)  # tkinter: not resizable
 
-        box.addWidget(QLabel(INTRO))
+        box.addWidget(QLabel(t(INTRO)))
         self.status_label = WrapLabel("")
         self.status_label.setFixedWidth(STATUS_WIDTH)
         self.status_label.setContentsMargins(0, 10, 0, 2)
@@ -93,8 +94,8 @@ class TwitchDialog(QDialog):
         from qt_ui.icons import icon
         from PySide6.QtWidgets import QToolButton
         self.copy_code_btn = QToolButton()
-        self.copy_code_btn.setText("Copy code")
-        self.copy_code_btn.setAccessibleName("Copy activation code to clipboard")
+        self.copy_code_btn.setText(t("Copy code"))
+        self.copy_code_btn.setAccessibleName(t("Copy activation code to clipboard"))
         self.copy_code_btn.setIcon(icon("copy", 14))
         self.copy_code_btn.setProperty("variant", "ghost")
         self.copy_code_btn.setVisible(False)
@@ -106,11 +107,11 @@ class TwitchDialog(QDialog):
         login_row = QHBoxLayout()
         login_row.setContentsMargins(0, 6, 0, 0)
         login_row.setSpacing(6)
-        self.login_btn = QPushButton("Sign in with Twitch")
+        self.login_btn = QPushButton(t("Sign in with Twitch"))
         self.login_btn.clicked.connect(self.start_login)
-        self.page_btn = QPushButton("Open page again")
+        self.page_btn = QPushButton(t("Open page again"))
         self.page_btn.clicked.connect(self.open_page)
-        self.logout_btn = QPushButton("Sign out")
+        self.logout_btn = QPushButton(t("Sign out"))
         self.logout_btn.clicked.connect(self.do_logout)
         for b in (self.login_btn, self.page_btn, self.logout_btn):
             login_row.addWidget(b)
@@ -118,7 +119,7 @@ class TwitchDialog(QDialog):
         box.addLayout(login_row)
 
         # --- advanced: own Twitch app --- #
-        adv = QGroupBox("Advanced: use your own Twitch app instead")
+        adv = QGroupBox(t("Advanced: use your own Twitch app instead"))
         grid = QGridLayout(adv)
         grid.setContentsMargins(10, 10, 10, 10)
         cfg = load_credentials() or {}
@@ -128,11 +129,11 @@ class TwitchDialog(QDialog):
         entry_width = self.fontMetrics().averageCharWidth() * 44 + 16  # tkinter: width=44 characters
         for edit in (self.id_edit, self.sec_edit):
             edit.setMinimumWidth(entry_width)
-        grid.addWidget(QLabel("Client ID:"), 0, 0, Qt.AlignmentFlag.AlignRight)
+        grid.addWidget(QLabel(t("Client ID:")), 0, 0, Qt.AlignmentFlag.AlignRight)
         grid.addWidget(self.id_edit, 0, 1)
-        grid.addWidget(QLabel("Client Secret:"), 1, 0, Qt.AlignmentFlag.AlignRight)
+        grid.addWidget(QLabel(t("Client Secret:")), 1, 0, Qt.AlignmentFlag.AlignRight)
         grid.addWidget(self.sec_edit, 1, 1)
-        self.save_btn = QPushButton("Save own app")
+        self.save_btn = QPushButton(t("Save own app"))
         self.save_btn.clicked.connect(self.save)
         grid.addWidget(self.save_btn, 2, 0, 1, 2, Qt.AlignmentFlag.AlignRight)
         grid.setVerticalSpacing(6)
@@ -141,11 +142,11 @@ class TwitchDialog(QDialog):
         holder.addWidget(adv)
         box.addLayout(holder)
 
-        self.path_label = QLabel(f"Saved in: {paths.CONFIG_PATH}")
+        self.path_label = QLabel(t("Saved in: {path}").format(path=paths.CONFIG_PATH))
         self.path_label.setProperty("role", "muted")
         self.path_label.setContentsMargins(0, 10, 0, 0)
         box.addWidget(self.path_label)
-        self.close_btn = QPushButton("Close")
+        self.close_btn = QPushButton(t("Close"))
         self.close_btn.clicked.connect(self.close)
         close_row = QHBoxLayout()
         close_row.setContentsMargins(0, 10, 0, 0)
@@ -165,12 +166,12 @@ class TwitchDialog(QDialog):
 
     def refresh_status(self) -> None:
         if load_credentials():
-            self.status_label.setText("Using your own Twitch app (Client ID / Secret below).")
+            self.status_label.setText(t("Using your own Twitch app (Client ID / Secret below)."))
         elif self.signed_in():
-            self.status_label.setText("✔ Signed in with Twitch. Clips are available.")
+            self.status_label.setText(t("✔ Signed in with Twitch. Clips are available."))
         else:
-            self.status_label.setText("Not signed in.")
-        self.login_btn.setText("Sign in again" if self.signed_in() else "Sign in with Twitch")
+            self.status_label.setText(t("Not signed in."))
+        self.login_btn.setText(t("Sign in again") if self.signed_in() else t("Sign in with Twitch"))
         self.logout_btn.setEnabled(bool(self.signed_in() or load_credentials()))
         self.host.update_search_state()  # show / hide the «sign in» warning of the Search tab
 
@@ -181,7 +182,7 @@ class TwitchDialog(QDialog):
         self.state["busy"] = True
         self.cancel_ev.clear()
         self.login_btn.setEnabled(False)
-        self.status_label.setText("Contacting Twitch…")
+        self.status_label.setText(t("Contacting Twitch…"))
         signals, cancel_ev = self.signals, self.cancel_ev
 
         def work():
@@ -209,17 +210,17 @@ class TwitchDialog(QDialog):
         self.code_label.setText(user_code)
         if hasattr(self, "copy_code_btn"):
             self.copy_code_btn.setVisible(bool(user_code))
-        self.status_label.setText(WAITING_TEXT)
+        self.status_label.setText(t(WAITING_TEXT))
     def copy_code(self) -> None:
         code = self.code_label.text().strip()
         if code:
             from PySide6.QtWidgets import QApplication
             from qt_ui.icons import icon
             QApplication.clipboard().setText(code)
-            self.copy_code_btn.setText("Copied!")
+            self.copy_code_btn.setText(t("Copied!"))
             self.copy_code_btn.setIcon(icon("check", 14))
             from PySide6.QtCore import QTimer
-            QTimer.singleShot(2000, lambda: (self.copy_code_btn.setText("Copy code"), self.copy_code_btn.setIcon(icon("copy", 14))) if not self.closed else None)
+            QTimer.singleShot(2000, lambda: (self.copy_code_btn.setText(t("Copy code")), self.copy_code_btn.setIcon(icon("copy", 14))) if not self.closed else None)
 
 
     def finish_login(self, access: str, refresh: str) -> None:
@@ -233,7 +234,7 @@ class TwitchDialog(QDialog):
             self.copy_code_btn.setVisible(False)
         self.state["busy"] = False
         self.login_btn.setEnabled(True)
-        self.host.set_status("Signed in with Twitch.")
+        self.host.set_status(t("Signed in with Twitch."))
         self.refresh_status()
 
     def fail_login(self, msg: str) -> None:
@@ -245,7 +246,7 @@ class TwitchDialog(QDialog):
         self.state["busy"] = False
         self.login_btn.setEnabled(True)
         self.refresh_status()
-        dialogs.error(self, "Twitch sign-in", msg)
+        dialogs.error(self, t("Twitch sign-in"), msg)
 
     def on_cancelled(self) -> None:
         if self.closed:
@@ -267,28 +268,28 @@ class TwitchDialog(QDialog):
         self.host.client = None
         self.id_edit.setText("")
         self.sec_edit.setText("")
-        self.host.set_status("Twitch account removed.")
+        self.host.set_status(t("Twitch account removed."))
         self.refresh_status()
 
     # ---------------------------- an own Twitch app ---------------------------- #
     def save(self) -> None:
         cid, sec = self.id_edit.text().strip(), self.sec_edit.text().strip()
         if not cid or not sec:
-            dialogs.warning(self, "Missing data", "Fill in both fields.")
+            dialogs.warning(self, t("Missing data"), t("Fill in both fields."))
             return
         test = TwitchClient(cid, sec)
         try:
             test.refresh_token()
         except ValueError as e:
-            dialogs.error(self, "Error", str(e))
+            dialogs.error(self, t("Error"), str(e))
             return
         except requests.RequestException as e:
-            dialogs.error(self, "Network error", str(e))
+            dialogs.error(self, t("Network error"), str(e))
             return
         save_login_tokens(None, None)  # own app replaces a signed-in account
         save_credentials(cid, sec)
         self.host.client = test
-        self.host.set_status("Twitch API credentials saved.")
+        self.host.set_status(t("Twitch API credentials saved."))
         self.refresh_status()
 
     # ---------------------------- closing ---------------------------- #

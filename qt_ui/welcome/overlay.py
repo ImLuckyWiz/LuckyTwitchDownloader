@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
+from core.i18n import t
 from core.palette import ACCENT, ACCENT_HOVER, ACCENT_PRESS, FG, MUTED, WHITE
 from core.resources import resource_path
 from qt_ui.icons import icon, pixmap
@@ -68,16 +69,13 @@ class WelcomeOverlay(QWidget):
         center_lay.addWidget(self.icon_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Title
-        self.title_lbl = QLabel("LuckyTwitch Downloader", scroll_widget)
+        self.title_lbl = QLabel(t("LuckyTwitch Downloader"), scroll_widget)
         self.title_lbl.setStyleSheet(f"color: {WHITE}; font-size: 26pt; font-weight: 800; letter-spacing: -0.5px;")
         self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_lay.addWidget(self.title_lbl, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Subtitle / Tagline
-        self.subtitle_lbl = QLabel(
-            "Fast Twitch VODs, precision clip cutting, and animated chat overlays.",
-            scroll_widget,
-        )
+        self.subtitle_lbl = QLabel(t(t("Fast Twitch VODs, precision clip cutting, and animated chat overlays.")), scroll_widget)
         self.subtitle_lbl.setStyleSheet(f"color: {MUTED}; font-size: 11pt;")
         self.subtitle_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_lay.addWidget(self.subtitle_lbl, 0, Qt.AlignmentFlag.AlignCenter)
@@ -97,7 +95,7 @@ class WelcomeOverlay(QWidget):
         center_lay.addSpacing(8)
 
         # Primary Call-To-Action (CTA) Button
-        self.start_btn = QPushButton("Start Using LuckyTwitch \u2192", scroll_widget)
+        self.start_btn = QPushButton(t("Start Using LuckyTwitch →"), scroll_widget)
         self.start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start_btn.setMinimumHeight(48)
         self.start_btn.setMinimumWidth(320)
@@ -120,7 +118,7 @@ class WelcomeOverlay(QWidget):
         center_lay.addWidget(self.start_btn, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Skip hint
-        self.skip_lbl = QLabel("Press Esc or Enter to launch", scroll_widget)
+        self.skip_lbl = QLabel(t("Press Esc or Enter to launch"), scroll_widget)
         self.skip_lbl.setStyleSheet(f"color: {MUTED}; font-size: 9pt;")
         self.skip_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_lay.addWidget(self.skip_lbl, 0, Qt.AlignmentFlag.AlignCenter)

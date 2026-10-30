@@ -29,7 +29,7 @@ right (accents and capitals do not matter). The list is read by the checker; add
 | chapter | capítulo / capítulos | |
 | marker | marcador / marcadores | Premiere Pro markers |
 | muted | silenciado / silenciados | |
-| chat overlay | superposición de chat | |
+| chat overlay | superposición de chat / superposiciones de chat | |
 | watch list | lista de seguimiento | |
 | history | historial | |
 | strategy | estrategia | |

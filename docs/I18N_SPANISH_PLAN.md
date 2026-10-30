@@ -284,3 +284,26 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - Unwrapped baseline shrank from 330 to 167.
   - `python tools/i18n.py check` passing with 0 problems.
   - All 69 tests in `tests/test_qt_options_tab.py` and 37 tests in `tests/test_i18n.py` passing green.
+
+### Phase I7 delivered (2026-10-30): Dialogs and first run localization (tag i18n-phase-7)
+
+* `qt_ui/icons.py`:
+  - Wrapped unknown icon logger warning with `t(...)`.
+* `qt_ui/widgets.py`:
+  - Localized `SettingRow` reset button (*Reset*), accessible name (*Information*), and tooltips (*Modified from default*, *Reset to default*).
+* `qt_ui/welcome/overlay.py`:
+  - Localized hero titles, subtitle (*Fast Twitch VODs, precision clip cutting, and animated chat overlays.*), CTA button (*Start Using LuckyTwitch →*), and dismiss hint.
+* `qt_ui/welcome/setup_card.py`:
+  - Localized quick setup header (*QUICK SETUP (ESSENTIALS)*), *Download Folder:*, *Browse…*, container format selectors (*MP4 (Universal && Premiere)*, *MKV (Crash-Resistant)*), format tooltips, directory picker dialog (*Select Download Folder*), and account status toggles.
+* `qt_ui/twitch_dialog.py`:
+  - Localized window title (*Twitch API*), introductory guidance, device code copy button and feedback (*Copy code*, *Copied!*), status labels, action buttons (*Sign in with Twitch*, *Sign in again*, *Open page again*, *Sign out*), own app fields (*Client ID:*, *Client Secret:*, *Save own app*), and error/warning dialogs (*Missing data*, *Network error*, etc.).
+* `qt_ui/update_dialog.py`:
+  - Localized window title (*Update available*), version header (*LuckyTwitch {tag} (you have {cur})*), card header (*What's new*), release notes fallback (*No release notes provided.*), reassurance notice (*Your settings, Twitch login and tools are kept.*), buttons (*Update now*, *Release page*, *Later*, *Skip {tag}*), download progress (*Downloading LuckyTwitch {tag}...*), and confirmation prompt (*Install and restart*).
+* `docs/i18n-glossary-es.md`:
+  - Added plural `superposiciones de chat` for `chat overlay`.
+* Catalog and baseline:
+  - 62 new strings translated in `locale/es/LC_MESSAGES/luckytwitch.po`.
+  - Added `"MP4 (Universal && Premiere)"` to `identical_ok` in `tools/i18n_baseline.json`.
+  - Unwrapped baseline dropped from 167 to 98 (all files in `qt_ui/` have reached **0** unwrapped literals).
+  - `python tools/i18n.py check` passing with 0 problems.
+  - All tests in `test_qt_twitch_dialog.py`, `test_qt_update_dialog.py`, `test_qt_welcome.py`, and `test_i18n.py` passing green.

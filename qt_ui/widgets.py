@@ -24,6 +24,8 @@ word-wrapped labels follow their layout in Qt. All of it runs on the GUI thread 
 
 from __future__ import annotations
 
+from core.i18n import t
+
 import math
 from collections.abc import Callable, Iterable
 
@@ -280,7 +282,7 @@ class InfoIcon(QWidget):
         self._hover = False
         self.setFixedSize(self.SIZE, self.SIZE)
         self.setCursor(Qt.CursorShape.WhatsThisCursor)
-        self.setAccessibleName("Information")
+        self.setAccessibleName(t("Information"))
         self.setAccessibleDescription(text)
         self.tooltip = Tooltip(self, text)
 
@@ -497,15 +499,15 @@ class SettingRow(QWidget):
         self.changed_dot = QLabel("●", text)
         self.changed_dot.setProperty("role", "accent")
         self.changed_dot.setStyleSheet(f"color: {ACCENT_TEXT}; font-size: 10px;")
-        self.changed_dot.setToolTip("Modified from default")
+        self.changed_dot.setToolTip(t("Modified from default"))
         self.changed_dot.setVisible(False)
         top.addWidget(self.changed_dot)
 
-        self.reset_btn = QPushButton("Reset", text)
+        self.reset_btn = QPushButton(t("Reset"), text)
         self.reset_btn.setProperty("variant", "ghost")
         self.reset_btn.setStyleSheet(f"font-size: 11px; padding: 1px 4px; color: {MUTED};")
         self.reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.reset_btn.setToolTip("Reset to default")
+        self.reset_btn.setToolTip(t("Reset to default"))
         self.reset_btn.setVisible(False)
         self._on_reset_callback = None
         self.reset_btn.clicked.connect(self._handle_reset)

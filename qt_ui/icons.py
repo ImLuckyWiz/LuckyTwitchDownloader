@@ -34,6 +34,7 @@ import logging
 import math
 from collections.abc import Callable
 
+from core.i18n import t
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import (
     QColor, QIcon, QIconEngine, QPainter, QPainterPath, QPen, QPixmap, QTransform,
@@ -505,7 +506,7 @@ def _key_for(name: str) -> str:
         return key
     if name not in _warned:
         _warned.add(name)
-        _log.warning("unknown icon %r (available: %s)", name, ", ".join(available_icons()))
+        _log.warning(t("unknown icon {name!r} (available: {avail})").format(name=name, avail=", ".join(available_icons())))
     return _MISSING
 
 
