@@ -162,6 +162,8 @@ def test_extract_placeholders():
 
 
 def test_get_system_language_detects_es(monkeypatch):
+    for var in ("LC_ALL", "LC_MESSAGES"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("LANG", "es_ES.UTF-8")
     assert get_system_language() == LANG_ES
 
