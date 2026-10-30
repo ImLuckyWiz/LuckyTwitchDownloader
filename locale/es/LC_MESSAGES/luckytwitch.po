@@ -15,8 +15,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/ui_state.py qt_ui/main_window.py qt_ui/shell.py
 msgid "Plan"
 msgstr "Plan"
@@ -29,14 +28,12 @@ msgstr "Buscar"
 msgid "History"
 msgstr "Historial"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/main_window.py qt_ui/shell.py
 msgid "Queue & log"
 msgstr "Cola y registros"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/main_window.py qt_ui/shell.py
 msgid "Options"
 msgstr "Opciones"
@@ -69,7 +66,7 @@ msgstr "Eliminar seleccionado"
 msgid "Clear finished"
 msgstr "Limpiar terminados"
 
-#: qt_ui/main_window.py qt_ui/tabs/queue.py
+#: qt_ui/main_window.py qt_ui/tabs/options.py qt_ui/tabs/queue.py
 msgid "Open folder"
 msgstr "Abrir carpeta"
 
@@ -114,14 +111,12 @@ msgstr "Finalizar"
 msgid "Quit"
 msgstr "Salir"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/dialogs.py qt_ui/update_dialog.py
 msgid "Cancel"
 msgstr "Cancelar"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/palette.py qt_ui/dialogs.py
 msgid "OK"
 msgstr "Aceptar"
@@ -140,20 +135,17 @@ msgstr "Aplicar"
 msgid "Log"
 msgstr "Registro"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/tabs/queue.py
 msgid "All"
 msgstr "Todo"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/tabs/queue.py
 msgid "Warnings"
 msgstr "Advertencias"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/tabs/queue.py
 msgid "Errors"
 msgstr "Errores"
@@ -214,10 +206,8 @@ msgstr "Velocidad ilimitada"
 msgid "Bandwidth limit passed to yt-dlp (--limit-rate)"
 msgstr "Límite de ancho de banda para yt-dlp (--limit-rate)"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
-#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py
-#: qt_ui/tabs/queue.py
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py
 msgid "queued"
 msgstr "en cola"
 
@@ -233,10 +223,8 @@ msgstr "listo"
 msgid "failed"
 msgstr "fallido"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
-#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py
-#: qt_ui/tabs/queue.py
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
+#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py
 msgid "cancelled"
 msgstr "cancelado"
 
@@ -276,7 +264,7 @@ msgstr "Título"
 msgid "Parts"
 msgstr "Partes"
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/tabs/options.py
 msgid "Quality"
 msgstr "Calidad"
 
@@ -288,20 +276,17 @@ msgstr "Carpeta"
 msgid "Clear download history? This cannot be undone."
 msgstr "¿Limpiar el historial de descargas? Esto no se puede deshacer."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/search.py
 msgid "Past broadcasts"
 msgstr "Emisiones pasadas"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/search.py
 msgid "Highlights"
 msgstr "Destacados"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/search.py
 msgid "Uploads"
 msgstr "Subidas"
@@ -318,81 +303,53 @@ msgstr "Fija a este streamer para recibir notificaciones de nuevos VODs"
 msgid "Pinned"
 msgstr "Fijado"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Output"
 msgstr "Salida"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Where the finished files go and how they are named."
 msgstr "Dónde se guardan los archivos terminados y cómo se nombran."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Cuts"
 msgstr "Cortes"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "How the VOD is downloaded and cut into parts."
 msgstr "Cómo se descarga el VOD y se corta en partes."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Chapters"
 msgstr "Capítulos"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Premiere Pro"
 msgstr "Premiere Pro"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Markers you can bring into Adobe Premiere Pro next to each part."
 msgstr "Marcadores que puedes llevar a Adobe Premiere Pro junto a cada parte."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Chat"
 msgstr "Chat"
 
-msgid ""
-"Download the chat that went with the stream, or turn it into a video you "
-"can put next to the stream."
-msgstr ""
-"Descarga el chat de la transmisión o conviértelo en un video para "
-"superponer."
+msgid "Download the chat that went with the stream, or turn it into a video you can put next to the stream."
+msgstr "Descarga el chat de la transmisión o conviértelo en un video para superponer."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Clips"
 msgstr "Clips"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Used by the «Download only selected clip» button in the Plan tab."
-msgstr ""
-"Usado por el botón «Descargar solo el clip seleccionado» en la pestaña "
-"Plan."
+msgstr "Usado por el botón «Descargar solo el clip seleccionado» en la pestaña Plan."
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/options.py
 msgid "Tools"
 msgstr "Herramientas"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "yt-dlp and ffmpeg do the downloading and cutting."
 msgstr "yt-dlp y ffmpeg realizan la descarga y el corte."
@@ -489,135 +446,91 @@ msgstr "Descargar solo el clip seleccionado"
 msgid "Queue"
 msgstr "Cola"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Check for yt-dlp updates on startup"
 msgstr "Comprobar actualizaciones de yt-dlp al iniciar"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Recommended: Twitch changes often."
 msgstr "Recomendado: Twitch cambia con frecuencia."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Update yt-dlp"
 msgstr "Actualizar yt-dlp"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Update yt-dlp now"
 msgstr "Actualizar yt-dlp ahora"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Download the latest version now."
 msgstr "Descargar la versión más reciente ahora."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Tools folder"
 msgstr "Carpeta de herramientas"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Open tools folder"
 msgstr "Abrir carpeta de herramientas"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept."
 msgstr "Dónde se guardan yt-dlp, ffmpeg y TwitchDownloaderCLI."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "LuckyTwitch updates"
 msgstr "Actualizaciones de LuckyTwitch"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Check for new versions of LuckyTwitch Downloader."
 msgstr "Comprobar nuevas versiones de LuckyTwitch Downloader."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Check for new versions of LuckyTwitch"
 msgstr "Comprobar nuevas versiones de LuckyTwitch"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Notifies you when a new release is available on GitHub."
 msgstr "Te notifica cuando hay una nueva versión disponible en GitHub."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Version"
 msgstr "Versión"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Check now"
 msgstr "Comprobar ahora"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Check GitHub releases for updates now."
 msgstr "Comprobar actualizaciones en GitHub ahora."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Links from web pages"
 msgstr "Enlaces de páginas web"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Open luckytwitch:// links"
 msgstr "Abrir enlaces luckytwitch://"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
 msgid "Use this copy"
 msgstr "Usar esta copia"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
 #: qt_ui/tabs/options.py
-msgid ""
-"These links currently open another copy of LuckyTwitch. Press the button "
-"to use this one."
-msgstr ""
-"Estos enlaces abren actualmente otra copia de LuckyTwitch. Presiona el "
-"botón para usar esta."
+msgid "These links currently open another copy of LuckyTwitch. Press the button to use this one."
+msgstr "Estos enlaces abren actualmente otra copia de LuckyTwitch. Presiona el botón para usar esta."
 
 msgid "These links already open this copy of LuckyTwitch."
 msgstr "Estos enlaces ya abren esta copia de LuckyTwitch."
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/twitch_dialog.py
 msgid "Sign in with Twitch"
 msgstr "Iniciar sesión con Twitch"
 
-#. indirect: reached through a variable or a helper (tab names, option titles,
-#. add_row...)
+#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/twitch_dialog.py
 msgid "Sign out"
 msgstr "Cerrar sesión"
@@ -662,12 +575,10 @@ msgstr "Añadido a la cola ({count} elemento(s))."
 
 #: qt_ui/main_window.py
 #, python-brace-format
-msgid ""
-"Added {clips} clip(s) to the queue ({items} item(s)). Open «Queue & log» "
-"and press «Start queue»."
+msgid "Added {clips} clip(s) to the queue ({items} item(s)). Open «Queue & log» and press «Start queue»."
 msgstr ""
-"Se añadieron {clips} clip(s) a la cola ({items} elemento(s)). Abre «Cola "
-"y registros» y presiona «Iniciar cola»."
+"Se añadieron {clips} clip(s) a la cola ({items} elemento(s)). Abre «Cola y registros» y presiona «Iniciar "
+"cola»."
 
 #: qt_ui/main_window.py
 #, python-brace-format
@@ -684,9 +595,7 @@ msgstr "Ocupado"
 
 #: qt_ui/main_window.py
 msgid "Cannot check for updates while downloads or tools are busy."
-msgstr ""
-"No se pueden buscar actualizaciones mientras las descargas o herramientas"
-" están ocupadas."
+msgstr "No se pueden buscar actualizaciones mientras las descargas o herramientas están ocupadas."
 
 #: qt_ui/main_window.py
 msgid "Chat files (*.json);;All files (*.*)"
@@ -804,15 +713,11 @@ msgstr "Pega un VOD y presiona «Obtener información» primero."
 
 #: qt_ui/main_window.py
 msgid "Please drop a valid video URL, a VOD ID, or a streamer name."
-msgstr ""
-"Por favor suelta una URL de video válida, un ID de VOD o un nombre de "
-"streamer."
+msgstr "Por favor suelta una URL de video válida, un ID de VOD o un nombre de streamer."
 
 #: qt_ui/main_window.py
 msgid "Please enter a valid video URL, a VOD ID, or a streamer name."
-msgstr ""
-"Por favor introduce una URL de video válida, un ID de VOD o un nombre de "
-"streamer."
+msgstr "Por favor introduce una URL de video válida, un ID de VOD o un nombre de streamer."
 
 #: qt_ui/main_window.py
 msgid "Preparing tools (yt-dlp, ffmpeg)…"
@@ -856,15 +761,11 @@ msgstr "Aún preparando yt-dlp / ffmpeg, un momento…"
 
 #: qt_ui/main_window.py
 msgid "The app was busy for too long to open that link. Try it again."
-msgstr ""
-"La aplicación estuvo ocupada demasiado tiempo para abrir ese enlace. "
-"Inténtalo de nuevo."
+msgstr "La aplicación estuvo ocupada demasiado tiempo para abrir ese enlace. Inténtalo de nuevo."
 
 #: qt_ui/main_window.py
 msgid "The dropped text is not a valid video URL, a VOD ID, or a streamer name."
-msgstr ""
-"El texto soltado no es una URL de video válida, un ID de VOD ni un nombre"
-" de streamer."
+msgstr "El texto soltado no es una URL de video válida, un ID de VOD ni un nombre de streamer."
 
 #: qt_ui/main_window.py
 msgid "The link will open in a moment…"
@@ -888,12 +789,8 @@ msgstr "VOD cargado. Define tus puntos de corte y añádelo a la cola."
 
 #: qt_ui/main_window.py
 #, python-brace-format
-msgid ""
-"VOD opened from a link{details}. Check the cut points, then add it to the"
-" queue."
-msgstr ""
-"VOD abierto desde un enlace{details}. Revisa los puntos de corte y "
-"añádelo a la cola."
+msgid "VOD opened from a link{details}. Check the cut points, then add it to the queue."
+msgstr "VOD abierto desde un enlace{details}. Revisa los puntos de corte y añádelo a la cola."
 
 #: qt_ui/main_window.py
 msgid "View update"
@@ -901,9 +798,7 @@ msgstr "Ver actualización"
 
 #: qt_ui/main_window.py
 msgid "Wait for the running job (or the tools setup) to finish first."
-msgstr ""
-"Espera a que termine primero el trabajo en ejecución (o la configuración "
-"de herramientas)."
+msgstr "Espera a que termine primero el trabajo en ejecución (o la configuración de herramientas)."
 
 #: qt_ui/main_window.py
 msgid "Wait for the running job to finish (or cancel it) first."
@@ -998,9 +893,7 @@ msgstr "Cambiar a Buscar, Plan, Opciones o Cola y registros"
 
 #: qt_ui/shell.py
 msgid "Timeline playhead / mark in / mark out / split (on Timeline)"
-msgstr ""
-"Cabezal de línea de tiempo / marcar entrada / salida / dividir (en línea "
-"de tiempo)"
+msgstr "Cabezal de línea de tiempo / marcar entrada / salida / dividir (en línea de tiempo)"
 
 #: qt_ui/shell.py
 msgid "Toggle navigation sidebar"
@@ -1055,12 +948,8 @@ msgid " · {time} muted"
 msgstr " · {time} silenciado"
 
 #: qt_ui/tabs/plan.py
-msgid ""
-"1. Paste a link or search a streamer   ·   2. Mark where to cut   ·   3. "
-"Add to queue"
-msgstr ""
-"1. Pega un enlace o busca un streamer   ·   2. Marca dónde cortar   ·   "
-"3. Añade a la cola"
+msgid "1. Paste a link or search a streamer   ·   2. Mark where to cut   ·   3. Add to queue"
+msgstr "1. Pega un enlace o busca un streamer   ·   2. Marca dónde cortar   ·   3. Añade a la cola"
 
 #: qt_ui/tabs/plan.py
 #, python-format
@@ -1086,13 +975,11 @@ msgstr "Mejor calidad disponible ({quality})"
 
 #: qt_ui/tabs/plan.py
 msgid ""
-"Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end"
-" of the VOD).   To skip a section use «;» or a new line:  0:00:00 - "
-"0:30:00 ; 2:00:00 - end"
+"Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   To skip a section "
+"use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end"
 msgstr ""
-"Límites en orden, ej.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = final "
-"del VOD).   Para omitir una sección usa «;» o una nueva línea:  0:00:00 -"
-" 0:30:00 ; 2:00:00 - end"
+"Límites en orden, ej.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = final del VOD).   Para omitir una sección"
+" usa «;» o una nueva línea:  0:00:00 - 0:30:00 ; 2:00:00 - end"
 
 #: qt_ui/tabs/plan.py
 msgid "Can't split here"
@@ -1147,19 +1034,15 @@ msgstr "Vistas mínimas"
 
 #: qt_ui/tabs/plan.py
 msgid ""
-"Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are "
-"written into the video files; the Premiere Pro outputs (Options → "
-"Premiere Pro) have their own switches."
+"Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video files; the "
+"Premiere Pro outputs (Options → Premiere Pro) have their own switches."
 msgstr ""
-"Requiere iniciar sesión en la API de Twitch (botón «Twitch API…»). Los "
-"capítulos se escriben en los archivos de video; las salidas de Premiere "
-"Pro (Opciones → Premiere Pro) tienen sus propios selectores."
+"Requiere iniciar sesión en la API de Twitch (botón «Twitch API…»). Los capítulos se escriben en los "
+"archivos de video; las salidas de Premiere Pro (Opciones → Premiere Pro) tienen sus propios selectores."
 
 #: qt_ui/tabs/plan.py
 msgid "No clips loaded (sign in with the Twitch API… button, optional)."
-msgstr ""
-"No hay clips cargados (inicia sesión con el botón «Twitch API…», "
-"opcional)."
+msgstr "No hay clips cargados (inicia sesión con el botón «Twitch API…», opcional)."
 
 #: qt_ui/tabs/plan.py
 msgid "No offset"
@@ -1179,12 +1062,8 @@ msgstr "Calidad:"
 
 #: qt_ui/tabs/plan.py
 #, python-brace-format
-msgid ""
-"Quality: {quality} · Audio only: saved as .m4a or .mp3 (Options). Video-"
-"only extras are skipped."
-msgstr ""
-"Calidad: {quality} · Solo audio: se guarda como .m4a o .mp3 (Opciones). "
-"Se omiten los extras de solo video."
+msgid "Quality: {quality} · Audio only: saved as .m4a or .mp3 (Options). Video-only extras are skipped."
+msgstr "Calidad: {quality} · Solo audio: se guarda como .m4a o .mp3 (Opciones). Se omiten los extras de solo video."
 
 #: qt_ui/tabs/plan.py
 #, python-brace-format
@@ -1254,9 +1133,7 @@ msgstr "Vistas"
 
 #: qt_ui/tabs/plan.py
 msgid "Write the cut points above (press «Get info» first so «end» works)."
-msgstr ""
-"Escribe los puntos de corte arriba (presiona «Obtener info» primero para "
-"que funcione «end»)."
+msgstr "Escribe los puntos de corte arriba (presiona «Obtener info» primero para que funcione «end»)."
 
 #: qt_ui/tabs/plan.py
 #, python-brace-format
@@ -1313,12 +1190,8 @@ msgid "At least one part has to stay."
 msgstr "Al menos una parte debe permanecer."
 
 #: qt_ui/timeline.py
-msgid ""
-"Click a cut line (or hold the mouse next to it), then press Delete to "
-"remove it."
-msgstr ""
-"Haz clic en una línea de corte (o mantén el ratón junto a ella), luego "
-"presiona Supr para quitarla."
+msgid "Click a cut line (or hold the mouse next to it), then press Delete to remove it."
+msgstr "Haz clic en una línea de corte (o mantén el ratón junto a ella), luego presiona Supr para quitarla."
 
 #: qt_ui/timeline.py
 #, python-brace-format
@@ -1362,23 +1235,15 @@ msgstr "Conservar esta sección"
 
 #: qt_ui/timeline.py
 msgid "Move the mouse over the timeline first, then press S to cut there."
-msgstr ""
-"Mueve el ratón sobre la línea de tiempo primero, luego presiona S para "
-"cortar allí."
+msgstr "Mueve el ratón sobre la línea de tiempo primero, luego presiona S para cortar allí."
 
 #: qt_ui/timeline.py
-msgid ""
-"Only a cut line between two parts can be removed (click the part to skip "
-"it instead)."
-msgstr ""
-"Solo se puede quitar una línea de corte entre dos partes (haz clic en la "
-"parte para omitirla)."
+msgid "Only a cut line between two parts can be removed (click the part to skip it instead)."
+msgstr "Solo se puede quitar una línea de corte entre dos partes (haz clic en la parte para omitirla)."
 
 #: qt_ui/timeline.py
 msgid "Overview of the whole VOD: drag the highlighted window to move along it"
-msgstr ""
-"Vista general de todo el VOD: arrastra la ventana resaltada para "
-"desplazarte"
+msgstr "Vista general de todo el VOD: arrastra la ventana resaltada para desplazarte"
 
 #: qt_ui/timeline.py
 msgid "Press «Get info» to see the VOD here."
@@ -1410,9 +1275,7 @@ msgstr "Omitir esta parte"
 
 #: qt_ui/timeline.py
 msgid "That section is skipped: click it in the parts row to keep it again."
-msgstr ""
-"Esa sección está omitida: haz clic en ella en la fila de partes para "
-"conservarla."
+msgstr "Esa sección está omitida: haz clic en ella en la fila de partes para conservarla."
 
 #: qt_ui/timeline.py
 msgid "The cut points text has an error: fix it to edit here."
@@ -1499,8 +1362,7 @@ msgid ""
 "Click: make it its own part · Shift+click: keep only this game"
 msgstr ""
 "{game}: {duration} en total\n"
-"Haz clic: convertir en parte propia · Shift+clic: conservar solo este "
-"juego"
+"Haz clic: convertir en parte propia · Shift+clic: conservar solo este juego"
 
 #: qt_ui/timeline.py
 #, python-brace-format
@@ -1656,11 +1518,11 @@ msgstr "Falló la búsqueda."
 
 #: qt_ui/tabs/search.py
 msgid ""
-"Search for a name above, or choose one from your recent streamers. You "
-"can also paste a VOD link at the top and press «Get info»."
+"Search for a name above, or choose one from your recent streamers. You can also paste a VOD link at the top"
+" and press «Get info»."
 msgstr ""
-"Busca un nombre arriba o elige uno de tus streamers recientes. También "
-"puedes pegar un enlace de VOD arriba y presionar «Obtener info»."
+"Busca un nombre arriba o elige uno de tus streamers recientes. También puedes pegar un enlace de VOD arriba"
+" y presionar «Obtener info»."
 
 #: qt_ui/tabs/search.py
 msgid "Search for a streamer, or pick one from your recent list."
@@ -1729,11 +1591,11 @@ msgstr "Fijar o desfijar streamer en la lista de seguimiento"
 
 #: qt_ui/tabs/search.py
 msgid ""
-"Twitch deletes VODs after a while, and some streamers don't save them. "
-"Try another kind of video in the list above."
+"Twitch deletes VODs after a while, and some streamers don't save them. Try another kind of video in the "
+"list above."
 msgstr ""
-"Twitch elimina los VOD después de un tiempo y algunos streamers no los "
-"guardan. Prueba con otro tipo de video en la lista superior."
+"Twitch elimina los VOD después de un tiempo y algunos streamers no los guardan. Prueba con otro tipo de "
+"video en la lista superior."
 
 #: qt_ui/tabs/search.py
 msgid "Unpin streamer from Watch List"
@@ -1741,11 +1603,11 @@ msgstr "Desfijar streamer de la lista de seguimiento"
 
 #: qt_ui/tabs/search.py
 msgid ""
-"Use the «Sign in…» button above. Or paste a VOD link at the top and press"
-" «Get info»: that works without signing in."
+"Use the «Sign in…» button above. Or paste a VOD link at the top and press «Get info»: that works without "
+"signing in."
 msgstr ""
-"Usa el botón «Iniciar sesión…» de arriba. O pega un enlace de VOD arriba "
-"y presiona «Obtener info»: funciona sin iniciar sesión."
+"Usa el botón «Iniciar sesión…» de arriba. O pega un enlace de VOD arriba y presiona «Obtener info»: "
+"funciona sin iniciar sesión."
 
 #: qt_ui/tabs/search.py
 msgid "Use this VOD"
@@ -1794,7 +1656,7 @@ msgstr[1] "{n} archivos"
 msgid "Status"
 msgstr "Estado"
 
-#: qt_ui/queue_model.py
+#: qt_ui/queue_model.py qt_ui/tabs/options.py
 msgid "Strategy"
 msgstr "Estrategia"
 
@@ -1863,9 +1725,7 @@ msgstr "Guardar registro"
 
 #: qt_ui/tabs/queue.py
 msgid "Set your cut points in the Plan tab and press «Add to queue»."
-msgstr ""
-"Define tus puntos de corte en la pestaña Plan y presiona «Añadir a la "
-"cola»."
+msgstr "Define tus puntos de corte en la pestaña Plan y presiona «Añadir a la cola»."
 
 #: qt_ui/tabs/queue.py
 msgid "Text files (*.txt);;All files (*.*)"
@@ -1874,4 +1734,627 @@ msgstr "Archivos de texto (*.txt);;Todos los archivos (*.*)"
 #: qt_ui/queue_model.py
 msgid "waiting"
 msgstr "en espera"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"A page can offer a luckytwitch:// link that opens a VOD here with the cut points already filled in. A link "
+"only fills in the Plan tab: it never starts a download."
+msgstr ""
+"Una página puede ofrecer un enlace luckytwitch:// que abre un VOD aquí con los puntos de corte ya "
+"completados. Un enlace solo llena la pestaña Plan: nunca inicia una descarga."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Adds markers named «GAME: ...» to the .markers.xml and as game markers in the .markers.json. Works for full"
+" VODs and for parts, even if chapters are off."
+msgstr ""
+"Agrega marcadores llamados «GAME: ...» al archivo .markers.xml y como marcadores de juego en el "
+".markers.json. Funciona para VODs completos y para partes, incluso si los capítulos están desactivados."
+
+#: qt_ui/tabs/options.py
+msgid "Advanced"
+msgstr "Avanzado"
+
+#: qt_ui/tabs/options.py
+msgid "Also keep the full file when the full-VOD strategy is used."
+msgstr "Conserva también el archivo completo cuando se use la estrategia de VOD completo."
+
+#: qt_ui/tabs/options.py
+msgid "Also marks every time the game changes."
+msgstr "También marca cada vez que cambia el juego."
+
+#: qt_ui/tabs/options.py
+msgid "Also marks the stretches Twitch silenced."
+msgstr "También marca los tramos que Twitch silenció."
+
+#: qt_ui/tabs/options.py
+msgid "Audio-only file"
+msgstr "Archivo de solo audio"
+
+#: qt_ui/tabs/options.py
+msgid "Audio/video muxing, cutting, and stitching"
+msgstr "Multiplexación, corte y unión de audio/video"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Auto downloads the full VOD (and splits it) when the parts cover at least this percentage of it; below that"
+" it downloads only the parts."
+msgstr ""
+"Auto descarga el VOD completo (y lo divide) cuando las partes cubren al menos este porcentaje del mismo; "
+"por debajo de eso, solo descarga las partes."
+
+#: qt_ui/tabs/options.py
+msgid "Auto threshold"
+msgstr "Umbral automático"
+
+#: qt_ui/tabs/options.py
+msgid "Auto uses the full VOD above this share."
+msgstr "Auto usa el VOD completo por encima de esta proporción."
+
+#: qt_ui/tabs/options.py
+msgid "Auto-clean titles"
+msgstr "Limpieza automática de títulos"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Auto: downloads the full VOD once and splits it when the parts cover at least the threshold (see Advanced),"
+" otherwise downloads only the parts.\n"
+"Or force one of the two."
+msgstr ""
+"Auto: descarga el VOD completo una vez y lo divide cuando las partes cubren al menos el umbral (ver "
+"Avanzado); de lo contrario, solo descarga las partes.\n"
+"O fuerza una de las dos."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Best available is the highest quality Twitch offers. If a VOD does not have the chosen quality, the closest"
+" lower one is used. Audio only downloads just the sound."
+msgstr ""
+"La mejor disponible es la calidad más alta que ofrece Twitch. Si un VOD no tiene la calidad elegida, se usa"
+" la más cercana inferior. Solo audio descarga únicamente el sonido."
+
+#: qt_ui/tabs/options.py
+msgid "Bigger file, but it works offline."
+msgstr "Archivo más grande, pero funciona sin conexión."
+
+#: qt_ui/tabs/options.py
+msgid "Browse…"
+msgstr "Examinar…"
+
+#: qt_ui/tabs/options.py
+msgid "Chapter title"
+msgstr "Título del capítulo"
+
+#: qt_ui/tabs/options.py
+msgid "Chat as a video (overlay)"
+msgstr "Chat como video (superposición)"
+
+#: qt_ui/tabs/options.py
+msgid "Checking…"
+msgstr "Comprobando…"
+
+#: qt_ui/tabs/options.py
+msgid "Choose chat file…"
+msgstr "Elegir archivo de chat…"
+
+#: qt_ui/tabs/options.py
+msgid "Clip list"
+msgstr "Lista de clips"
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Clip tokens: {clip_title} {creator} {views} {clip_id} {clip_duration}.\n"
+"You can also use the VOD's: {streamer} {date} {id} {title} {start} {end}. ({id} and {title} are the VOD's, "
+"not the clip's.)"
+msgstr ""
+"Variables de clip: {clip_title} {creator} {views} {clip_id} {clip_duration}.\n"
+"También puedes usar las del VOD: {streamer} {date} {id} {title} {start} {end}. ({id} y {title} son las del "
+"VOD, no las del clip.)"
+
+#: qt_ui/tabs/options.py
+msgid "Container of the finished files."
+msgstr "Contenedor de los archivos terminados."
+
+#: qt_ui/tabs/options.py
+msgid "Default quality"
+msgstr "Calidad predeterminada"
+
+#: qt_ui/tabs/options.py
+msgid "Destination folder will be created on first download"
+msgstr "La carpeta de destino se creará en la primera descarga"
+
+#: qt_ui/tabs/options.py
+msgid "Destination preview"
+msgstr "Vista previa de destino"
+
+#: qt_ui/tabs/options.py
+msgid "Download & processing tools"
+msgstr "Herramientas de descarga y procesamiento"
+
+#: qt_ui/tabs/options.py
+msgid "Download the chat"
+msgstr "Descargar el chat"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Download the chat that went with the stream, or turn it into a video you can put over the footage in your "
+"editor (Twitch VODs only)."
+msgstr ""
+"Descarga el chat que acompañó a la transmisión o conviértelo en un video que puedas colocar sobre el "
+"metraje en tu editor (solo VODs de Twitch)."
+
+#: qt_ui/tabs/options.py
+msgid "Download threads"
+msgstr "Hilos de descarga"
+
+#: qt_ui/tabs/options.py
+msgid "Draw the overlay from a saved chat"
+msgstr "Generar superposición de chat desde un chat guardado"
+
+#: qt_ui/tabs/options.py
+msgid "Draws the chat of each part as a video for your editor."
+msgstr "Genera el chat de cada parte como un video para tu editor."
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "Drive free space: {space} GB"
+msgstr "Espacio libre en disco: {space} GB"
+
+#: qt_ui/tabs/options.py
+msgid "Embed emotes and badges"
+msgstr "Incrustar emoticonos e insignias"
+
+#: qt_ui/tabs/options.py
+msgid "Extra time after"
+msgstr "Tiempo adicional después"
+
+#: qt_ui/tabs/options.py
+msgid "Extra time before"
+msgstr "Tiempo adicional antes"
+
+#: qt_ui/tabs/options.py
+msgid "File name"
+msgstr "Nombre de archivo"
+
+#: qt_ui/tabs/options.py
+msgid "File type of the saved chat."
+msgstr "Tipo de archivo del chat guardado."
+
+#: qt_ui/tabs/options.py
+msgid "Files will be saved as"
+msgstr "Los archivos se guardarán como"
+
+#: qt_ui/tabs/options.py
+msgid "Folder / Streamer / Stream / parts."
+msgstr "Carpeta / Streamer / Transmisión / partes."
+
+#: qt_ui/tabs/options.py
+msgid "Format"
+msgstr "Formato"
+
+#: qt_ui/tabs/options.py
+msgid "Frame rate"
+msgstr "Velocidad de fotogramas"
+
+#: qt_ui/tabs/options.py
+msgid "Frame-exact cuts"
+msgstr "Cortes exactos al fotograma"
+
+#: qt_ui/tabs/options.py
+msgid "Frames per second of the chat video."
+msgstr "Fotogramas por segundo del video de chat."
+
+#: qt_ui/tabs/options.py
+msgid "Full destination path of your next download."
+msgstr "Ruta de destino completa de tu próxima descarga."
+
+#: qt_ui/tabs/options.py
+msgid "Game / category changes"
+msgstr "Cambios de juego / categoría"
+
+#: qt_ui/tabs/options.py
+msgid "Gap chapter name"
+msgstr "Nombre de capítulo entre clips"
+
+#: qt_ui/tabs/options.py
+msgid "How a single downloaded clip is called."
+msgstr "Cómo se llamará un clip descargado."
+
+#: qt_ui/tabs/options.py
+msgid "How each part is called. Click a token to add it."
+msgstr "Cómo se llamará cada parte. Haz clic en una variable para agregarla."
+
+#: qt_ui/tabs/options.py
+msgid "How the VOD is downloaded."
+msgstr "Cómo se descarga el VOD."
+
+#: qt_ui/tabs/options.py
+msgid "How the chapters look. Switch them on with «Add clips as chapters» in the Plan tab."
+msgstr "Cómo se ven los capítulos. Actívalos con «Agregar clips como capítulos» en la pestaña Plan."
+
+#: qt_ui/tabs/options.py
+msgid "How the chat video is saved."
+msgstr "Cómo se guarda el video del chat."
+
+#: qt_ui/tabs/options.py
+msgid "How the sound is saved when the quality is Audio only."
+msgstr "Cómo se guarda el sonido cuando la calidad es Solo audio."
+
+#: qt_ui/tabs/options.py
+msgid "Installed"
+msgstr "Instalado"
+
+#: qt_ui/tabs/options.py
+msgid "Installed tools"
+msgstr "Herramientas instaladas"
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Installed: {ver}\n"
+"Last checked: {last}"
+msgstr ""
+"Instalado: {ver}\n"
+"Última comprobación: {last}"
+
+#: qt_ui/tabs/options.py
+msgid "Keep the full VOD"
+msgstr "Conservar el VOD completo"
+
+#: qt_ui/tabs/options.py
+msgid "Links"
+msgstr "Enlaces"
+
+#: qt_ui/tabs/options.py
+msgid "Links are not supported on this system."
+msgstr "Los enlaces no son compatibles en este sistema."
+
+#: qt_ui/tabs/options.py
+msgid "Links are set up: luckytwitch:// links now open this app."
+msgstr "Enlaces configurados: los enlaces luckytwitch:// ahora abren esta aplicación."
+
+#: qt_ui/tabs/options.py
+msgid "Look"
+msgstr "Apariencia"
+
+#: qt_ui/tabs/options.py
+msgid "LuckyTwitch Premiere plugin"
+msgstr "Plugin de LuckyTwitch para Premiere"
+
+#: qt_ui/tabs/options.py
+msgid "MP4 needs every stretch to have a name, so don't leave this empty for MP4. Empty is fine only for MKV."
+msgstr ""
+"MP4 necesita que cada tramo tenga un nombre, así que no dejes esto vacío para MP4. Vacío solo sirve para "
+"MKV."
+
+#: qt_ui/tabs/options.py
+msgid "Muted audio"
+msgstr "Audio silenciado"
+
+#: qt_ui/tabs/options.py
+msgid "Name for the stretches between clips."
+msgstr "Nombre para los tramos entre clips."
+
+#: qt_ui/tabs/options.py
+msgid "Name of each clip's chapter."
+msgstr "Nombre del capítulo de cada clip."
+
+#: qt_ui/tabs/options.py
+msgid "Name of the folder that holds one stream's files."
+msgstr "Nombre de la carpeta que contiene los archivos de una transmisión."
+
+#: qt_ui/tabs/options.py
+msgid "Not installed"
+msgstr "No instalado"
+
+#: qt_ui/tabs/options.py
+msgid "Not set up: these links do nothing on this computer yet."
+msgstr "No configurado: estos enlaces todavía no hacen nada en esta computadora."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Off (default): the cuts are lossless and land on keyframes, about 2 seconds of precision.\n"
+"On: the video is re-encoded so every cut is frame-exact. That is slow and uses a lot of CPU."
+msgstr ""
+"Desactivado (predeterminado): los cortes son sin pérdidas y caen en fotogramas clave, con ~2 segundos de "
+"precisión.\n"
+"Activado: el video se vuelve a codificar para que cada corte sea exacto al fotograma. Eso es lento y "
+"consume mucha CPU."
+
+#: qt_ui/tabs/options.py
+msgid "One .markers.json next to each part, for the LuckyTwitch Premiere plugin. It works even if chapters are off."
+msgstr ""
+"Un archivo de marcadores .markers.json junto a cada parte, para el plugin de LuckyTwitch para Premiere. "
+"Funciona incluso si los capítulos están desactivados."
+
+#: qt_ui/tabs/options.py
+msgid "Organize in subfolders"
+msgstr "Organizar en subcarpetas"
+
+#: qt_ui/tabs/options.py
+msgid "Output folder"
+msgstr "Carpeta de salida"
+
+#: qt_ui/tabs/options.py
+msgid "Overlay type"
+msgstr "Tipo de superposición"
+
+#: qt_ui/tabs/options.py
+msgid "Parallel connections per download. 8 is a good default."
+msgstr "Conexiones paralelas por descarga. 8 es un buen valor predeterminado."
+
+#: qt_ui/tabs/options.py
+msgid "Pick a «.chat.json» you already have. Nothing is downloaded."
+msgstr "Elige un «.chat.json» que ya tengas. No se descarga nada."
+
+#: qt_ui/tabs/options.py
+msgid "Plain Premiere markers"
+msgstr "Marcadores simples de Premiere"
+
+#: qt_ui/tabs/options.py
+msgid "Plain import, without colors. Works even if chapters are off."
+msgstr "Importación simple, sin colores. Funciona incluso si los capítulos están desactivados."
+
+#: qt_ui/tabs/options.py
+msgid "Redraws on every frame instead of 5 times a second. Slower."
+msgstr "Vuelve a dibujar en cada fotograma en lugar de 5 veces por segundo. Más lento."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Saved next to each part as «name.chat-overlay.mov» (or .mp4). It works even if the stream had no chat on "
+"screen: put it on the track above the video, at the start of the part, and place it where you want it. It "
+"begins together with the part and can run up to a second longer at the end.\n"
+"It takes a while: a long part can take from minutes to hours to draw, depending on the type. Emotes and "
+"badges are fetched from Twitch, BTTV, FFZ and 7TV when it is drawn, so it needs internet.\n"
+"Size on disk for a very busy chat (3 messages a second, 400 x 1080): about 3.4 GB per hour with Animation, "
+"28 GB with ProRes 4444, 0.4 GB with H.264."
+msgstr ""
+"Guardado junto a cada parte como «name.chat-overlay.mov» (o .mp4). Funciona incluso si la transmisión no "
+"tenía chat en pantalla: colócalo en la pista encima del video, al inicio de la parte, y ubícalo donde "
+"quieras. Comienza junto con la parte y puede durar hasta un segundo más al final.\n"
+"Tarda un tiempo: una parte larga puede tardar de minutos a horas en generarse, según el tipo. Los "
+"emoticonos e insignias se obtienen de Twitch, BTTV, FFZ y 7TV al generarlo, por lo que requiere internet.\n"
+"Tamaño en disco para un chat muy activo (3 mensajes por segundo, 400 x 1080): aprox. 3.4 GB por hora con "
+"Animation, 28 GB con ProRes 4444, 0.4 GB con H.264."
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .clips.json (clip titles, creators, links) next to each part."
+msgstr "Guarda un archivo .clips.json (títulos de clips, creadores, enlaces) junto a cada parte."
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .markers.json with colors and clip details."
+msgstr "Guarda un archivo de marcadores .markers.json con colores y detalles de clips."
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .markers.xml you can import without the plugin."
+msgstr "Guarda un archivo de marcadores .markers.xml que puedes importar sin el plugin."
+
+#: qt_ui/tabs/options.py
+msgid "Saves the chat of each part next to it."
+msgstr "Guarda el chat de cada parte junto a ella."
+
+#: qt_ui/tabs/options.py
+msgid "Search settings…"
+msgstr "Buscar opciones…"
+
+#: qt_ui/tabs/options.py
+msgid "Seconds added after the clip ends."
+msgstr "Segundos agregados después de que termine el clip."
+
+#: qt_ui/tabs/options.py
+msgid "Seconds added before the clip starts."
+msgstr "Segundos agregados antes de que empiece el clip."
+
+#: qt_ui/tabs/options.py
+msgid "Seconds the chapter lasts after the clip ends."
+msgstr "Segundos que dura el capítulo después de que termine el clip."
+
+#: qt_ui/tabs/options.py
+msgid "Set up again"
+msgstr "Configurar de nuevo"
+
+#: qt_ui/tabs/options.py
+msgid "Set up links"
+msgstr "Configurar enlaces"
+
+#: qt_ui/tabs/options.py
+msgid "Set up: these links open this app."
+msgstr "Configurado: estos enlaces abren esta aplicación."
+
+#: qt_ui/tabs/options.py
+msgid "Size"
+msgstr "Tamaño"
+
+#: qt_ui/tabs/options.py
+msgid "Size of the letters, in points."
+msgstr "Tamaño de las letras, en puntos."
+
+#: qt_ui/tabs/options.py
+msgid "Slow and CPU heavy. Off = lossless, ~2 s precision."
+msgstr "Lento y pesado para la CPU. Desactivado = sin pérdidas, precisión de ~2 s."
+
+#: qt_ui/tabs/options.py
+msgid "Smooth scrolling"
+msgstr "Desplazamiento suave"
+
+#: qt_ui/tabs/options.py
+msgid "Stream folder name"
+msgstr "Nombre de la carpeta de transmisión"
+
+#: qt_ui/tabs/options.py
+msgid "Strip bot commands (!links, !gsupps) and promo tags from stream titles."
+msgstr "Quita comandos de bots (!links, !gsupps) y etiquetas promocionales de los títulos de la transmisión."
+
+#: qt_ui/tabs/options.py
+msgid "Tail"
+msgstr "Margen final"
+
+#: qt_ui/tabs/options.py
+msgid "Text size"
+msgstr "Tamaño del texto"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Transparent · Animation: QuickTime Animation with an alpha channel. Lossless, much smaller and faster to "
+"draw than ProRes, and read by Premiere Pro and After Effects.\n"
+"Transparent · ProRes 4444: the same idea with the codec almost every editor knows, but very big files. Use "
+"it if your editor does not read Animation.\n"
+"Black background · H.264: small and quick, but not see-through. In the editor, set the clip's blend mode to"
+" Screen and the black disappears."
+msgstr ""
+"Transparente · Animation: QuickTime Animation con canal alfa. Sin pérdidas, mucho más pequeño y rápido de "
+"generar que ProRes, y compatible con Premiere Pro y After Effects.\n"
+"Transparente · ProRes 4444: la misma idea con el códec que casi todos los editores reconocen, pero archivos"
+" muy grandes. Úsalo si tu editor no lee Animation.\n"
+"Fondo negro · H.264: pequeño y rápido, pero no transparente. En el editor, ajusta el modo de fusión del "
+"clip a Trama (Screen) y el fondo negro desaparece."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Twitch mutes copyrighted audio in a VOD. Those stretches are added to the .markers.json as «muted» markers "
+"(the plugin decides the color), so you can see them in Premiere. It needs the plugin file above to be on. "
+"The same stretches show in red on the Plan tab's timeline."
+msgstr ""
+"Twitch silencia el audio con derechos de autor en un VOD. Esos tramos se agregan al .markers.json como "
+"marcadores «silenciados» (el plugin decide el color), para que puedas verlos en Premiere. Necesita que el "
+"archivo de plugin anterior esté activado. Los mismos tramos se muestran en rojo en la línea de tiempo de la"
+" pestaña Plan."
+
+#: qt_ui/tabs/options.py
+msgid "Twitch stream downloader engine"
+msgstr "Motor de descarga de transmisiones de Twitch"
+
+#: qt_ui/tabs/options.py
+msgid "Used when you load a VOD. You can change it for each VOD on the Plan tab."
+msgstr "Se usa cuando cargas un VOD. Puedes cambiarla para cada VOD en la pestaña Plan."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Uses TwitchDownloaderCLI, downloaded the first time. Saved next to each part as «name.chat.json». Inside "
+"the .json the message times count from the start of the VOD, not from the start of the part; the file's "
+"start/end say which stretch it covers.\n"
+"TwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader)."
+msgstr ""
+"Utiliza TwitchDownloaderCLI, descargado la primera vez. Se guarda junto a cada parte como «name.chat.json»."
+" Dentro del .json los tiempos de los mensajes cuentan desde el inicio del VOD, no desde el inicio de la "
+"parte; el inicio/fin del archivo indica qué tramo cubre.\n"
+"TwitchDownloader tiene licencia MIT (github.com/lay295/TwitchDownloader)."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Uses the overlay settings below (type, look, size, text size, frame rate). The video is not touched. If "
+"«name.mp4» (or .mkv…) is next to the chat, the overlay takes its size and frame rate; if "
+"«name.markers.json» is there too, it is lined up to the fraction of a second. The result is saved next to "
+"the chat as «name.chat-overlay.mov» (or .mp4)."
+msgstr ""
+"Utiliza los ajustes de superposición de chat a continuación (tipo, apariencia, tamaño, tamaño del texto, "
+"velocidad de fotogramas). El video no se modifica. Si «name.mp4» (o .mkv…) está junto al chat, la "
+"superposición toma su tamaño y velocidad de fotogramas; si el archivo de marcadores «name.markers.json» "
+"también está allí, se alinea hasta la fracción de segundo. El resultado se guarda junto al chat como «name"
+".chat-overlay.mov» (o .mp4)."
+
+#: qt_ui/tabs/options.py
+msgid "What is behind the text (not used by the black background type)."
+msgstr "Qué hay detrás del texto (no se usa en el tipo de fondo negro)."
+
+#: qt_ui/tabs/options.py
+msgid "What to download when a VOD offers several qualities (Twitch VODs)."
+msgstr "Qué descargar cuando un VOD ofrece varias calidades (VODs de Twitch)."
+
+#: qt_ui/tabs/options.py
+msgid "Where the finished files are saved."
+msgstr "Dónde se guardan los archivos terminados."
+
+#: qt_ui/tabs/options.py
+msgid "Width × height in pixels. Height 0 = the same as the video."
+msgstr "Ancho × alto en píxeles. Alto 0 = igual que el video."
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Windows did not accept the setting:\n"
+"{error}"
+msgstr ""
+"Windows no aceptó la configuración:\n"
+"{error}"
+
+#: qt_ui/tabs/options.py
+msgid "auto threshold"
+msgstr "umbral automático"
+
+#: qt_ui/tabs/options.py
+msgid "download threads, file and folder names"
+msgstr "hilos de descarga, nombres de archivos y carpetas"
+
+#: qt_ui/tabs/options.py
+msgid "file format, embedded emotes and how the overlay looks"
+msgstr "formato de archivo, emoticonos incrustados y apariencia de la superposición de chat"
+
+#: qt_ui/tabs/options.py
+msgid ""
+"m4a keeps Twitch's own audio exactly as it is (no re-encoding). mp3 converts it with ffmpeg (192 kbit/s) "
+"and plays everywhere."
+msgstr ""
+"m4a mantiene el audio propio de Twitch tal cual (sin recodificar). mp3 lo convierte con ffmpeg (192 kbit/s)"
+" y se reproduce en todas partes."
+
+#: qt_ui/tabs/options.py
+msgid ""
+"macOS sends these links to the app by itself once it is in Applications. If a link does nothing, open "
+"LuckyTwitch from Applications once and try again."
+msgstr ""
+"macOS envía estos enlaces a la aplicación automáticamente una vez que está en Aplicaciones. Si un enlace no"
+" hace nada, abre LuckyTwitch desde Aplicaciones una vez y vuelve a intentarlo."
+
+#: qt_ui/tabs/options.py
+msgid "never"
+msgstr "nunca"
+
+#: qt_ui/tabs/options.py
+msgid "plain markers and clip list"
+msgstr "marcadores simples y lista de clips"
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] "{n} coincidencia"
+msgstr[1] "{n} coincidencias"
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream date. {year},"
+" {month}, {day} are broadcast dates. {game} is the dominant game played. {duration} is the part length. "
+"{quality} is the video quality. {n} is part number, {total} total parts, {start} and {end} part timestamps."
+msgstr ""
+"{stream_date} es cuando se emitió la transmisión, {download_date} la fecha de hoy, {date} alias para la "
+"fecha de transmisión. {year}, {month}, {day} son fechas de emisión. {game} es el juego principal jugado. "
+"{duration} es la duración de la parte. {quality} es la calidad de video. {n} es el número de parte, {total}"
+" total de partes, {start} y {end} marcas de tiempo de la parte."
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream date. {year},"
+" {month}, {day} are broadcast dates. {game} is the dominant stream game. {duration} is the total stream "
+"length. {quality} is the video quality."
+msgstr ""
+"{stream_date} es cuando se emitió la transmisión, {download_date} la fecha de hoy, {date} alias para la "
+"fecha de transmisión. {year}, {month}, {day} son fechas de emisión. {game} es el juego principal de la "
+"transmisión. {duration} es la duración total de la transmisión. {quality} es la calidad de video."
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "{ver} · checked: {last}"
+msgstr "{ver} · comprobado: {last}"
+
+#: qt_ui/tabs/options.py
+msgid "Development build"
+msgstr "Versión de desarrollo"
+
+#: qt_ui/tabs/options.py
+msgid "Development build (updates not checked automatically)"
+msgstr "Versión de desarrollo (las actualizaciones no se comprueban automáticamente)"
 

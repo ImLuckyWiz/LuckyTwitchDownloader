@@ -26,15 +26,15 @@ right (accents and capitals do not matter). The list is read by the checker; add
 |---|---|---|
 | queue | cola | "Start queue" = "Iniciar cola" |
 | part | parte | one piece of a split VOD |
-| chapter | capítulo | |
-| marker | marcador | Premiere Pro markers |
-| muted | silenciado | |
+| chapter | capítulo / capítulos | |
+| marker | marcador / marcadores | Premiere Pro markers |
+| muted | silenciado / silenciados | |
 | chat overlay | superposición de chat | |
 | watch list | lista de seguimiento | |
 | history | historial | |
 | strategy | estrategia | |
-| quality | calidad | |
-| split | dividir | verb |
+| quality | calidad / calidades | |
+| split | dividir / divide | verb |
 | cut point | punto de corte / puntos de corte | |
 | settings | ajustes / opciones | the tab itself stays "Opciones" |
 

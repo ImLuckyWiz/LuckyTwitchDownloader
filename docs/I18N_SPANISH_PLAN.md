@@ -267,3 +267,20 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - 19 new strings translated into `locale/es/LC_MESSAGES/luckytwitch.po`.
   - Unwrapped literals dropped from 350 to 330 (`qt_ui/tabs/queue.py`, `qt_ui/queue_model.py`, and `core/status.py` now have 0 unwrapped literals).
   - `python tools/i18n.py check` passing cleanly with 0 problems.
+
+### Phase I6 delivered (2026-10-30): Options tab localization (tag i18n-phase-6)
+
+* `qt_ui/tabs/options.py`:
+  - All 7 sections fully localized: *Output*, *Cuts*, *Chapters*, *Premiere Pro*, *Chat*, *Clips*, *Tools*.
+  - Bilingual search: settings search queries match against both translated text and English keywords (`item["text"] or item["en_text"]`), so users can search using Spanish or English terms. Search placeholder *Search settings…* and match counter `tn("{n} match", "{n} matches", matched)` localized.
+  - Registration architecture: `_heading`, `_card`, `_advanced`, `_template_row`, and `_add_setting_row` store raw English msgids to allow clean dynamic retranslation and avoid literal leaks.
+  - Live retranslation: `refresh_language()` subscribed to `language_bus().changed` updates section titles, card headers, advanced collapsibles, setting rows, buttons (*Browse…*, *Open folder*, *Update yt-dlp now*, *Open tools folder*, *Check now*, etc.), and status messages live.
+  - Dynamic status labels: disk space label (*Drive free space: {space} GB*), update version label and tooltip (*Installed: {ver}\nLast checked: {last}*), weblink registration state, and error alerts.
+  - Unwrapped literals in `options.py` reached **0**.
+* `docs/i18n-glossary-es.md`:
+  - Added plurals and verb conjugations to glossary table (`capítulo / capítulos`, `marcador / marcadores`, `silenciado / silenciados`, `calidad / calidades`, `dividir / divide`).
+* Catalog and baseline:
+  - 123 new messages translated in `locale/es/LC_MESSAGES/luckytwitch.po`.
+  - Unwrapped baseline shrank from 330 to 167.
+  - `python tools/i18n.py check` passing with 0 problems.
+  - All 69 tests in `tests/test_qt_options_tab.py` and 37 tests in `tests/test_i18n.py` passing green.

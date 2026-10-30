@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 07:24-0300\n"
+"POT-Creation-Date: 2026-10-30 07:46-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -84,7 +84,7 @@ msgstr ""
 msgid "Parts"
 msgstr ""
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/tabs/options.py
 msgid "Quality"
 msgstr ""
 
@@ -264,7 +264,7 @@ msgstr ""
 msgid "Open Queue & log"
 msgstr ""
 
-#: qt_ui/main_window.py qt_ui/tabs/queue.py
+#: qt_ui/main_window.py qt_ui/tabs/options.py qt_ui/tabs/queue.py
 msgid "Open folder"
 msgstr ""
 
@@ -340,7 +340,7 @@ msgstr ""
 msgid "The link will open in a moment…"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/options.py
 msgid "Tools"
 msgstr ""
 
@@ -386,7 +386,7 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: qt_ui/queue_model.py
+#: qt_ui/queue_model.py qt_ui/tabs/options.py
 msgid "Strategy"
 msgstr ""
 
@@ -568,7 +568,308 @@ msgid "View download history"
 msgstr ""
 
 #: qt_ui/tabs/options.py
+msgid ""
+"A page can offer a luckytwitch:// link that opens a VOD here with the cut points already filled "
+"in. A link only fills in the Plan tab: it never starts a download."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Adds markers named «GAME: ...» to the .markers.xml and as game markers in the .markers.json. "
+"Works for full VODs and for parts, even if chapters are off."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Advanced"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Also keep the full file when the full-VOD strategy is used."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Also marks every time the game changes."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Also marks the stretches Twitch silenced."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Audio-only file"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Audio/video muxing, cutting, and stitching"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Auto downloads the full VOD (and splits it) when the parts cover at least this percentage of it; "
+"below that it downloads only the parts."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Auto threshold"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Auto uses the full VOD above this share."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Auto-clean titles"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Auto: downloads the full VOD once and splits it when the parts cover at least the threshold (see "
+"Advanced), otherwise downloads only the parts.\n"
+"Or force one of the two."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Best available is the highest quality Twitch offers. If a VOD does not have the chosen quality, "
+"the closest lower one is used. Audio only downloads just the sound."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Bigger file, but it works offline."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Browse…"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Chapter title"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Chapters"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Chat"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Chat as a video (overlay)"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Check GitHub releases for updates now."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Check for new versions of LuckyTwitch"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Check for new versions of LuckyTwitch Downloader."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Check for yt-dlp updates on startup"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Check now"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Checking…"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Choose chat file…"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Clip list"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Clip tokens: {clip_title} {creator} {views} {clip_id} {clip_duration}.\n"
+"You can also use the VOD's: {streamer} {date} {id} {title} {start} {end}. ({id} and {title} are "
+"the VOD's, not the clip's.)"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Clips"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Container of the finished files."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Cuts"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Default quality"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Destination folder will be created on first download"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Destination preview"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Development build"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Development build (updates not checked automatically)"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Download & processing tools"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Download the chat"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Download the chat that went with the stream, or turn it into a video you can put over the footage"
+" in your editor (Twitch VODs only)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Download the latest version now."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Download threads"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Draw the overlay from a saved chat"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Draws the chat of each part as a video for your editor."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "Drive free space: {space} GB"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Embed emotes and badges"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Extra time after"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Extra time before"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "File name"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "File type of the saved chat."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Files will be saved as"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Folder / Streamer / Stream / parts."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Format"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Frame rate"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Frame-exact cuts"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Frames per second of the chat video."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Full destination path of your next download."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Game / category changes"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Gap chapter name"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How a single downloaded clip is called."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How each part is called. Click a token to add it."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How the VOD is downloaded and cut into parts."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How the VOD is downloaded."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How the chapters look. Switch them on with «Add clips as chapters» in the Plan tab."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How the chat video is saved."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "How the sound is saved when the quality is Audio only."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Installed"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Installed tools"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Installed: {ver}\n"
+"Last checked: {last}"
+msgstr ""
+
+#: qt_ui/tabs/options.py
 msgid "Interface"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Keep the full VOD"
 msgstr ""
 
 #: qt_ui/tabs/options.py
@@ -580,7 +881,390 @@ msgid "Language and appearance settings."
 msgstr ""
 
 #: qt_ui/tabs/options.py
+msgid "Links"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Links are not supported on this system."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Links are set up: luckytwitch:// links now open this app."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Links from web pages"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Look"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "LuckyTwitch Premiere plugin"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "LuckyTwitch updates"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"MP4 needs every stretch to have a name, so don't leave this empty for MP4. Empty is fine only for"
+" MKV."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Markers you can bring into Adobe Premiere Pro next to each part."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Muted audio"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Name for the stretches between clips."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Name of each clip's chapter."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Name of the folder that holds one stream's files."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Not installed"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Not set up: these links do nothing on this computer yet."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Notifies you when a new release is available on GitHub."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Off (default): the cuts are lossless and land on keyframes, about 2 seconds of precision.\n"
+"On: the video is re-encoded so every cut is frame-exact. That is slow and uses a lot of CPU."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"One .markers.json next to each part, for the LuckyTwitch Premiere plugin. It works even if "
+"chapters are off."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Open luckytwitch:// links"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Open tools folder"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Organize in subfolders"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Output"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Output folder"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Overlay type"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Parallel connections per download. 8 is a good default."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Pick a «.chat.json» you already have. Nothing is downloaded."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Plain Premiere markers"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Plain import, without colors. Works even if chapters are off."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Premiere Pro"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Recommended: Twitch changes often."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Redraws on every frame instead of 5 times a second. Slower."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Saved next to each part as «name.chat-overlay.mov» (or .mp4). It works even if the stream had no "
+"chat on screen: put it on the track above the video, at the start of the part, and place it where"
+" you want it. It begins together with the part and can run up to a second longer at the end.\n"
+"It takes a while: a long part can take from minutes to hours to draw, depending on the type. "
+"Emotes and badges are fetched from Twitch, BTTV, FFZ and 7TV when it is drawn, so it needs "
+"internet.\n"
+"Size on disk for a very busy chat (3 messages a second, 400 x 1080): about 3.4 GB per hour with "
+"Animation, 28 GB with ProRes 4444, 0.4 GB with H.264."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .clips.json (clip titles, creators, links) next to each part."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .markers.json with colors and clip details."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Saves a .markers.xml you can import without the plugin."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Saves the chat of each part next to it."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Search settings…"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Seconds added after the clip ends."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Seconds added before the clip starts."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Seconds the chapter lasts after the clip ends."
+msgstr ""
+
+#: qt_ui/tabs/options.py
 msgid "Select interface language (English / Español)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Set up again"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Set up links"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Set up: these links open this app."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Size"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Size of the letters, in points."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Slow and CPU heavy. Off = lossless, ~2 s precision."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Smooth scrolling"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Stream folder name"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Strip bot commands (!links, !gsupps) and promo tags from stream titles."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Tail"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Text size"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "These links currently open another copy of LuckyTwitch. Press the button to use this one."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Tools folder"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Transparent · Animation: QuickTime Animation with an alpha channel. Lossless, much smaller and "
+"faster to draw than ProRes, and read by Premiere Pro and After Effects.\n"
+"Transparent · ProRes 4444: the same idea with the codec almost every editor knows, but very big "
+"files. Use it if your editor does not read Animation.\n"
+"Black background · H.264: small and quick, but not see-through. In the editor, set the clip's "
+"blend mode to Screen and the black disappears."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Twitch mutes copyrighted audio in a VOD. Those stretches are added to the .markers.json as "
+"«muted» markers (the plugin decides the color), so you can see them in Premiere. It needs the "
+"plugin file above to be on. The same stretches show in red on the Plan tab's timeline."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Twitch stream downloader engine"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Update yt-dlp"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Update yt-dlp now"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Use this copy"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Used by the «Download only selected clip» button in the Plan tab."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Used when you load a VOD. You can change it for each VOD on the Plan tab."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Uses TwitchDownloaderCLI, downloaded the first time. Saved next to each part as «name.chat.json»."
+" Inside the .json the message times count from the start of the VOD, not from the start of the "
+"part; the file's start/end say which stretch it covers.\n"
+"TwitchDownloader is MIT licensed (github.com/lay295/TwitchDownloader)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"Uses the overlay settings below (type, look, size, text size, frame rate). The video is not "
+"touched. If «name.mp4» (or .mkv…) is next to the chat, the overlay takes its size and frame rate;"
+" if «name.markers.json» is there too, it is lined up to the fraction of a second. The result is "
+"saved next to the chat as «name.chat-overlay.mov» (or .mp4)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Version"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "What is behind the text (not used by the black background type)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "What to download when a VOD offers several qualities (Twitch VODs)."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Where the finished files are saved."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Where the finished files go and how they are named."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "Width × height in pixels. Height 0 = the same as the video."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"Windows did not accept the setting:\n"
+"{error}"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "auto threshold"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "download threads, file and folder names"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "file format, embedded emotes and how the overlay looks"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"m4a keeps Twitch's own audio exactly as it is (no re-encoding). mp3 converts it with ffmpeg (192 "
+"kbit/s) and plays everywhere."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid ""
+"macOS sends these links to the app by itself once it is in Applications. If a link does nothing, "
+"open LuckyTwitch from Applications once and try again."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "never"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "plain markers and clip list"
+msgstr ""
+
+#: qt_ui/tabs/options.py
+msgid "yt-dlp and ffmpeg do the downloading and cutting."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "{n} match"
+msgid_plural "{n} matches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream "
+"date. {year}, {month}, {day} are broadcast dates. {game} is the dominant game played. {duration} "
+"is the part length. {quality} is the video quality. {n} is part number, {total} total parts, "
+"{start} and {end} part timestamps."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid ""
+"{stream_date} is when the stream aired, {download_date} today's date, {date} alias for stream "
+"date. {year}, {month}, {day} are broadcast dates. {game} is the dominant stream game. {duration} "
+"is the total stream length. {quality} is the video quality."
+msgstr ""
+
+#: qt_ui/tabs/options.py
+#, python-brace-format
+msgid "{ver} · checked: {last}"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
@@ -1494,156 +2178,6 @@ msgstr ""
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/main_window.py qt_ui/shell.py
 msgid "Queue & log"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Chapters"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Chat"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Check GitHub releases for updates now."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Check for new versions of LuckyTwitch"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Check for new versions of LuckyTwitch Downloader."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Check for yt-dlp updates on startup"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Check now"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Clips"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Cuts"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Download the latest version now."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "How the VOD is downloaded and cut into parts."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Links from web pages"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "LuckyTwitch updates"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Markers you can bring into Adobe Premiere Pro next to each part."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Notifies you when a new release is available on GitHub."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Open luckytwitch:// links"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Open tools folder"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Output"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Premiere Pro"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Recommended: Twitch changes often."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "These links currently open another copy of LuckyTwitch. Press the button to use this one."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Tools folder"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Update yt-dlp"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Update yt-dlp now"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Use this copy"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Used by the «Download only selected clip» button in the Plan tab."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Version"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Where the finished files go and how they are named."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "Where yt-dlp, ffmpeg and TwitchDownloaderCLI are kept."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/options.py
-msgid "yt-dlp and ffmpeg do the downloading and cutting."
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
