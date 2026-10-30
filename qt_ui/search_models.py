@@ -18,6 +18,7 @@ from PySide6.QtCore import QAbstractListModel, QAbstractTableModel, QModelIndex,
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QStyleOptionViewItem
 
+from core.i18n import N_, t, tn
 from core.search import THUMB_GAP, THUMB_SIZE
 from luckytwitch_engine import fmt_hms
 
@@ -33,10 +34,10 @@ MAX_CACHED_THUMBS = 300
 
 VOD_COLUMNS = (  # key, heading, width, alignment, stretches
     ("thumb", "", THUMB_COLUMN_WIDTH, "w", False),
-    ("title", "Title", 360, "w", True),
-    ("date", "Date", 90, "center", False),
-    ("dur", "Length", 80, "center", False),
-    ("views", "Views", 70, "center", False),
+    ("title", N_("Title"), 360, "w", True),
+    ("date", N_("Date"), 90, "center", False),
+    ("dur", N_("Length"), 80, "center", False),
+    ("views", N_("Views"), 70, "center", False),
 )
 
 
@@ -157,7 +158,8 @@ class VodModel(QAbstractTableModel):
         if orientation != Qt.Orientation.Horizontal or not 0 <= section < len(VOD_COLUMNS):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
-            return VOD_COLUMNS[section][1]
+            col_label = VOD_COLUMNS[section][1]
+            return t(col_label) if col_label else ""
         if role == Qt.ItemDataRole.TextAlignmentRole:  # the heading lines up with its column
             return int(_alignment(VOD_COLUMNS[section][3]))
         return None
@@ -190,6 +192,9 @@ class VodModel(QAbstractTableModel):
         self.videos, self.paths = [], {}
         self.cache.clear()
         self.endResetModel()
+
+    def refresh_language(self) -> None:
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(VOD_COLUMNS) - 1)
 
     def append(self, videos: list[dict]) -> int:
         """Add a page; returns the row number of its first row (the row id of a VOD is its row number)."""
@@ -307,7 +312,7 @@ class VodGridDelegate(QStyledItemDelegate):
             dl_font.setBold(True)
             painter.setFont(dl_font)
             dl_fm = painter.fontMetrics()
-            dl_txt = "✓ Downloaded"
+            dl_txt = t("✓ Downloaded")
             dl_w = dl_fm.horizontalAdvance(dl_txt) + 8.0
             dl_rect = QRectF(thumb_rect.left() + 4.0, thumb_rect.top() + 4.0, dl_w, 16.0)
             from core.palette import OK
@@ -329,7 +334,12 @@ class VodGridDelegate(QStyledItemDelegate):
         painter.drawText(title_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap),
                          painter.fontMetrics().elidedText(title, Qt.TextElideMode.ElideRight, int(title_rect.width() * 1.9)))
 
-        meta = f"{v.get('date', '')}  ·  {v.get('views', 0)} views"
+        from qt_ui import i18n_qt
+        raw_date = v.get("date", "")
+        date_str = i18n_qt.format_date(raw_date) if raw_date else ""
+        views_cnt = int(v.get("views", 0) or 0)
+        views_str = tn("{n} view", "{n} views", views_cnt)
+        meta = f"{date_str}  ·  {views_str}" if date_str else views_str
         font_meta = QFont(option.font)
         font_meta.setPointSize(8)
         painter.setFont(font_meta)

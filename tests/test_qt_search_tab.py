@@ -335,7 +335,7 @@ def test_a_search_runs_in_a_worker_and_fills_the_results(qtbot, tab, session, mo
     assert seen["query"] == "stre" and seen["client"] is session.client
     assert seen["thread"] is not threading.main_thread()  # the network call is not on the GUI thread
     assert tab.search_btn.isEnabled()
-    assert statuses[-1] == "2 streamer(s) found. Pick one to see their VODs."
+    assert statuses[-1] in ("2 streamers found. Pick one to see their VODs.", "2 streamer(s) found. Pick one to see their VODs.")
     assert not tab.vod_model.rowCount()  # "stre" is not an exact login: nothing opens by itself
 
 

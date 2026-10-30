@@ -118,6 +118,8 @@ def test_deduplication_moves_to_top(tmp_path: Path):
 
 def test_history_dialog_populates_rows(qtbot, tmp_path, monkeypatch):
     import core.paths as paths
+    from qt_ui import dialogs
+    monkeypatch.setattr(dialogs, "ask_yes_no", lambda *a, **k: True)
     target = tmp_path / "luckytwitch_history.json"
     monkeypatch.setattr(paths, "HISTORY_PATH", target)
     history.record_download({"vod_id": "123", "title": "Cool Stream", "streamer": "alice"}, path=target)

@@ -30,7 +30,8 @@ from PySide6.QtWidgets import (
 from core.recent import load_recent, save_recent
 from core.paths import MAX_RECENT
 from core.search import VIDEO_KINDS
-from core.i18n import t
+from core.i18n import N_, t, tn
+from qt_ui.i18n_qt import language_bus
 from luckytwitch_engine import fetch_thumbnail, fetch_videos, search_channels
 from qt_ui import dialogs
 from qt_ui.bridge import Bridge
@@ -44,8 +45,8 @@ from qt_ui.widgets import Card, ComboBox, EmptyState, ScrollFrame, WrapLabel
 
 HEADER_HEIGHT = 34  # the column headings of the VOD table; its empty-state message starts under them
 LEFT_WIDTH = 242  # the two streamer cards (tkinter: lists 216 px wide inside a 12 px padding)
-START_TITLE = "Search for a streamer, or pick one from your recent list."
-SIGNIN_TEXT = "Sign in with Twitch to search streamers and list their VODs."
+START_TITLE = N_("Search for a streamer, or pick one from your recent list.")
+SIGNIN_TEXT = N_("Sign in with Twitch to search streamers and list their VODs.")
 
 
 class VodTable(QTableView):
@@ -164,12 +165,14 @@ class SearchTab(QWidget):
         self.recent_view.selectionModel().selectionChanged.connect(self._recent_selected)
         self.refresh_recent()  # fills the recent list and shows the empty-state messages
         self.update_search_state()
+        language_bus().changed.connect(self.refresh_language)
 
     # ---------------------------- building ---------------------------- #
     def _build_search_row(self) -> None:
         row = QHBoxLayout()
         row.setSpacing(8)
-        row.addWidget(QLabel("Streamer:"))
+        self.streamer_label = QLabel(t("Streamer:"))
+        row.addWidget(self.streamer_label)
         self.search_edit = QLineEdit()
         self.search_edit.returnPressed.connect(self.on_search)
         row.addWidget(self.search_edit, 1)
@@ -186,9 +189,9 @@ class SearchTab(QWidget):
         self.signin_bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         row = QHBoxLayout(self.signin_bar)
         row.setContentsMargins(14, 8, 14, 8)
-        self.signin_label = QLabel(SIGNIN_TEXT)
+        self.signin_label = QLabel(t(SIGNIN_TEXT))
         row.addWidget(self.signin_label, 1)
-        self.signin_btn = QPushButton("Sign in…")
+        self.signin_btn = QPushButton(t("Sign in…"))
         self.signin_btn.setProperty("variant", "accent")
         self.signin_btn.clicked.connect(self.signin_requested.emit)
         row.addWidget(self.signin_btn)
@@ -204,23 +207,23 @@ class SearchTab(QWidget):
         box = QVBoxLayout(left)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(10)
-        res_card = Card("Results", "● = live now", padding=12)
+        self.results_card = Card(t("Results"), t("● = live now"), padding=12)
         self.results_view = _channel_list(self.results_model, 6, live_marker=True)
-        res_card.add_widget(self.results_view)
-        box.addWidget(res_card)
-        rec_card = Card("Recent streamers", "The ones you opened lately", padding=12)
+        self.results_card.add_widget(self.results_view)
+        box.addWidget(self.results_card)
+        self.recent_card = Card(t("Recent streamers"), t("The ones you opened lately"), padding=12)
         self.recent_view = _channel_list(self.recent_model, 8)
-        rec_card.add_widget(self.recent_view)
-        rec_card.body_layout.setStretchFactor(self.recent_view, 1)
-        self.clear_recent_btn = QPushButton("Clear recent")
+        self.recent_card.add_widget(self.recent_view)
+        self.recent_card.body_layout.setStretchFactor(self.recent_view, 1)
+        self.clear_recent_btn = QPushButton(t("Clear recent"))
         self.clear_recent_btn.setProperty("variant", "ghost")
         self.clear_recent_btn.clicked.connect(self.clear_recent)
         clear_row = QHBoxLayout()
         clear_row.setContentsMargins(0, 6, 0, 0)
         clear_row.addStretch(1)
         clear_row.addWidget(self.clear_recent_btn)
-        rec_card.body_layout.addLayout(clear_row)
-        box.addWidget(rec_card, 1)
+        self.recent_card.body_layout.addLayout(clear_row)
+        box.addWidget(self.recent_card, 1)
         self.ch_empty = EmptyState(self.results_view, compact=True)
         self.recent_empty = EmptyState(self.recent_view, compact=True)
         return left
@@ -236,14 +239,14 @@ class SearchTab(QWidget):
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 6)
         head.setSpacing(6)
-        self.title_label = WrapLabel(START_TITLE)
+        self.title_label = WrapLabel(t(START_TITLE))
         self.title_label.setProperty("role", "heading")
         self.title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.title_label.setMinimumWidth(0)
         head.addWidget(self.title_label, 1)  # at the minimum window width the title wraps, the list never gets cut
 
         self.vod_filter_edit = QLineEdit()
-        self.vod_filter_edit.setPlaceholderText("Filter titles…")
+        self.vod_filter_edit.setPlaceholderText(t("Filter titles…"))
         self.vod_filter_edit.setClearButtonEnabled(True)
         self.vod_filter_edit.setMaximumWidth(170)
         self.vod_filter_edit.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
@@ -252,8 +255,8 @@ class SearchTab(QWidget):
 
         self.pin_btn = QToolButton()
         self.pin_btn.setIcon(icon("flag", 16))
-        self.pin_btn.setToolTip("Pin streamer to Watch List")
-        self.pin_btn.setAccessibleName("Toggle watch list pin for streamer")
+        self.pin_btn.setToolTip(t("Pin streamer to Watch List"))
+        self.pin_btn.setAccessibleName(t("Toggle watch list pin for streamer"))
         self.pin_btn.setCheckable(True)
         self.pin_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.pin_btn.clicked.connect(self._toggle_pin)
@@ -261,8 +264,8 @@ class SearchTab(QWidget):
 
         self.list_mode_btn = QToolButton()
         self.list_mode_btn.setIcon(icon("list-view", 16))
-        self.list_mode_btn.setToolTip("List view")
-        self.list_mode_btn.setAccessibleName("Switch to list table view")
+        self.list_mode_btn.setToolTip(t("List view"))
+        self.list_mode_btn.setAccessibleName(t("Switch to list table view"))
         self.list_mode_btn.setCheckable(True)
         self.list_mode_btn.setChecked(True)
         self.list_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -271,8 +274,8 @@ class SearchTab(QWidget):
 
         self.grid_mode_btn = QToolButton()
         self.grid_mode_btn.setIcon(icon("grid", 16))
-        self.grid_mode_btn.setToolTip("Grid view")
-        self.grid_mode_btn.setAccessibleName("Switch to grid card view")
+        self.grid_mode_btn.setToolTip(t("Grid view"))
+        self.grid_mode_btn.setAccessibleName(t("Switch to grid card view"))
         self.grid_mode_btn.setCheckable(True)
         self.grid_mode_btn.setChecked(False)
         self.grid_mode_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -328,15 +331,15 @@ class SearchTab(QWidget):
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 8, 0, 0)
         buttons.setSpacing(12)
-        self.more_btn = QPushButton("Load more")
+        self.more_btn = QPushButton(t("Load more"))
         self.more_btn.setEnabled(False)
         self.more_btn.clicked.connect(self.load_more)
         buttons.addWidget(self.more_btn)
         buttons.addStretch(1)
-        self.use_hint = QLabel("Double-click a VOD to use it")
+        self.use_hint = QLabel(t("Double-click a VOD to use it"))
         self.use_hint.setProperty("role", "muted")
         buttons.addWidget(self.use_hint)
-        self.use_btn = QPushButton("Use this VOD")
+        self.use_btn = QPushButton(t("Use this VOD"))
         self.use_btn.setProperty("variant", "accent")
         self.use_btn.clicked.connect(self.use_selected_vod)
         buttons.addWidget(self.use_btn)
@@ -393,34 +396,31 @@ class SearchTab(QWidget):
         if self.sv_videos:
             self.sv_empty.hide_message()
         elif self.sv_loading:
-            self.sv_empty.show_message("Loading VODs…", "One moment.")
+            self.sv_empty.show_message(t("Loading VODs…"), t("One moment."))
         elif not self.client and self.sv_channel is None:
             self.sv_empty.show_message(
-                "Sign in to browse VODs",
-                "Use the «Sign in…» button above. Or paste a VOD link at the top and press «Get info»: "
-                "that works without signing in.")
+                t("Sign in to browse VODs"),
+                t("Use the «Sign in…» button above. Or paste a VOD link at the top and press «Get info»: that works without signing in."))
         elif self.sv_channel is None:
             self.sv_empty.show_message(
-                "Pick a streamer",
-                "Search for a name above, or choose one from your recent streamers. "
-                "You can also paste a VOD link at the top and press «Get info».")
+                t("Pick a streamer"),
+                t("Search for a name above, or choose one from your recent streamers. You can also paste a VOD link at the top and press «Get info»."))
         else:
             self.sv_empty.show_message(
-                f"No {self.sv_type.lower()} found",
-                "Twitch deletes VODs after a while, and some streamers don't save them. "
-                "Try another kind of video in the list above.")
+                t("No {kind} found", kind=t(self.sv_type).lower()),
+                t("Twitch deletes VODs after a while, and some streamers don't save them. Try another kind of video in the list above."))
         # the search results
         if self.sv_results:
             self.ch_empty.hide_message()
         elif self.sv_query:
-            self.ch_empty.show_message(f"No streamers found for «{self.sv_query}»", "Check the spelling.")
+            self.ch_empty.show_message(t("No streamers found for «{query}»", query=self.sv_query), t("Check the spelling."))
         else:
-            self.ch_empty.show_message("", "Search results show up here.")
+            self.ch_empty.show_message("", t("Search results show up here."))
         # the recent streamers
         if self.recent:
             self.recent_empty.hide_message()
         else:
-            self.recent_empty.show_message("", "Streamers you open show up here.")
+            self.recent_empty.show_message("", t("Streamers you open show up here."))
         self.clear_recent_btn.setEnabled(bool(self.recent))
 
     # ---------------------------- recent streamers ---------------------------- #
@@ -448,10 +448,10 @@ class SearchTab(QWidget):
             return
         if not self.client:
             self.update_search_state()
-            self.status_message.emit("Sign in with Twitch to search (use the «Sign in…» button).")
+            self.status_message.emit(t("Sign in with Twitch to search (use the «Sign in…» button)."))
             return
         self.search_btn.setEnabled(False)
-        self.status_message.emit(f"Searching for «{query}»…")
+        self.status_message.emit(t("Searching for «{query}»…", query=query))
         client, bridge = self.client, self.bridge
 
         def work():
@@ -471,20 +471,20 @@ class SearchTab(QWidget):
         self.results_model.set_channels(results)
         self.refresh_search_empty_states()
         if not results:
-            self.status_message.emit(f"No streamers found for «{query}».")
+            self.status_message.emit(t("No streamers found for «{query}».", query=query))
             return
-        self.status_message.emit(f"{len(results)} streamer(s) found. Pick one to see their VODs.")
+        self.status_message.emit(tn("{n} streamer found. Pick one to see their VODs.", "{n} streamers found. Pick one to see their VODs.", len(results)))
         if results[0]["login"].lower() == query.lstrip("@").lower():
             self.select_channel(self.results_view, 0)  # exact match: open it straight away
         self._spawn_avatar_fetch(results, for_results=True)
 
     def on_search_err(self, msg: str) -> None:
         self.search_btn.setEnabled(bool(self.client))
-        self.status_message.emit("Search failed.")
+        self.status_message.emit(t("Search failed."))
         if "sign in" in msg.lower():  # the saved session expired: refresh what the tab shows
             self.reload_client()
             self.update_search_state()
-        dialogs.error(self, "Search", msg)
+        dialogs.error(self, t("Search"), msg)
 
     # ---------------------------- picking a streamer ---------------------------- #
     @staticmethod
@@ -517,7 +517,7 @@ class SearchTab(QWidget):
         """Load the first page of a streamer's VODs (or the next page when ``more``)."""
         if not self.client:
             self.update_search_state()
-            self.status_message.emit("Sign in with Twitch to list VODs (use the «Sign in…» button).")
+            self.status_message.emit(t("Sign in with Twitch to list VODs (use the «Sign in…» button)."))
             return
         if more:
             gen = self.sv_gen
@@ -535,7 +535,7 @@ class SearchTab(QWidget):
         self.more_btn.setEnabled(False)
         self.sv_loading = True
         self.refresh_search_empty_states()
-        self.set_title(f"{ch['name']}: loading…")
+        self.set_title(t("{name}: loading…", name=ch['name']))
         client, bridge = self.client, self.bridge
 
         def work():
@@ -598,22 +598,24 @@ class SearchTab(QWidget):
         name = self.sv_channel["name"]
         self.refresh_search_empty_states()
         if not self.sv_videos:
-            self.set_title(f"{name}: no {self.sv_type.lower()} found")
+            self.set_title(t("{name}: no {kind} found", name=name, kind=t(self.sv_type).lower()))
         else:
             n = len(self.sv_videos)
-            self.set_title(f"{name}  ·  {n} VOD{'s' if n != 1 else ''}" + ("  ·  more available" if cursor else ""))
+            vod_txt = tn("{n} VOD", "{n} VODs", n)
+            more_txt = f"  ·  {t('more available')}" if cursor else ""
+            self.set_title(f"{name}  ·  {vod_txt}{more_txt}")
 
     def on_videos_err(self, gen: int, msg: str) -> None:
         if gen != self.sv_gen:
             return
         self.sv_loading = False
         self.refresh_search_empty_states()
-        self.set_title("Could not load the VODs.")
-        self.status_message.emit("Could not load the VODs.")
+        self.set_title(t("Could not load the VODs."))
+        self.status_message.emit(t("Could not load the VODs."))
         if "sign in" in msg.lower():
             self.reload_client()
             self.update_search_state()
-        dialogs.error(self, "Search", msg)
+        dialogs.error(self, t("Search"), msg)
 
     def on_thumb(self, gen: int, iid: str, path: str) -> None:
         """A thumbnail was fetched to disk: build its pixmap here, on the GUI thread."""
@@ -635,7 +637,7 @@ class SearchTab(QWidget):
     def use_selected_vod(self) -> None:
         video = self.selected_video()
         if video is None:
-            dialogs.info(self, "Select a VOD", "Select a VOD in the list first.")
+            dialogs.info(self, t("Select a VOD"), t("Select a VOD in the list first."))
             return
         self.vod_chosen.emit(video["url"])
 
@@ -696,7 +698,74 @@ class SearchTab(QWidget):
         login = str(self.sv_channel.get("login") or "").lower().strip() if self.sv_channel else ""
         watched = bool(login and watchlist.is_watched(login))
         self.pin_btn.setChecked(watched)
-        self.pin_btn.setToolTip("Unpin streamer from Watch List" if watched else "Pin streamer to Watch List")
+        self.pin_btn.setToolTip(t("Unpin streamer from Watch List") if watched else t("Pin streamer to Watch List"))
+
+    def refresh_language(self) -> None:
+        """Update SearchTab text labels dynamically when language changes."""
+        if hasattr(self, "streamer_label") and self.streamer_label:
+            self.streamer_label.setText(t("Streamer:"))
+        if hasattr(self, "search_btn") and self.search_btn:
+            self.search_btn.setText(t("Search"))
+        if hasattr(self, "signin_label") and self.signin_label:
+            self.signin_label.setText(t(SIGNIN_TEXT))
+        if hasattr(self, "signin_btn") and self.signin_btn:
+            self.signin_btn.setText(t("Sign in…"))
+        if hasattr(self, "results_card") and self.results_card:
+            if self.results_card.title_label:
+                self.results_card.title_label.setText(t("Results"))
+            if self.results_card.subtitle_label:
+                self.results_card.subtitle_label.setText(t("● = live now"))
+        if hasattr(self, "recent_card") and self.recent_card:
+            if self.recent_card.title_label:
+                self.recent_card.title_label.setText(t("Recent streamers"))
+            if self.recent_card.subtitle_label:
+                self.recent_card.subtitle_label.setText(t("The ones you opened lately"))
+        if hasattr(self, "clear_recent_btn") and self.clear_recent_btn:
+            self.clear_recent_btn.setText(t("Clear recent"))
+        if hasattr(self, "vod_filter_edit") and self.vod_filter_edit:
+            self.vod_filter_edit.setPlaceholderText(t("Filter titles…"))
+        if hasattr(self, "pin_btn") and self.pin_btn:
+            self.pin_btn.setAccessibleName(t("Toggle watch list pin for streamer"))
+            self._sync_pin()
+        if hasattr(self, "list_mode_btn") and self.list_mode_btn:
+            self.list_mode_btn.setToolTip(t("List view"))
+            self.list_mode_btn.setAccessibleName(t("Switch to list table view"))
+        if hasattr(self, "grid_mode_btn") and self.grid_mode_btn:
+            self.grid_mode_btn.setToolTip(t("Grid view"))
+            self.grid_mode_btn.setAccessibleName(t("Switch to grid card view"))
+        if hasattr(self, "more_btn") and self.more_btn:
+            self.more_btn.setText(t("Load more"))
+        if hasattr(self, "use_hint") and self.use_hint:
+            self.use_hint.setText(t("Double-click a VOD to use it"))
+        if hasattr(self, "use_btn") and self.use_btn:
+            self.use_btn.setText(t("Use this VOD"))
+        if hasattr(self, "type_combo") and self.type_combo:
+            cur_data = self.type_combo.currentData()
+            self.type_combo.blockSignals(True)
+            self.type_combo.clear()
+            for k in VIDEO_KINDS:
+                self.type_combo.addItem(t(k), k)
+            idx = self.type_combo.findData(cur_data)
+            if idx >= 0:
+                self.type_combo.setCurrentIndex(idx)
+            self.type_combo.blockSignals(False)
+        if hasattr(self, "vod_model") and self.vod_model:
+            self.vod_model.refresh_language()
+        if self.sv_channel is None and not self.sv_videos:
+            self.set_title(t(START_TITLE))
+        elif self.sv_channel and not self.sv_videos and not self.sv_loading:
+            self.set_title(t("{name}: no {kind} found", name=self.sv_channel["name"], kind=t(self.sv_type).lower()))
+        elif self.sv_channel and self.sv_videos:
+            n = len(self.sv_videos)
+            vod_txt = tn("{n} VOD", "{n} VODs", n)
+            more_txt = f"  ·  {t('more available')}" if self.sv_cursor else ""
+            self.set_title(f"{self.sv_channel['name']}  ·  {vod_txt}{more_txt}")
+        self.refresh_search_empty_states()
+        if hasattr(self, "vod_grid") and self.vod_grid:
+            self.vod_grid.viewport().update()
+        if hasattr(self, "vod_table") and self.vod_table:
+            self.vod_table.viewport().update()
+
 
 
 def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active_cb) -> None:
@@ -728,13 +797,4 @@ def _fetch_channel_avatars(client, channels: list[dict], on_avatar_cb, is_active
         pass
 
 
-    def refresh_language(self) -> None:
-        """Update SearchTab text labels dynamically when language changes."""
-        self.search_btn.setText(t("Search"))
-        cur_idx = self.type_combo.currentIndex()
-        self.type_combo.blockSignals(True)
-        self.type_combo.clear()
-        for k in VIDEO_KINDS:
-            self.type_combo.addItem(t(k), k)
-        self.type_combo.setCurrentIndex(cur_idx)
-        self.type_combo.blockSignals(False)
+

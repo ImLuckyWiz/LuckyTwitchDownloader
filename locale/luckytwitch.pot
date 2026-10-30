@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 06:43-0300\n"
+"POT-Creation-Date: 2026-10-30 07:08-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -18,11 +18,27 @@ msgid "Search"
 msgstr ""
 
 #: qt_ui/dialogs.py
+msgid "Actions"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Clear download history? This cannot be undone."
+msgstr ""
+
+#: qt_ui/dialogs.py
 msgid "Clear history"
 msgstr ""
 
 #: qt_ui/dialogs.py qt_ui/shell.py qt_ui/titlebar.py
 msgid "Close"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Copied!"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Copy details"
 msgstr ""
 
 #: qt_ui/dialogs.py
@@ -34,6 +50,26 @@ msgid "Downloaded"
 msgstr ""
 
 #: qt_ui/dialogs.py
+msgid "Finished downloads will appear here with date, parts and folder location."
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Folder"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Hide details"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "Load"
+msgstr ""
+
+#: qt_ui/dialogs.py
+msgid "No downloads yet"
+msgstr ""
+
+#: qt_ui/dialogs.py
 msgid "Parts"
 msgstr ""
 
@@ -42,12 +78,23 @@ msgid "Quality"
 msgstr ""
 
 #: qt_ui/dialogs.py
+msgid "Show details"
+msgstr ""
+
+#: qt_ui/dialogs.py
 msgid "Streamer"
 msgstr ""
 
-#: qt_ui/dialogs.py qt_ui/tabs/plan.py
+#: qt_ui/dialogs.py qt_ui/search_models.py qt_ui/tabs/plan.py
 msgid "Title"
 msgstr ""
+
+#: qt_ui/dialogs.py
+#, python-brace-format
+msgid "{n} completed download"
+msgid_plural "{n} completed downloads"
+msgstr[0] ""
+msgstr[1] ""
 
 #: qt_ui/i18n_qt.py qt_ui/tabs/options.py
 msgid "Auto (system)"
@@ -324,6 +371,29 @@ msgstr ""
 msgid "● Update available · {version}"
 msgstr ""
 
+#: qt_ui/search_models.py
+msgid "Date"
+msgstr ""
+
+#: qt_ui/search_models.py
+msgid "Length"
+msgstr ""
+
+#: qt_ui/search_models.py qt_ui/tabs/plan.py
+msgid "Views"
+msgstr ""
+
+#: qt_ui/search_models.py
+#, python-brace-format
+msgid "{n} view"
+msgid_plural "{n} views"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/search_models.py qt_ui/shell.py
+msgid "✓ Downloaded"
+msgstr ""
+
 #: qt_ui/shell.py
 msgid "Add current VOD to queue and start (on Plan)"
 msgstr ""
@@ -460,10 +530,6 @@ msgstr ""
 
 #: qt_ui/shell.py
 msgid "View download history"
-msgstr ""
-
-#: qt_ui/shell.py
-msgid "✓ Downloaded"
 msgstr ""
 
 #: qt_ui/tabs/options.py
@@ -716,10 +782,6 @@ msgid "Untitled clip"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
-msgid "Views"
-msgstr ""
-
-#: qt_ui/tabs/plan.py
 msgid "Write the cut points above (press «Get info» first so «end» works)."
 msgstr ""
 
@@ -848,6 +910,204 @@ msgstr ""
 
 #: qt_ui/tabs/queue.py
 msgid "Start queue"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Check the spelling."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Clear recent"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Could not load the VODs."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Double-click a VOD to use it"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Filter titles…"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Grid view"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "List view"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Load more"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Loading VODs…"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "No streamers found for «{query}»"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "No streamers found for «{query}»."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "No {kind} found"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "One moment."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Pick a streamer"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Pin streamer to Watch List"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Recent streamers"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Results"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Search failed."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid ""
+"Search for a name above, or choose one from your recent streamers. You can also paste a VOD link "
+"at the top and press «Get info»."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Search for a streamer, or pick one from your recent list."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Search results show up here."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "Searching for «{query}»…"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Select a VOD"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Select a VOD in the list first."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Sign in to browse VODs"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Sign in with Twitch to list VODs (use the «Sign in…» button)."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Sign in with Twitch to search (use the «Sign in…» button)."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Sign in with Twitch to search streamers and list their VODs."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Sign in…"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Streamer:"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Streamers you open show up here."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Switch to grid card view"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Switch to list table view"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "The ones you opened lately"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Toggle watch list pin for streamer"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid ""
+"Twitch deletes VODs after a while, and some streamers don't save them. Try another kind of video "
+"in the list above."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Unpin streamer from Watch List"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid ""
+"Use the «Sign in…» button above. Or paste a VOD link at the top and press «Get info»: that works "
+"without signing in."
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "Use this VOD"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+msgid "more available"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "{name}: loading…"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "{name}: no {kind} found"
+msgstr ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "{n} VOD"
+msgid_plural "{n} VODs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/tabs/search.py
+#, python-brace-format
+msgid "{n} streamer found. Pick one to see their VODs."
+msgid_plural "{n} streamers found. Pick one to see their VODs."
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/tabs/search.py
+msgid "● = live now"
 msgstr ""
 
 #: qt_ui/timeline.py
@@ -1124,16 +1384,6 @@ msgid "Cancel"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/dialogs.py
-msgid "Folder"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/dialogs.py
-msgid "Load"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/main_window.py qt_ui/shell.py
 msgid "Options"
 msgstr ""
@@ -1141,11 +1391,6 @@ msgstr ""
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/main_window.py qt_ui/shell.py
 msgid "Queue & log"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/search_models.py
-msgid "Date"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)

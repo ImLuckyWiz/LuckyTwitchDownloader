@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.palette import ACCENT, ERR, MUTED
-from core.i18n import t
+from core.i18n import t, tn
 from qt_ui.icons import icon, pixmap
 from qt_ui.theme import mono_font
 
@@ -86,7 +86,7 @@ class ThemedDialog(QDialog):
         if auto_details:
             details_bar = QHBoxLayout()
             details_bar.setSpacing(8)
-            self.toggle_details_btn = QPushButton("Show details", self)
+            self.toggle_details_btn = QPushButton(t("Show details"), self)
             self.toggle_details_btn.setProperty("variant", "ghost")
             self.toggle_details_btn.setIcon(icon("chevron-down", 14))
             self.toggle_details_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -95,7 +95,7 @@ class ThemedDialog(QDialog):
 
             details_bar.addStretch(1)
 
-            self.copy_details_btn = QPushButton("Copy details", self)
+            self.copy_details_btn = QPushButton(t("Copy details"), self)
             self.copy_details_btn.setProperty("variant", "ghost")
             self.copy_details_btn.setIcon(icon("copy", 14))
             self.copy_details_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -140,7 +140,7 @@ class ThemedDialog(QDialog):
         if not Motion.enabled():
             self.details_edit.setMaximumHeight(120 if visible else 0)
             self.details_edit.setVisible(visible)
-            self.toggle_details_btn.setText("Hide details" if visible else "Show details")
+            self.toggle_details_btn.setText(t("Hide details") if visible else t("Show details"))
             self.toggle_details_btn.setIcon(icon("chevron-down" if not visible else "x", 14))
             self.adjustSize()
             return
@@ -148,7 +148,7 @@ class ThemedDialog(QDialog):
         if visible:
             self.details_edit.setMaximumHeight(0)
             self.details_edit.setVisible(True)
-            self.toggle_details_btn.setText("Hide details")
+            self.toggle_details_btn.setText(t("Hide details"))
             self.toggle_details_btn.setIcon(icon("x", 14))
             animate_height(
                 self.details_edit,
@@ -158,7 +158,7 @@ class ThemedDialog(QDialog):
                 on_finished=self.adjustSize,
             )
         else:
-            self.toggle_details_btn.setText("Show details")
+            self.toggle_details_btn.setText(t("Show details"))
             self.toggle_details_btn.setIcon(icon("chevron-down", 14))
 
             def _after_collapse() -> None:
@@ -179,12 +179,12 @@ class ThemedDialog(QDialog):
         clip = QApplication.clipboard()
         if clip is not None:
             clip.setText(self._details_text or "")
-            self.copy_details_btn.setText("Copied!")
+            self.copy_details_btn.setText(t("Copied!"))
             self.copy_details_btn.setIcon(icon("check", 14))
             btn = self.copy_details_btn
             def _reset() -> None:
                 try:
-                    btn.setText("Copy details")
+                    btn.setText(t("Copy details"))
                     btn.setIcon(icon("copy", 14))
                 except (RuntimeError, ReferenceError):
                     pass
@@ -277,11 +277,13 @@ class HistoryDialog(QDialog):
         from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
         self.table = QTableWidget(self)
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([t("Downloaded"), t("Streamer"), t("Title"), t("Parts"), t("Quality"), "Actions"])
+        self.table.setHorizontalHeaderLabels([t("Downloaded"), t("Streamer"), t("Title"), t("Parts"), t("Quality"), t("Actions")])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         outer.addWidget(self.table, 1)
+        from qt_ui.widgets import EmptyState
+        self.empty_state = EmptyState(self.table, top=28)
 
         # Footer
         footer = QHBoxLayout()
@@ -304,7 +306,11 @@ class HistoryDialog(QDialog):
 
         entries = history.load_history()
         self.table.setRowCount(len(entries))
-        self.count_label.setText(f"{len(entries)} completed download(s)")
+        self.count_label.setText(tn("{n} completed download", "{n} completed downloads", len(entries)))
+        if not entries:
+            self.empty_state.show_message(t("No downloads yet"), t("Finished downloads will appear here with date, parts and folder location."))
+        else:
+            self.empty_state.hide_message()
 
         for row, e in enumerate(entries):
             self.table.setItem(row, 0, QTableWidgetItem(e.downloaded_at))
@@ -319,13 +325,13 @@ class HistoryDialog(QDialog):
             act_lay.setSpacing(6)
 
             if e.folder:
-                f_btn = QPushButton("Folder", actions_widget)
+                f_btn = QPushButton(t("Folder"), actions_widget)
                 f_btn.setProperty("variant", "ghost")
                 f_btn.clicked.connect(lambda _, p=e.folder: open_in_file_manager(p))
                 act_lay.addWidget(f_btn)
 
             if e.vod_id:
-                load_btn = QPushButton("Load", actions_widget)
+                load_btn = QPushButton(t("Load"), actions_widget)
                 load_btn.setProperty("variant", "ghost")
                 load_btn.clicked.connect(lambda _, vid=e.vod_id: self._load_vod(vid))
                 act_lay.addWidget(load_btn)
@@ -338,6 +344,8 @@ class HistoryDialog(QDialog):
         self.accept()
 
     def _on_clear(self) -> None:
+        if not ask_yes_no(self, t("Clear history"), t("Clear download history? This cannot be undone."), destructive=True):
+            return
         from core import history
         history.clear_history()
         self.refresh()

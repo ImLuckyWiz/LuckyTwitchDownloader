@@ -104,3 +104,5 @@ def test_accessibility_names_on_icon_buttons(qtbot):
     st = win.tab_search
     assert st.list_mode_btn.accessibleName() == "Switch to list table view"
     assert st.grid_mode_btn.accessibleName() == "Switch to grid card view"
+    win.tab_search.shutdown()
+    win.close()

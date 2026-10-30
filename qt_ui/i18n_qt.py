@@ -173,14 +173,24 @@ def format_number(value: float, decimals: int = 0) -> str:
     return loc.toString(float(value), "f", decimals)
 
 
-def format_date(value: _dt.date, *, long: bool = False) -> str:
+def format_date(value: _dt.date | str, *, long: bool = False) -> str:
     """Short (``30/10/26``) or long (``viernes, 30 de octubre de 2026``) date in the active language."""
+    if isinstance(value, str):
+        try:
+            value = _dt.date.fromisoformat(value[:10])
+        except Exception:
+            return value
     fmt = QLocale.FormatType.LongFormat if long else QLocale.FormatType.ShortFormat
     return active_locale().toString(QDate(value.year, value.month, value.day), fmt)
 
 
-def format_datetime(value: _dt.datetime) -> str:
+def format_datetime(value: _dt.datetime | str) -> str:
     """Short date and time in the active language (seconds and time zone are left out)."""
+    if isinstance(value, str):
+        try:
+            value = _dt.datetime.fromisoformat(value)
+        except Exception:
+            return value
     loc = active_locale()
     qdate = QDate(value.year, value.month, value.day)
     return f"{loc.toString(qdate, QLocale.FormatType.ShortFormat)} {loc.toString(QTime(value.hour, value.minute), QLocale.FormatType.ShortFormat)}"

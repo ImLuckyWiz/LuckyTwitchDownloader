@@ -222,3 +222,26 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - 107 new strings translated into `locale/es/LC_MESSAGES/luckytwitch.po` strictly respecting `docs/i18n-glossary-es.md`.
   - Unwrapped literals dropped from 477 to 402 (`qt_ui/tabs/plan.py` and `qt_ui/timeline.py` now have 0 unwrapped literals).
   - `python tools/i18n.py check` passing cleanly with 0 problems.
+
+### Phase I4 delivered (2026-10-30): Search, History dialog, and Watch List localization (tag i18n-phase-4)
+
+* `qt_ui/tabs/search.py`:
+  - Search row & banner: *Streamer:*, *Search*, *Sign in with Twitch to search streamers and list their VODs.*, *Sign in…*.
+  - Left pane: *Results*, *● = live now*, *Recent streamers*, *The ones you opened lately*, *Clear recent*.
+  - Right pane & controls: *Search for a streamer, or pick one from your recent list.*, *Filter titles…*, pin tooltips & accessible names (*Pin streamer to Watch List* / *Unpin streamer from Watch List* / *Toggle watch list pin for streamer*), view mode buttons (*List view* / *Grid view*), *Load more*, *Double-click a VOD to use it*, *Use this VOD*.
+  - Empty states & feedback: *Loading VODs…*, *One moment.*, *Sign in to browse VODs*, *Pick a streamer*, *No {kind} found*, *No streamers found for «{query}»*, *Search results show up here.*, *Streamers you open show up here.*, *Search failed.*, *Searching for «{query}»…*, plural-aware *{n} streamer found* / *{n} streamers found*, *{name}: loading…*, *{name}: no {kind} found*, *{name} · {n} VOD(s) · more available*, *Could not load the VODs.*, *Select a VOD*.
+  - Live retranslation: `refresh_language()` dynamic retranslation hooked to `language_bus().changed`.
+* `qt_ui/search_models.py`:
+  - `VOD_COLUMNS` wrapped with `N_`: *Title*, *Date*, *Length*, *Views*. `VodModel.headerData` translates column headings.
+  - `VodModel.refresh_language()` emits horizontal header data change.
+  - `VodGridDelegate.paint`: *✓ Downloaded*, localized date using `i18n_qt.format_date()`, and plural-aware views count `tn("{n} view", "{n} views", n)`.
+* `qt_ui/dialogs.py`:
+  - `HistoryDialog`: window title and heading (*Download History*), *Clear history*, table headings (*Downloaded*, *Streamer*, *Title*, *Parts*, *Quality*, *Actions*), buttons (*Folder*, *Load*, *Close*), count label (*{n} completed download* / *{n} completed downloads*), empty state (*No downloads yet*), confirmation dialog on clear (*Clear download history? This cannot be undone.*).
+  - `ThemedDialog`: details bar buttons (*Show details*, *Hide details*, *Copy details*, *Copied!*).
+* `qt_ui/i18n_qt.py`:
+  - Extended `format_date()` and `format_datetime()` to safely parse ISO strings directly.
+* Catalog and baseline:
+  - 53 new strings translated into `locale/es/LC_MESSAGES/luckytwitch.po`.
+  - Unwrapped literals dropped from 402 to 350 (`qt_ui/tabs/search.py`, `qt_ui/search_models.py`, and `qt_ui/dialogs.py` now have 0 unwrapped literals).
+  - Dead entries in baseline shrank from 28 to 24.
+  - `python tools/i18n.py check` passing cleanly with 0 problems.
