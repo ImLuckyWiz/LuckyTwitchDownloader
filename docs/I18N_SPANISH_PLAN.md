@@ -1,6 +1,6 @@
 # Spanish Localization Plan (Phase F4b: finish and harden the translation)
 
-Status: **In progress: phases I0, I1, and I2 delivered (see section 8), I3 is next.** Date of analysis: 2026-10-29, repo at v2.9.2.
+Status: **Complete: all phases I0 through I9 and I11 delivered and verified (see section 8); I10 deferred as decided.** Date: 2026-10-30.
 
 Decisions taken on 2026-10-29: Spanish uses informal **tú**; the mechanism is **gettext** (`.po`/`.mo`, standard Python `gettext` at runtime, Babel for tooling); translating the Premiere panel is **future work** (phase I10 is deferred and out of scope for now).
 
@@ -329,3 +329,29 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - Updated `tests/test_i18n.py` to maintain ratchet integrity when `now` unwrapped dictionary is empty.
   - `python tools/i18n.py check` passing with 0 problems.
   - All test suites passing green.
+
+### Phase I9 delivered (2026-10-30): Installer, launcher, and multilingual docs (tag i18n-phase-9)
+
+* Packaging & Installer:
+  - `installer.iss`: configured `[Languages]` with English (`compiler:Default.isl`) and Spanish (`compiler:Languages\Spanish.isl`).
+  - Added localized `[CustomMessages]` for desktop icon, shortcuts group, weblinks registration, and app launch prompts.
+* Desktop Launcher:
+  - `assets/luckytwitch.desktop`: added Spanish desktop entries (`Comment[es]=Descargador de VODs y cortador de vídeo de Twitch`, `GenericName[es]=Descargador de VODs de Twitch`).
+* Documentation:
+  - Created `README.es.md`: comprehensive Spanish documentation matching `README.md` and following `docs/i18n-glossary-es.md`.
+  - Linked `README.es.md` from `README.md`.
+  - Created `docs/TRANSLATING.md`: developer guide detailing the GNU gettext workflow (`extract`, `update`, `init`, `compile`, `check`), conventions, and hygiene rules.
+
+### Phase I11 delivered (2026-10-30): QA validation and pseudo-localization (tag i18n-complete)
+
+* Pseudo-localization mode:
+  - Added `LANG_PSEUDO = "pseudo"` and `PseudoTranslations` to `core/i18n.py`.
+  - Accents characters and applies ~30% text length expansion (`[... ~~~]`) while strictly preserving format placeholders `{...}`.
+  - Wired `--lang <code|pseudo>` CLI parameter and `LUCKYTWITCH_LANG` environment variable support in `luckytwitch_qt.py` and `qt_ui/i18n_qt.py`.
+  - Added automated test `test_pseudo_localization` to `tests/test_i18n.py`.
+* Visual QA & Screenshots:
+  - Updated `tools/qt_screenshots.py` with `--lang` support to generate UI screenshots in Spanish or pseudo-locale offscreen at both `1020x910` and `900x560` minimum window size.
+  - Created `docs/I18N_QA_CHECKLIST.md` providing an exhaustive manual and automated QA sign-off checklist across every tab, dialog, and control.
+* Full acceptance criteria achieved:
+  - Baseline unwrapped literals: **0**.
+  - All unit test suites and catalog hygiene checks passing green.

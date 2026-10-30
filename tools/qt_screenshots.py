@@ -48,7 +48,7 @@ def capture(window: MainWindow, out_path: Path) -> None:
     print(f"Saved: {out_path.relative_to(ROOT) if out_path.is_relative_to(ROOT) else out_path}")
 
 
-def main(out_dir: Path | None = None) -> int:
+def main(out_dir: Path | None = None, lang: str | None = None) -> int:
     target_dir = out_dir or (ROOT / "build" / "screenshots")
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -65,6 +65,9 @@ def main(out_dir: Path | None = None) -> int:
     app = QApplication.instance()
     if app is None:
         app = LuckyApplication(["--no-weblink"])
+    if lang:
+        from qt_ui import i18n_qt
+        i18n_qt.apply_language(lang)
     apply_theme(app)
     set_app_icon(app)
 
@@ -105,5 +108,12 @@ def main(out_dir: Path | None = None) -> int:
 
 
 if __name__ == "__main__":
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else None
-    raise SystemExit(main(out))
+    argv = sys.argv[1:]
+    target_lang = None
+    if "--lang" in argv:
+        idx = argv.index("--lang")
+        if idx + 1 < len(argv):
+            target_lang = argv[idx + 1]
+            argv = [a for i, a in enumerate(argv) if i not in (idx, idx + 1)]
+    out = Path(argv[0]) if argv else None
+    raise SystemExit(main(out, lang=target_lang))

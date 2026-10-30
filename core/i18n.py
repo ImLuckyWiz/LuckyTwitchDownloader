@@ -29,6 +29,46 @@ from core.resources import resource_path
 LANG_AUTO = "auto"  # a setting, not a language: follow the system
 LANG_EN = "en"
 LANG_ES = "es"
+LANG_PSEUDO = "pseudo"
+
+_PSEUDO_ACCENTS: dict[str, str] = {
+    "a": "ä", "b": "ƀ", "c": "ç", "d": "đ", "e": "ë", "f": "ƒ", "g": "ğ", "h": "ħ",
+    "i": "ï", "j": "ĵ", "k": "ķ", "l": "ŀ", "m": "m", "n": "ñ", "o": "ö", "p": "þ",
+    "q": "q", "r": "ř", "s": "ş", "t": "ţ", "u": "ü", "v": "v", "w": "ŵ", "x": "ẋ",
+    "y": "ÿ", "z": "ž",
+    "A": "Ä", "B": "Ɓ", "C": "Ç", "D": "Đ", "E": "Ë", "F": "Ƒ", "G": "Ğ", "H": "Ħ",
+    "I": "Ï", "J": "Ĵ", "K": "Ķ", "L": "Ŀ", "M": "M", "N": "Ñ", "O": "Ö", "P": "Þ",
+    "Q": "Q", "R": "Ř", "S": "Ş", "T": "Ţ", "U": "Ü", "V": "V", "W": "Ŵ", "X": "Ẋ",
+    "Y": "Ÿ", "Z": "Ž",
+}
+
+
+def pseudo_localize(text: str) -> str:
+    """Transform text for QA layout/truncation testing: accents characters and expands length by ~30%."""
+    if not text or not text.strip():
+        return text
+    parts: list[str] = []
+    last = 0
+    for m in re.finditer(r"\{[a-zA-Z0-9_:]*\}", text):
+        pre = text[last : m.start()]
+        parts.append("".join(_PSEUDO_ACCENTS.get(c, c) for c in pre))
+        parts.append(m.group(0))
+        last = m.end()
+    post = text[last:]
+    parts.append("".join(_PSEUDO_ACCENTS.get(c, c) for c in post))
+    transformed = "".join(parts)
+    pad_len = max(2, int(len(text) * 0.3))
+    pad = "~" * pad_len
+    return f"[{transformed} {pad}]"
+
+
+class PseudoTranslations(gettext.NullTranslations):
+    def gettext(self, message: str) -> str:
+        return pseudo_localize(message)
+
+    def ngettext(self, singular: str, plural: str, n: int) -> str:
+        msg = singular if n == 1 else plural
+        return pseudo_localize(msg)
 
 SUPPORTED_LANGUAGES = {
     LANG_EN: "English",
@@ -55,6 +95,8 @@ def set_locale_dir(path: str | os.PathLike[str]) -> None:
 
 def _load(lang: str) -> gettext.NullTranslations:
     """Return the translations object of ``lang`` (English or a missing catalog: the null object, keys pass through)."""
+    if lang == LANG_PSEUDO:
+        return PseudoTranslations()
     if lang == LANG_EN:
         return gettext.NullTranslations()
     cached = _cache.get(lang)
@@ -98,16 +140,18 @@ def get_system_language() -> str:
 
 
 def resolve_language(setting: str | None, system: str | None = None) -> str:
-    """Turn the saved setting ('auto', 'en', 'es', or garbage) into the language to show."""
+    """Turn the saved setting ('auto', 'en', 'es', 'pseudo' or garbage) into the language to show."""
+    if setting == LANG_PSEUDO:
+        return LANG_PSEUDO
     if setting in SUPPORTED_LANGUAGES:
         return str(setting)
     return system if system in SUPPORTED_LANGUAGES else get_system_language()
 
 
 def set_language(lang: str) -> None:
-    """Set active interface language ('en' or 'es'); an unsupported code falls back to English."""
+    """Set active interface language ('en', 'es', or 'pseudo'); an unsupported code falls back to English."""
     global _current_language, _translations
-    _current_language = lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    _current_language = lang if (lang == LANG_PSEUDO or lang in SUPPORTED_LANGUAGES) else DEFAULT_LANGUAGE
     _translations = _load(_current_language)
 
 

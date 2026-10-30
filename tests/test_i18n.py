@@ -397,3 +397,17 @@ def test_variable_reached_messages_are_kept_in_the_pot():
     pot = {m.id for m in tool.build_pot_catalog() if m.id}
     for text in ("Search", "Queue & log", "Output", "Past broadcasts", "Check now"):
         assert text in pot, text
+
+
+def test_pseudo_localization():
+    set_language(i18n.LANG_PSEUDO)
+    assert get_language() == i18n.LANG_PSEUDO
+    res = t("Download VOD")
+    assert res.startswith("[") and res.endswith("]")
+    # Ensure placeholders format cleanly in pseudo mode
+    formatted = t("Downloading {tag}", tag="v1.0")
+    assert "v1.0" in formatted
+    # Plural form
+    plural_res = tn("{n} file", "{n} files", 3)
+    assert "3" in plural_res
+    set_language(i18n.LANG_EN)

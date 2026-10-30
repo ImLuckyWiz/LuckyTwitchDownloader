@@ -18,7 +18,7 @@ from typing import Any, Callable
 from PySide6.QtCore import QCoreApplication, QDate, QLibraryInfo, QLocale, QObject, QTime, QTranslator, Signal
 
 from core import i18n
-from core.i18n import LANG_AUTO, LANG_EN, SUPPORTED_LANGUAGES, resolve_language, t
+from core.i18n import LANG_AUTO, LANG_EN, LANG_PSEUDO, SUPPORTED_LANGUAGES, resolve_language, t
 
 QT_CATALOGS = ("qtbase",)  # Qt's own translations that matter for this app (buttons, menus, dialogs)
 
@@ -90,7 +90,7 @@ def install_qt_translators(lang: str) -> bool:
         if app is not None:
             QCoreApplication.removeTranslator(tr)
     _qt_translators.clear()
-    if lang == LANG_EN:
+    if lang in (LANG_EN, LANG_PSEUDO):
         return True
     ok = True
     for name in QT_CATALOGS:
@@ -106,7 +106,7 @@ def install_qt_translators(lang: str) -> bool:
 def apply_language(setting: str, *, announce: bool = True) -> str:
     """Switch the whole interface to ``setting`` ('auto', 'en', 'es'); returns the resolved language code."""
     global _setting
-    _setting = setting if setting in (LANG_AUTO, *SUPPORTED_LANGUAGES) else LANG_AUTO
+    _setting = setting if setting in (LANG_AUTO, *SUPPORTED_LANGUAGES, LANG_PSEUDO) else LANG_AUTO
     resolved = resolve_language(_setting, system_language())
     i18n.set_language(resolved)
     install_qt_translators(resolved)

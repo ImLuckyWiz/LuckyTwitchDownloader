@@ -13,6 +13,7 @@ to the running app.
 
 from __future__ import annotations
 
+import os
 import signal
 import sys
 
@@ -91,6 +92,12 @@ def main(argv: list[str] | None = None) -> int:
     from qt_ui import i18n_qt
     _ui_st = load_ui_state()
     _lang_setting = getattr(_ui_st, "language", None) or LANG_AUTO
+    if "--lang" in argv:
+        idx = argv.index("--lang")
+        if idx + 1 < len(argv):
+            _lang_setting = argv[idx + 1]
+    elif os.environ.get("LUCKYTWITCH_LANG"):
+        _lang_setting = os.environ.get("LUCKYTWITCH_LANG", "").strip()
     set_language(resolve_language(_lang_setting, i18n_qt.system_language()))  # early: messages before the window exists
     if "--i18n-selftest" in argv:
         return i18n_selftest()

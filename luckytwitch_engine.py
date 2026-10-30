@@ -126,6 +126,7 @@ from core.i18n import (
     DEFAULT_LANGUAGE,
     LANG_EN,
     LANG_ES,
+    LANG_PSEUDO,
     SUPPORTED_LANGUAGES,
     extract_placeholders,
     get_language,
