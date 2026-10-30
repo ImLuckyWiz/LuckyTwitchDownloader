@@ -17,8 +17,23 @@ def status_word(status: str) -> str:
 
 def status_label(status: str) -> str:
     """What the Status column shows: the text with a small icon in front («✓ done (3 files)»)."""
+    import re
+    from core.i18n import get_language, t, tn
     icon = STATUS_ICONS.get(status_word(status))
-    return f"{icon} {status}" if icon else status
+    if get_language() == "en":
+        return f"{icon} {status}" if icon else status
+    m = re.match(r"^done\s*\((\d+)\s*files?\)$", status)
+    if m:
+        n = int(m.group(1))
+        files_str = tn("{n} file", "{n} files", n)
+        translated = f"{t('done')} ({files_str})"
+    elif status_word(status) in ("queued", "running", "done", "failed", "cancelled"):
+        w = status_word(status)
+        trailing = status[len(w):]
+        translated = f"{t(w)}{trailing}"
+    else:
+        translated = status
+    return f"{icon} {translated}" if icon else translated
 
 
 def log_kind(msg: str) -> str:
@@ -41,6 +56,7 @@ def queue_summary(statuses: list[str]) -> str:
     """«1 running · 2 queued · 1 done · 1 failed» (nothing while the queue is empty: the list says so itself)."""
     if not statuses:
         return ""
+    from core.i18n import t
     words = [status_word(s) for s in statuses]
-    parts = [f"{words.count(w)} {w}" for w in ("running", "queued", "done", "failed", "cancelled") if w in words]
+    parts = [f"{words.count(w)} {t(w)}" for w in ("running", "queued", "done", "failed", "cancelled") if w in words]
     return "  ·  ".join(parts)

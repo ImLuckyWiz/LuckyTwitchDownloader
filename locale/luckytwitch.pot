@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 07:08-0300\n"
+"POT-Creation-Date: 2026-10-30 07:24-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -12,6 +12,17 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: tools/i18n.py (Babel)\n"
+
+#: core/status.py qt_ui/queue_model.py
+msgid "done"
+msgstr ""
+
+#: core/status.py
+#, python-brace-format
+msgid "{n} file"
+msgid_plural "{n} files"
+msgstr[0] ""
+msgstr[1] ""
 
 #: luckytwitch_qt.py qt_ui/tabs/search.py
 msgid "Search"
@@ -69,7 +80,7 @@ msgstr ""
 msgid "No downloads yet"
 msgstr ""
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/queue_model.py
 msgid "Parts"
 msgstr ""
 
@@ -297,7 +308,7 @@ msgstr ""
 msgid "Ready. Paste a VOD URL or ID and press «Get info»."
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/queue.py
 msgid "Running"
 msgstr ""
 
@@ -369,6 +380,30 @@ msgstr ""
 #: qt_ui/main_window.py
 #, python-brace-format
 msgid "● Update available · {version}"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "Status"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "Strategy"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "Video"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "failed"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "running"
+msgstr ""
+
+#: qt_ui/queue_model.py
+msgid "waiting"
 msgstr ""
 
 #: qt_ui/search_models.py
@@ -865,6 +900,19 @@ msgid "Cancel current"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
+msgid "Cancel the running job first."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+#, python-brace-format
+msgid "Cancelling {name}…"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Cancelling…"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
 msgid "Clear finished"
 msgstr ""
 
@@ -877,7 +925,20 @@ msgid "Copy log"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
+#, python-brace-format
+msgid ""
+"Could not open:\n"
+"{target}\n"
+"\n"
+"{error}"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
 msgid "Filter log lines…"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Go to the Plan tab"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
@@ -886,6 +947,43 @@ msgstr ""
 
 #: qt_ui/tabs/queue.py
 msgid "Log"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Log copied to the clipboard."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Log saved"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+#, python-brace-format
+msgid "Log saved to {name}."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Move selected waiting job down"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Move selected waiting job up"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "No log messages yet."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Nothing in the queue yet"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Nothing queued."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Open"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
@@ -905,11 +1003,31 @@ msgid "Retry"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
+msgid "Retry failed or cancelled jobs"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Save log"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
 msgid "Save log…"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
+msgid "Set your cut points in the Plan tab and press «Add to queue»."
+msgstr ""
+
+#: qt_ui/tabs/queue.py
 msgid "Start queue"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Text files (*.txt);;All files (*.*)"
+msgstr ""
+
+#: qt_ui/tabs/queue.py
+msgid "Unlimited speed"
 msgstr ""
 
 #: qt_ui/tabs/search.py
@@ -1354,23 +1472,8 @@ msgid "cancelled"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: core/status.py qt_ui/queue_model.py qt_ui/tabs/queue.py
-msgid "done"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py qt_ui/timeline.py
-msgid "failed"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: core/status.py qt_ui/queue_model.py qt_ui/queue_runner.py qt_ui/tabs/queue.py
 msgid "queued"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: core/status.py qt_ui/queue_model.py qt_ui/tabs/queue.py
-msgid "running"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
@@ -1550,32 +1653,7 @@ msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
 #: qt_ui/tabs/queue.py
-msgid "Cancelling…"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/queue.py
 msgid "Errors"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/queue.py
-msgid "Move selected waiting job down"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/queue.py
-msgid "Move selected waiting job up"
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/queue.py
-msgid "Nothing queued."
-msgstr ""
-
-#. indirect: reached through a variable or a helper (tab names, option titles, add_row...)
-#: qt_ui/tabs/queue.py
-msgid "Unlimited speed"
 msgstr ""
 
 #. indirect: reached through a variable or a helper (tab names, option titles, add_row...)

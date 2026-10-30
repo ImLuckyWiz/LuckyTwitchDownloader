@@ -245,3 +245,25 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - Unwrapped literals dropped from 402 to 350 (`qt_ui/tabs/search.py`, `qt_ui/search_models.py`, and `qt_ui/dialogs.py` now have 0 unwrapped literals).
   - Dead entries in baseline shrank from 28 to 24.
   - `python tools/i18n.py check` passing cleanly with 0 problems.
+
+### Phase I5 delivered (2026-10-30): Queue tab localization (tag i18n-phase-5)
+
+* `qt_ui/tabs/queue.py`:
+  - Cards and headers: *Queue*, *Log*.
+  - Toolbar & action buttons: *Start queue*, *Cancel current*, *Retry*, *Remove selected*, *Clear finished*, *Open folder*, *Move selected waiting job up*, *Move selected waiting job down*, *Retry failed or cancelled jobs*.
+  - Concurrency & speed limit: *1 job*, *2/3/4 parallel jobs*, tooltip *How many queue jobs can run at the same time*, *Unlimited speed*, tooltip *Bandwidth limit passed to yt-dlp (--limit-rate)*.
+  - Log console: filter chips (*All*, *Warnings*, *Errors*), search placeholder *Filter log lines…*, *Pause autoscroll*, *Save log…*, *Copy log*, *Clear log*, empty/feedback toasts (*No log messages yet.*, *Log copied to the clipboard.*, *Log saved*, *Log saved to {name}.*, *Save log* file dialog filters).
+  - Empty states & feedback: *Nothing in the queue yet*, *Set your cut points in the Plan tab and press «Add to queue».*, *Go to the Plan tab*, *Running*, *Cancel the running job first.*, *Nothing queued.*, *Cancelling {name}…*, *Cancelling…*, *Could not open:\n{target}\n\n{error}*.
+  - Row delegate: inline *Open* button, plural-aware parts subtitle `tn("{n} part", "{n} parts", n)` and strategy.
+  - Live retranslation: `refresh_language()` retranslates cards, buttons, tooltips, combo choices, empty state, and table viewport.
+* `qt_ui/queue_model.py`:
+  - `COLUMNS` wrapped with `N_`: *#*, *Video*, *Parts*, *Strategy*, *Status*. `headerData` translates headings.
+  - `refresh_language()` emits horizontal header data change.
+  - Real-time counter banner: `header_summary()` localized (*{done} done · {running} running · {waiting} waiting · {failed} failed*).
+* `core/status.py`:
+  - `queue_summary()` translates status words in the summary string.
+  - `status_label()` translates status words in the status column chip (e.g. *✓ listo (N archivos)* in Spanish, preserving legacy format in English).
+* Catalog and baseline:
+  - 19 new strings translated into `locale/es/LC_MESSAGES/luckytwitch.po`.
+  - Unwrapped literals dropped from 350 to 330 (`qt_ui/tabs/queue.py`, `qt_ui/queue_model.py`, and `core/status.py` now have 0 unwrapped literals).
+  - `python tools/i18n.py check` passing cleanly with 0 problems.

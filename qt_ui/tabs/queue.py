@@ -24,7 +24,8 @@ from PySide6.QtWidgets import (
 from core.files import open_in_file_manager
 from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, BORDER_STRONG, ERR, FG, MUTED, OK, WARN, WHITE
 from core.settings import DEFAULTS
-from core.i18n import t
+from core.i18n import N_, t, tn
+from qt_ui.i18n_qt import language_bus
 from core.status import STATUS_COLOURS, log_kind, status_label
 from luckytwitch_engine import stream_dir
 from qt_ui import dialogs, notify
@@ -214,7 +215,7 @@ class QueueRowDelegate(QStyledItemDelegate):
             painter.setPen(QPen(QColor(BORDER_STRONG), 1))
             painter.drawRoundedRect(QRectF(open_rect).adjusted(0.5, 0.5, -0.5, -0.5), 4.0, 4.0)
             painter.setPen(QColor(FG))
-            painter.drawText(open_rect, Qt.AlignmentFlag.AlignCenter, "Open")
+            painter.drawText(open_rect, Qt.AlignmentFlag.AlignCenter, t("Open"))
 
     def editorEvent(self, event, model, option, index) -> bool:  # noqa: N802
         if index.column() == 4 and event.type() == QEvent.Type.MouseButtonRelease:
@@ -343,10 +344,11 @@ class QueueTab(QWidget):
         self.bridge.progress.connect(self._on_progress)
         self.bridge.queue_done.connect(self.on_queue_done)
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
 
     # ---------------------------- building ---------------------------- #
     def _build_queue_card(self) -> None:
-        self.queue_card = Card("Queue")
+        self.queue_card = Card(t("Queue"))
         self.scroll.body_layout.addWidget(self.queue_card, 1)
 
         # F2 Header summary banner: real-time counters + existing summary_label + in-card progress bar
@@ -426,17 +428,17 @@ class QueueTab(QWidget):
         # Secondary group: Retry / Move up / Move down / Remove selected / Clear finished
         self.retry_btn = QPushButton(t("Retry"))
         self.retry_btn.setIcon(icon("refresh", 15))
-        self.retry_btn.setToolTip("Retry failed or cancelled jobs")
+        self.retry_btn.setToolTip(t("Retry failed or cancelled jobs"))
         self.retry_btn.clicked.connect(self.retry_failed_or_selected)
         self.move_up_btn = QPushButton("\u2191")
         self.move_up_btn.setProperty("variant", "ghost")
         self.move_up_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.move_up_btn.setToolTip("Move selected waiting job up")
+        self.move_up_btn.setToolTip(t("Move selected waiting job up"))
         self.move_up_btn.clicked.connect(lambda: self.move_selected(-1))
         self.move_down_btn = QPushButton("\u2193")
         self.move_down_btn.setProperty("variant", "ghost")
         self.move_down_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.move_down_btn.setToolTip("Move selected waiting job down")
+        self.move_down_btn.setToolTip(t("Move selected waiting job down"))
         self.move_down_btn.clicked.connect(lambda: self.move_selected(1))
         self.remove_btn = QPushButton(t("Remove selected"))
         self.remove_btn.setIcon(icon("trash", 15))
@@ -472,7 +474,7 @@ class QueueTab(QWidget):
         buttons.addWidget(self.concurrency_combo)
 
         self._speed_limit_choices = [
-            ("Unlimited speed", ""),
+            (N_("Unlimited speed"), ""),
             ("1 MB/s", "1M"),
             ("2 MB/s", "2M"),
             ("5 MB/s", "5M"),
@@ -482,7 +484,7 @@ class QueueTab(QWidget):
         self.speed_limit_combo = ComboBox()
         self.speed_limit_combo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         for label, _val in self._speed_limit_choices:
-            self.speed_limit_combo.addItem(label)
+            self.speed_limit_combo.addItem(t(label))
         self.speed_limit_combo.setToolTip(t("Bandwidth limit passed to yt-dlp (--limit-rate)"))
         current_speed_idx = next(
             (i for i, (_l, val) in enumerate(self._speed_limit_choices) if val == self.rate_limit), 0
@@ -586,27 +588,27 @@ class QueueTab(QWidget):
 
     def clear_log(self) -> None:
         self.log_view.clear_log()
-        self.log_preview_label.setText("No log messages yet.")
+        self.log_preview_label.setText(t("No log messages yet."))
         self.log_preview_label.setStyleSheet(f"color: {MUTED};")
 
     def copy_log(self) -> None:
         QApplication.clipboard().setText(self.log_view.log_text())
-        self.status_message.emit("Log copied to the clipboard.")
+        self.status_message.emit(t("Log copied to the clipboard."))
 
     def save_log(self, target_path: str | Path | None = None) -> bool:
         """Export the visible log text to a file (Phase 9c, F3)."""
         path = str(target_path) if target_path else dialogs.save_file(
-            self, "Save log", "luckytwitch_log.txt", "Text files (*.txt);;All files (*.*)"
+            self, t("Save log"), "luckytwitch_log.txt", t("Text files (*.txt);;All files (*.*)")
         )
         if not path:
             return False
         try:
             Path(path).write_text(self.log_view.log_text(), encoding="utf-8")
-            self.status_message.emit(f"Log saved to {Path(path).name}.")
-            notify.success(self, "Log saved", str(Path(path).name))
+            self.status_message.emit(t("Log saved to {name}.", name=Path(path).name))
+            notify.success(self, t("Log saved"), str(Path(path).name))
             return True
         except OSError as e:
-            dialogs.error(self, "Save log", str(e))
+            dialogs.error(self, t("Save log"), str(e))
             return False
 
     # ---------------------------- the queue (F1, F2, F4) ---------------------------- #
@@ -624,20 +626,22 @@ class QueueTab(QWidget):
             self.empty.hide_message()
         else:
             self.empty.show_message(
-                "Nothing in the queue yet",
-                "Set your cut points in the Plan tab and press «Add to queue».",
-                button=("Go to the Plan tab", self.plan_requested.emit),
+                t("Nothing in the queue yet"),
+                t("Set your cut points in the Plan tab and press «Add to queue»."),
+                button=(t("Go to the Plan tab"), self.plan_requested.emit),
             )
 
     def enqueue(self, job: object, label: str, n_parts: int, strat: str, thumb: object = None) -> QueueItem:
         item = self.model.add(job, label, n_parts, strat, thumb=thumb)
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
         self.log(f"Queued: {label} ({n_parts} parts, {strat})")
         return item
 
     def set_item_status(self, iid: str, status: str) -> None:
         self.model.set_status(iid, status)
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
 
     def _on_progress(self, frac: float, text: str) -> None:
         self.model.set_running_progress(frac, text)
@@ -705,14 +709,16 @@ class QueueTab(QWidget):
             return
         it = self.model.find(iid)
         if it and it.status == "running":
-            dialogs.info(self, "Running", "Cancel the running job first.")
+            dialogs.info(self, t("Running"), t("Cancel the running job first."))
             return
         self.model.remove(iid)
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
 
     def clear_finished(self) -> None:
         self.model.clear_finished()
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
 
     # ---------------------------- running ---------------------------- #
     def set_running(self, running: bool) -> None:
@@ -730,7 +736,7 @@ class QueueTab(QWidget):
             return
         todo = [it for it in self.items if it.status == "queued"]
         if not todo:
-            self.status_message.emit("Nothing queued.")
+            self.status_message.emit(t("Nothing queued."))
             return
         self.show_requested.emit()
         self.set_running(True)
@@ -748,10 +754,10 @@ class QueueTab(QWidget):
             it = sel_idx.data(ITEM_ROLE)
             if it is not None and it.status == "running" and it.iid in self.runner.active_contexts:
                 self.runner.cancel(it.iid)
-                self.status_message.emit(f"Cancelling {it.label}…")
+                self.status_message.emit(t("Cancelling {name}…", name=it.label))
                 return
         if self.runner.cancel() or self.cancel_other():
-            self.status_message.emit("Cancelling…")
+            self.status_message.emit(t("Cancelling…"))
 
     def on_queue_done(self) -> None:
         self.set_running(False)
@@ -760,6 +766,7 @@ class QueueTab(QWidget):
         self.queue_progress.setVisible(False)
         self.runner.finish()
         self.refresh_summary()
+        language_bus().changed.connect(self.refresh_language)
 
     # ---------------------------- folders ---------------------------- #
     def open_output_folder(self, path: Path | None = None, select: bool = False) -> None:
@@ -770,7 +777,7 @@ class QueueTab(QWidget):
                 target.mkdir(parents=True, exist_ok=True)
             open_in_file_manager(target, select)
         except OSError as e:
-            dialogs.info(self, "Open folder", f"Could not open:\n{target}\n\n{e}")
+            dialogs.info(self, t("Open folder"), t("Could not open:\n{target}\n\n{error}", target=target, error=e))
 
     def open_item_folder(self, iid: str) -> None:
         """Open the folder for a specific queue item ``iid`` (used by the inline «Open» button on finished rows)."""
@@ -811,6 +818,9 @@ class QueueTab(QWidget):
         self.start_btn.setText(t("Start queue"))
         self.cancel_btn.setText(t("Cancel current"))
         self.retry_btn.setText(t("Retry"))
+        self.retry_btn.setToolTip(t("Retry failed or cancelled jobs"))
+        self.move_up_btn.setToolTip(t("Move selected waiting job up"))
+        self.move_down_btn.setToolTip(t("Move selected waiting job down"))
         self.remove_btn.setText(t("Remove selected"))
         self.clear_btn.setText(t("Clear finished"))
         self.folder_btn.setText(t("Open folder"))
@@ -830,8 +840,20 @@ class QueueTab(QWidget):
         self.concurrency_combo.setCurrentIndex(cur_concurrency)
         self.concurrency_combo.setToolTip(t("How many queue jobs can run at the same time"))
         self.concurrency_combo.blockSignals(False)
+        cur_speed = self.speed_limit_combo.currentIndex()
+        self.speed_limit_combo.blockSignals(True)
+        self.speed_limit_combo.clear()
+        for label, _val in self._speed_limit_choices:
+            self.speed_limit_combo.addItem(t(label))
+        self.speed_limit_combo.setCurrentIndex(cur_speed)
+        self.speed_limit_combo.setToolTip(t("Bandwidth limit passed to yt-dlp (--limit-rate)"))
+        self.speed_limit_combo.blockSignals(False)
         if hasattr(self, "filter_buttons"):
             labels = {"all": "All", "warn": "Warnings", "err": "Errors"}
             for k, btn in self.filter_buttons.items():
                 if k in labels:
                     btn.setText(t(labels[k]))
+        if hasattr(self, "model"):
+            self.model.refresh_language()
+        self.refresh_summary()
+        self.table.viewport().update()

@@ -15,14 +15,15 @@ from dataclasses import dataclass, field
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtGui import QColor
 
+from core.i18n import N_, t, tn
 from core.status import FINISHED, STATUS_COLOURS, queue_summary, status_label, status_word
 
 COLUMNS = (  # key, heading, width, alignment, stretches
     ("n", "#", 40, "center", False),
-    ("video", "Video", 420, "w", True),
-    ("parts", "Parts", 70, "center", False),
-    ("mode", "Strategy", 140, "center", False),
-    ("status", "Status", 200, "w", False),
+    ("video", N_("Video"), 420, "w", True),
+    ("parts", N_("Parts"), 70, "center", False),
+    ("mode", N_("Strategy"), 140, "center", False),
+    ("status", N_("Status"), 200, "w", False),
 )
 STATUS_ROLE = Qt.ItemDataRole.UserRole + 1  # the plain status word of the row («done»)
 IID_ROLE = Qt.ItemDataRole.UserRole + 2  # the row id
@@ -69,7 +70,8 @@ class QueueModel(QAbstractTableModel):
         if orientation != Qt.Orientation.Horizontal or not 0 <= section < len(COLUMNS):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
-            return COLUMNS[section][1]
+            col_label = COLUMNS[section][1]
+            return t(col_label) if col_label else ""
         if role == Qt.ItemDataRole.TextAlignmentRole:  # the heading lines up with its column
             return int(_alignment(COLUMNS[section][3]))
         return None
@@ -257,7 +259,10 @@ class QueueModel(QAbstractTableModel):
             "cancelled": statuses.count("cancelled"),
         }
 
+    def refresh_language(self) -> None:
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(COLUMNS) - 1)
+
     def header_summary(self) -> str:
         """Real-time counter banner text: ``N done · N running · N waiting · N failed`` (Phase 9c, F2)."""
         c = self.counts()
-        return f"{c['done']} done \u00b7 {c['running']} running \u00b7 {c['waiting']} waiting \u00b7 {c['failed']} failed"
+        return f"{c['done']} {t('done')} · {c['running']} {t('running')} · {c['waiting']} {t('waiting')} · {c['failed']} {t('failed')}"
