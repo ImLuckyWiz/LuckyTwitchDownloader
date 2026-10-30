@@ -199,3 +199,26 @@ Developer rule from now on: new widget text is either `t(...)` at build time plu
   - 88 new strings translated into locale/es/LC_MESSAGES/luckytwitch.po following docs/i18n-glossary-es.md.
   - Ratchet baseline unwrapped literals dropped from 570 down to 477 (qt_ui/shell.py, qt_ui/titlebar.py, and qt_ui/main_window.py now have 0 unwrapped literals).
   - All 1,589 tests passing, python tools/i18n.py check passing cleanly with 0 problems.
+
+### Phase I3 delivered (2026-10-30): Plan tab + timeline localization (tag i18n-phase-3)
+
+* `qt_ui/tabs/plan.py`:
+  - Visual cards, headers and hints: Onboarding instructions, *Timeline*, *Cut points*, *Clips → chapters*, subtitle hints, and cut formatting hint (`CUT_HINT`).
+  - Title row: *Title:*, placeholder *Stream title…*, *Reset*, tooltip *Reset to original Twitch title*.
+  - Strategy selector: *Strategy:*, choices *Auto*, *Full VOD + split*, *Only the parts*, coverage badge (*100% of VOD* / *{pct}% of VOD*).
+  - Quality row: *Quality:*, *Best available ({quality})*.
+  - Clips card & filters: *Add clips as chapters*, filter spinners (*Min views*, *Min duration (s)*, *Top N (0 = all)*, *Lead-in (s)*), selection bar (*Selection:*, *Select all*, *Invert*, *Clear*).
+  - Clips table & actions: table headers (*At*, *Views*, *Duration*, *Title*, *Creator*, *Chapter*), *Split at selected clip*, plural-aware button (*Download {n} clip* / *Download {n} clips*).
+  - Plan preview & footer: parts summary, strategy descriptions, audio-only and size estimates, *Add to queue*, *Add & start*, dialogs (*Select a clip*, *No VOD*, *No offset*, *Can't split here*).
+  - Dynamic retranslation: `refresh_language()` retranslates all card titles, labels, inputs, table headers, preview and clips on language switch.
+* `qt_ui/timeline.py`:
+  - Zoom & history controls: *Zoom out (−)*, *Zoom in (+)*, *Fit*, *Show the whole VOD (0)*, *Undo*, *Redo* (with tooltips and accessible names).
+  - Muted audio: *Show muted*, plural-aware label (*{stretches} · {duration} silenced by Twitch*).
+  - Canvas & minimap: accessible names, descriptions, minimap tooltip, idle placeholder (*Press «Get info» to see the VOD here.*), error messages.
+  - Context menu & status messages: *Cut here ({time})*, *Skip this part*, *Keep this section*, *Isolate this game*, *Undo*, *Redo*, and all canvas feedback toasts.
+  - Ruler badges & legend: clip cluster tooltip (*{n} clips between {start} and {end}*), game totals tooltip (*{game}: {duration} in total\nClick: make it its own part · Shift+click: keep only this game*), *+{n} more*.
+  - Hooked to `language_bus().changed` to update on live language switch.
+* Catalog and baseline:
+  - 107 new strings translated into `locale/es/LC_MESSAGES/luckytwitch.po` strictly respecting `docs/i18n-glossary-es.md`.
+  - Unwrapped literals dropped from 477 to 402 (`qt_ui/tabs/plan.py` and `qt_ui/timeline.py` now have 0 unwrapped literals).
+  - `python tools/i18n.py check` passing cleanly with 0 problems.

@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 from core.options import QUALITY_CHOICES, STRATEGIES, build_filter, build_options, flag
 from core.palette import ACCENT, ACCENT_DIM, ACCENT_TEXT, BG, BG3, BORDER, ERR, FG, MUTED, OK, WARN
 from core.settings import DEFAULTS
-from core.i18n import t
+from core.i18n import N_, t, tn
 from core.timeline import game_colour
 from luckytwitch_engine import (
     QUALITY_BEST, EngineError, GameSegment, Range, Storyboard, clean_title, clip_start, estimate_bytes, fmt_hms,
@@ -44,7 +44,7 @@ HEADER_HEIGHT = 34
 ROW_HEIGHT = 28
 WIDE_BREAKPOINT = 1100
 PREVIEW_COLOURS = {"ok": OK, "err": ERR, "muted": MUTED}
-CUT_HINT = ("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
+CUT_HINT = N_("Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   "
             "To skip a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end")
 
 
@@ -61,9 +61,9 @@ def human_size(n: int) -> str:
     return f"{n} B"
 
 STRATEGY_CHOICES = (
-    ("auto", "Auto", "Auto"),
-    ("full", "Full VOD + split", "Download full VOD, then split"),
-    ("sections", "Only the parts", "Download only the parts"),
+    ("auto", N_("Auto"), "Auto"),
+    ("full", N_("Full VOD + split"), "Download full VOD, then split"),
+    ("sections", N_("Only the parts"), "Download only the parts"),
 )
 _STRATEGY_BY_SETTING = {setting: key for key, _label, setting in STRATEGY_CHOICES}
 _SETTING_BY_STRATEGY = {key: setting for key, _label, setting in STRATEGY_CHOICES}
@@ -72,12 +72,12 @@ for _key, _label, _setting in STRATEGY_CHOICES:
     _SETTING_BY_STRATEGY[_setting.lower()] = _setting
 
 CLIP_COLUMNS = (  # key, heading, width, alignment, stretches
-    ("at", "At", 80, "center", False),
-    ("views", "Views", 70, "center", False),
-    ("dur", "Duration", 75, "center", False),
-    ("title", "Title", 380, "w", True),
-    ("creator", "Creator", 140, "w", False),
-    ("chap", "Chapter", 108, "center", False),
+    ("at", N_("At"), 80, "center", False),
+    ("views", N_("Views"), 70, "center", False),
+    ("dur", N_("Duration"), 75, "center", False),
+    ("title", N_("Title"), 380, "w", True),
+    ("creator", N_("Creator"), 140, "w", False),
+    ("chap", N_("Chapter"), 108, "center", False),
 )
 
 
@@ -181,7 +181,7 @@ class PartCard(QFrame):
             self.game_lbl = None
 
         if muted_seconds >= 1:
-            self.muted_lbl = QLabel(f"\u00b7 {fmt_hms(muted_seconds)} muted", self)
+            self.muted_lbl = QLabel(t("· {time} muted", time=fmt_hms(muted_seconds)), self)
             self.muted_lbl.setStyleSheet(f"color: {WARN}; font-weight: bold;")
             lay.addWidget(self.muted_lbl)
         else:
@@ -195,7 +195,7 @@ class PartCard(QFrame):
         self.skip_btn.setProperty("variant", "ghost")
         self.skip_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.skip_btn.setFixedSize(22, 22)
-        self.skip_btn.setToolTip(f"Skip Part {part_index}")
+        self.skip_btn.setToolTip(t("Skip Part {n}", n=part_index))
         self.skip_btn.clicked.connect(lambda: self.skip_requested.emit(self.part_index))
         lay.addWidget(self.skip_btn)
 
@@ -218,7 +218,7 @@ class ClipModel(QAbstractTableModel):
         if orientation != Qt.Orientation.Horizontal or not 0 <= section < len(CLIP_COLUMNS):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
-            return CLIP_COLUMNS[section][1]
+            return t(CLIP_COLUMNS[section][1])
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return int(_alignment(CLIP_COLUMNS[section][3]))
         return None
@@ -297,6 +297,7 @@ class PlanTab(ScrollPage):
         self.update_responsive_layout()
 
         self.bridge.frames.connect(self.on_frames)
+        i18n_qt.language_bus().changed.connect(self.refresh_language)
         self.update_preview()
         self.refresh_clips()
 
@@ -334,12 +335,12 @@ class PlanTab(ScrollPage):
         olay.setContentsMargins(14, 10, 14, 10)
         olay.setSpacing(12)
 
-        steps = WrapLabel(
-            "1. Paste a link or search a streamer   \u00b7   2. Mark where to cut   \u00b7   3. Add to queue",
+        self.onboarding_steps = WrapLabel(
+            t("1. Paste a link or search a streamer   ·   2. Mark where to cut   ·   3. Add to queue"),
             self.onboarding_card,
         )
-        steps.setProperty("role", "muted")
-        olay.addWidget(steps, 1)
+        self.onboarding_steps.setProperty("role", "muted")
+        olay.addWidget(self.onboarding_steps, 1)
 
         self.onboard_search_btn = QPushButton(t("Search streamers"), self.onboarding_card)
         self.onboard_search_btn.setIcon(icon("search", 16))
@@ -358,7 +359,7 @@ class PlanTab(ScrollPage):
         self.body_layout.addWidget(self.onboarding_card)
 
     def _build_timeline_card(self) -> None:
-        self.timeline_card = Card("Timeline")
+        self.timeline_card = Card(t("Timeline"))
         self.body_layout.addWidget(self.timeline_card)
         well = QWidget()
         well.setObjectName("timelineWell")
@@ -370,7 +371,7 @@ class PlanTab(ScrollPage):
         self.timeline_card.add_widget(well)
 
     def _build_cuts_card(self) -> None:
-        self.cuts_card = Card("Cut points")
+        self.cuts_card = Card(t("Cut points"))
         self.cuts_card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lower_layout.addWidget(self.cuts_card, 1)
 
@@ -379,19 +380,19 @@ class PlanTab(ScrollPage):
         trlay = QHBoxLayout(self.title_row)
         trlay.setContentsMargins(0, 0, 0, 6)
         trlay.setSpacing(6)
-        title_lbl = QLabel("Title:")
-        title_lbl.setProperty("role", "muted")
-        trlay.addWidget(title_lbl)
+        self.title_lbl = QLabel(t("Title:"))
+        self.title_lbl.setProperty("role", "muted")
+        trlay.addWidget(self.title_lbl)
 
         self.title_entry = QLineEdit(self.title_row)
-        self.title_entry.setPlaceholderText("Stream title…")
+        self.title_entry.setPlaceholderText(t("Stream title…"))
         self.title_entry.setEnabled(False)
         self.title_entry.textChanged.connect(self._on_title_edited)
         trlay.addWidget(self.title_entry, 1)
 
-        self.reset_title_btn = QPushButton("Reset", self.title_row)
+        self.reset_title_btn = QPushButton(t("Reset"), self.title_row)
         self.reset_title_btn.setProperty("variant", "ghost")
-        self.reset_title_btn.setToolTip("Reset to original Twitch title")
+        self.reset_title_btn.setToolTip(t("Reset to original Twitch title"))
         self.reset_title_btn.setEnabled(False)
         self.reset_title_btn.clicked.connect(self.reset_title)
         trlay.addWidget(self.reset_title_btn)
@@ -411,7 +412,7 @@ class PlanTab(ScrollPage):
         self.cuts.textChanged.connect(self.update_preview)
         self.cuts_card.add_widget(self.cuts)
 
-        self.cuts_hint = WrapLabel(CUT_HINT)
+        self.cuts_hint = WrapLabel(t(CUT_HINT))
         self.cuts_hint.setProperty("role", "muted")
         self.cuts_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.cuts_hint.setContentsMargins(0, 6, 0, 8)
@@ -423,9 +424,9 @@ class PlanTab(ScrollPage):
         srlay = QHBoxLayout(self.strategy_row)
         srlay.setContentsMargins(0, 0, 0, 6)
         srlay.setSpacing(6)
-        strat_lbl = QLabel("Strategy:")
-        strat_lbl.setProperty("role", "muted")
-        srlay.addWidget(strat_lbl)
+        self.strat_lbl = QLabel(t("Strategy:"))
+        self.strat_lbl.setProperty("role", "muted")
+        srlay.addWidget(self.strat_lbl)
 
         self.strategy_bar = QFrame(self.strategy_row)
         self.strategy_bar.setObjectName("strategySegmented")
@@ -434,7 +435,7 @@ class PlanTab(ScrollPage):
         sblay.setSpacing(4)
         self.strategy_buttons: dict[str, QPushButton] = {}
         for key, label, _setting in STRATEGY_CHOICES:
-            btn = QPushButton(label, self.strategy_bar)
+            btn = QPushButton(t(label), self.strategy_bar)
             btn.setProperty("variant", "chip")
             btn.setCheckable(True)
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -456,9 +457,9 @@ class PlanTab(ScrollPage):
         qrlay = QHBoxLayout(self.quality_row)
         qrlay.setContentsMargins(0, 0, 0, 6)
         qrlay.setSpacing(6)
-        qual_lbl = QLabel("Quality:")
-        qual_lbl.setProperty("role", "muted")
-        qrlay.addWidget(qual_lbl)
+        self.qual_lbl = QLabel(t("Quality:"))
+        self.qual_lbl.setProperty("role", "muted")
+        qrlay.addWidget(self.qual_lbl)
         self.quality_combo = ComboBox(self.quality_row)
         self.quality_combo.activated.connect(self._on_quality_activated)
         qrlay.addWidget(self.quality_combo)
@@ -503,18 +504,18 @@ class PlanTab(ScrollPage):
         self.cuts_card.add_widget(self.preview)
 
     def _build_clips_card(self) -> None:
-        self.clips_card = Card("Clips \u2192 chapters", "Optional: put the VOD's clips in the files as chapters.")
+        self.clips_card = Card(t("Clips → chapters"), t("Optional: put the VOD's clips in the files as chapters."))
         self.clips_card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lower_layout.addWidget(self.clips_card, 1)
 
-        row = self.clips_card.add_row(
-            "Add clips as chapters", "Each clip that passes the filter becomes a chapter.",
-            info="Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video "
-                 "files; the Premiere Pro outputs (Options \u2192 Premiere Pro) have their own switches.")
+        self.chapters_row = self.clips_card.add_row(
+            t("Add clips as chapters"), t("Each clip that passes the filter becomes a chapter."),
+            info=t("Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video "
+                   "files; the Premiere Pro outputs (Options → Premiere Pro) have their own switches."))
         self.chapters_toggle = Toggle()
         self.binder.bind("chapters", self.chapters_toggle)
         self.chapters_toggle.clicked.connect(self.refresh_clips)
-        row.add_control(self.chapters_toggle)
+        self.chapters_row.add_control(self.chapters_toggle)
 
         frow = QWidget()
         frow.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -525,6 +526,7 @@ class PlanTab(ScrollPage):
         fgrid.setColumnMinimumWidth(2, 20)
         fgrid.setColumnStretch(5, 1)
         self.filter_spins: dict[str, SpinBox] = {}
+        self.filter_labels: dict[str, QLabel] = {}
 
         def add_filter_field(row: int, col: int, label: str, name: str, width: int = 5) -> None:
             lbl = QLabel(label)
@@ -537,11 +539,12 @@ class PlanTab(ScrollPage):
             fgrid.addWidget(lbl, row, c_label, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             fgrid.addWidget(sp, row, c_spin, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.filter_spins[name] = sp
+            self.filter_labels[name] = lbl
 
-        add_filter_field(0, 0, "Min views", "min_views", 5)
-        add_filter_field(0, 1, "Min duration (s)", "min_duration", 5)
-        add_filter_field(1, 0, "Top N (0 = all)", "top_n", 5)
-        add_filter_field(1, 1, "Lead-in (s)", "pad_before", 5)
+        add_filter_field(0, 0, t("Min views"), "min_views", 5)
+        add_filter_field(0, 1, t("Min duration (s)"), "min_duration", 5)
+        add_filter_field(1, 0, t("Top N (0 = all)"), "top_n", 5)
+        add_filter_field(1, 1, t("Lead-in (s)"), "pad_before", 5)
         self.clips_card.add_widget(frow)
 
         # D4: Multi-select toolbar above the clips table
@@ -550,9 +553,9 @@ class PlanTab(ScrollPage):
         sblay = QHBoxLayout(sel_bar)
         sblay.setContentsMargins(0, 0, 0, 4)
         sblay.setSpacing(6)
-        sel_lbl = QLabel("Selection:")
-        sel_lbl.setProperty("role", "muted")
-        sblay.addWidget(sel_lbl)
+        self.sel_lbl = QLabel(t("Selection:"))
+        self.sel_lbl.setProperty("role", "muted")
+        sblay.addWidget(self.sel_lbl)
 
         self.select_all_clips_btn = QPushButton(t("Select all"))
         self.select_all_clips_btn.setProperty("variant", "chip")
@@ -750,7 +753,7 @@ class PlanTab(ScrollPage):
                 self.coverage_bar.setValue(min(max(pct, 0), 100))
             self.coverage_bar.setVisible(True)
             full_cov = plan.coverage >= 0.995
-            self.coverage_badge.setText("100% of VOD" if full_cov else f"{pct}% of VOD")
+            self.coverage_badge.setText(t("100% of VOD") if full_cov else t("{pct}% of VOD", pct=pct))
             self.coverage_badge.setStyleSheet(
                 f"color: {OK}; font-weight: bold;" if full_cov else f"color: {MUTED};"
             )
@@ -827,7 +830,7 @@ class PlanTab(ScrollPage):
 
         best = resolve_format(formats, QUALITY_BEST)
         best_label = best.label if best else "best"
-        self.quality_combo.addItem(f"Best available ({best_label})", QUALITY_BEST)
+        self.quality_combo.addItem(t("Best available ({quality})", quality=best_label), QUALITY_BEST)
         for fmt in formats:
             self.quality_combo.addItem(fmt.label, fmt.format_id)
 
@@ -888,8 +891,8 @@ class PlanTab(ScrollPage):
         if not text:
             self._sync_strategy_buttons()
             self._rebuild_part_cards(None)
-            self.set_preview("Write the cut points above (press «Get info» first so «end» works).", "muted")
-            self.plan_summary_lbl.setToolTip("Paste a VOD and press «Get info» first.")
+            self.set_preview(t("Write the cut points above (press «Get info» first so «end» works)."), "muted")
+            self.plan_summary_lbl.setToolTip(t("Paste a VOD and press «Get info» first."))
             return
         dur = self.source.duration if self.source else None
         opts = self.build_options()
@@ -898,7 +901,7 @@ class PlanTab(ScrollPage):
         except EngineError as e:
             self._sync_strategy_buttons()
             self._rebuild_part_cards(None)
-            self.set_preview(f"\u26a0 {e}", "err", "Fix the cut points to add this VOD")
+            self.set_preview(f"\u26a0 {e}", "err", t("Fix the cut points to add this VOD"))
             self.plan_summary_lbl.setToolTip(str(e))
             return
         self._sync_strategy_buttons(resolved_strategy=plan.strategy)
@@ -907,37 +910,42 @@ class PlanTab(ScrollPage):
 
         def muted_note(a: float, b: float) -> str:
             m = muted_overlap(muted, a, b)
-            return f"   \u00b7  {fmt_hms(m)} muted" if m >= 1 else ""
+            return t("   ·  {time} muted", time=fmt_hms(m)) if m >= 1 else ""
 
         lines = [
-            f"Part {p.index}:  {fmt_hms(p.start)} \u2192 {fmt_hms(p.end)}   ({fmt_hms(p.duration)}){muted_note(p.start, p.end)}"
+            t("Part {n}:  {start} → {end}   ({duration}){silenced}",
+              n=p.index, start=fmt_hms(p.start), end=fmt_hms(p.end), duration=fmt_hms(p.duration),
+              silenced=muted_note(p.start, p.end))
             for p in plan.parts
         ]
         if plan.duration:
-            how = ("download the full VOD once, then split it" if plan.strategy == "full"
-                   else "download only these parts")
-            lines.append(f"\u2192 {how}   (parts cover {plan.coverage * 100:.0f}% of the VOD)")
+            how = (t("download the full VOD once, then split it") if plan.strategy == "full"
+                   else t("download only these parts"))
+            lines.append(t("→ {how}   (parts cover {pct}% of the VOD)",
+                           how=how, pct=int(round(plan.coverage * 100))))
         if self.source and getattr(self.source, "formats", None):
             fmt = resolve_format(self.source.formats, self.current_quality())
             if fmt:
                 if fmt.audio_only:
-                    lines.append(f"Quality: {fmt.label} \u00b7 Audio only: saved as .m4a or .mp3 (Options). Video-only extras are skipped.")
+                    lines.append(t("Quality: {quality} · Audio only: saved as .m4a or .mp3 (Options). Video-only extras are skipped.", quality=fmt.label))
                 else:
                     dl_secs = self.source.duration if plan.strategy == "full" else sum(p.duration for p in plan.parts)
                     est = estimate_bytes(fmt, dl_secs or 0)
-                    size_str = f" \u00b7 about {human_size(est)}" if est > 0 else ""
-                    lines.append(f"Quality: {fmt.label}{size_str}")
+                    size_str = t(" · about {size}", size=human_size(est)) if est > 0 else ""
+                    lines.append(t("Quality: {quality}{size}", quality=fmt.label, size=size_str))
         n = len(plan.parts)
         total_muted = sum(muted_overlap(muted, p.start, p.end) for p in plan.parts)
+        parts_count = tn("{n} part", "{n} parts", n)
         summary_str = (
-            f"{n} part{'s' if n != 1 else ''} \u00b7 {fmt_hms(sum(p.duration for p in plan.parts))} in total"
-            + (f" \u00b7 {fmt_hms(total_muted)} muted" if total_muted >= 1 else "")
+            t("{count} · {duration} in total", count=parts_count, duration=fmt_hms(sum(p.duration for p in plan.parts)))
+            + (t(" · {time} muted", time=fmt_hms(total_muted)) if total_muted >= 1 else "")
         )
         self.set_preview("\n".join(lines), "ok", summary_str)
         if plan.duration:
-            strat_desc = "Full VOD + split" if plan.strategy == "full" else "Only the parts"
+            strat_desc = t("Full VOD + split") if plan.strategy == "full" else t("Only the parts")
             self.plan_summary_lbl.setToolTip(
-                f"{summary_str} \u00b7 {strat_desc} ({plan.coverage * 100:.0f}% of VOD covered)"
+                t("{summary} · {mode} ({pct}% of VOD covered)",
+                  summary=summary_str, mode=strat_desc, pct=int(round(plan.coverage * 100)))
             )
         else:
             self.plan_summary_lbl.setToolTip(summary_str)
@@ -958,16 +966,17 @@ class PlanTab(ScrollPage):
         self.clip_model.set_rows(rows)
         self._update_clip_action_buttons()
         if not self.clips:
-            msg = ("No clips loaded (sign in with the Twitch API… button, optional)."
-                   if not self.clips_loaded else "This VOD has no clips.")
+            msg = (t("No clips loaded (sign in with the Twitch API… button, optional).")
+                   if not self.clips_loaded else t("This VOD has no clips."))
         else:
             placed = sum(1 for c in self.clips if clip_start(c) is not None)
-            msg = f"{len(included)} of {len(self.clips)} clips pass the filter \u2192 {len(chapters)} chapters"
+            msg = t("{included} of {total} clips pass the filter → {chapters} chapters",
+                    included=len(included), total=len(self.clips), chapters=len(chapters))
             if placed < len(self.clips):
-                msg += f"  ({len(self.clips) - placed} can't be placed: no offset)"
+                msg += t("  ({n} can't be placed: no offset)", n=len(self.clips) - placed)
             if not (flag(self.settings, "chapters") or flag(self.settings, "premiere_xml")
                     or flag(self.settings, "premiere_plugin")):
-                msg += "  [chapters are OFF]"
+                msg += t("  [chapters are OFF]")
         self.clips_label.setText(msg)
         self._push_clip_marks()
 
@@ -977,9 +986,9 @@ class PlanTab(ScrollPage):
     def _update_clip_action_buttons(self) -> None:
         n = len(self.selected_clip_rows()) if hasattr(self, "tree") and self.tree.selectionModel() else 0
         if n <= 0:
-            self.download_clips_btn.setText("Download only selected clip")
+            self.download_clips_btn.setText(t("Download only selected clip"))
         else:
-            self.download_clips_btn.setText(f"Download {n} clip{'s' if n != 1 else ''}")
+            self.download_clips_btn.setText(tn("Download {n} clip", "Download {n} clips", n))
 
     def selected_clip_rows(self) -> list[int]:
         return sorted(idx.row() for idx in self.tree.selectionModel().selectedRows())
@@ -1015,24 +1024,24 @@ class PlanTab(ScrollPage):
     def split_at_clip(self) -> None:
         sel = self.selected_clip_rows()
         if not sel:
-            dialogs.info(self, "Select a clip", "Select a clip in the table first.")
+            dialogs.info(self, t("Select a clip"), t("Select a clip in the table first."))
             return
         if len(sel) > 1:
-            dialogs.info(self, "Select one clip", "Splitting works with a single clip: select just one.")
+            dialogs.info(self, t("Select one clip"), t("Splitting works with a single clip: select just one."))
             return
         if not self.source:
-            dialogs.info(self, "No VOD", "Press «Get info» first.")
+            dialogs.info(self, t("No VOD"), t("Press «Get info» first."))
             return
         off = clip_start(self.clips[sel[0]])
         if off is None:
-            dialogs.info(self, "No offset", "That clip has no position in the VOD.")
+            dialogs.info(self, t("No offset"), t("That clip has no position in the VOD."))
             return
-        t = max(0, off - self.build_filter().pad_before)
+        t_pos = max(0, off - self.build_filter().pad_before)
         text = self.cut_text() or "0:00:00 - end"
         try:
-            new = insert_cut_point(text, t, self.source.duration)
+            new = insert_cut_point(text, t_pos, self.source.duration)
         except EngineError as e:
-            dialogs.info(self, "Can't split here", str(e))
+            dialogs.info(self, t("Can't split here"), str(e))
             return
         self.set_cut_text(new)
         self.update_preview()
@@ -1051,14 +1060,14 @@ class PlanTab(ScrollPage):
         """Give the timeline the clip moments (flags and snap points) with the tooltip text of each (E5)."""
         details: dict[float, str] = {}
         for c in self.clips:
-            t = clip_start(c)
-            if t is None:
+            t_val = clip_start(c)
+            if t_val is None:
                 continue
-            parts = [str(c.get("title", "")).strip() or "Untitled clip"]
+            parts = [str(c.get("title", "")).strip() or t("Untitled clip")]
             if c.get("creator_name"):
-                parts.append(f"by {c.get('creator_name')}")
-            parts.append(f"{c.get('view_count', 0)} views")
-            details[float(t)] = " \u00b7 ".join(parts)
+                parts.append(t("by {creator}", creator=c.get("creator_name")))
+            parts.append(t("{views} views", views=c.get("view_count", 0)))
+            details[float(t_val)] = " \u00b7 ".join(parts)
         self.timeline.set_clip_marks(self._clip_times(), details)
 
     def sync_timeline(self) -> None:
@@ -1124,12 +1133,77 @@ class PlanTab(ScrollPage):
 
     def refresh_language(self) -> None:
         """Update PlanTab text labels dynamically when language changes."""
-        self.queue_btn.setText(t("Add to queue"))
-        self.start_btn.setText(t("Add && start"))
-        self.download_clips_btn.setText(t("Download only selected clip"))
-        self.split_btn.setText(t("Split at selected clip"))
-        self.select_all_clips_btn.setText(t("Select all"))
-        self.invert_clips_btn.setText(t("Invert"))
-        self.clear_clips_btn.setText(t("Clear"))
-        self.onboard_search_btn.setText(t("Search streamers"))
-        self.onboard_paste_btn.setText(t("Paste from clipboard"))
+        if hasattr(self, "timeline_card") and self.timeline_card.title_label:
+            self.timeline_card.title_label.setText(t("Timeline"))
+        if hasattr(self, "cuts_card") and self.cuts_card.title_label:
+            self.cuts_card.title_label.setText(t("Cut points"))
+        if hasattr(self, "clips_card"):
+            if self.clips_card.title_label:
+                self.clips_card.title_label.setText(t("Clips → chapters"))
+            if self.clips_card.subtitle_label:
+                self.clips_card.subtitle_label.setText(t("Optional: put the VOD's clips in the files as chapters."))
+        if hasattr(self, "onboarding_steps"):
+            self.onboarding_steps.setText(t("1. Paste a link or search a streamer   ·   2. Mark where to cut   ·   3. Add to queue"))
+        if hasattr(self, "onboard_search_btn"):
+            self.onboard_search_btn.setText(t("Search streamers"))
+        if hasattr(self, "onboard_paste_btn"):
+            self.onboard_paste_btn.setText(t("Paste from clipboard"))
+        if hasattr(self, "title_lbl"):
+            self.title_lbl.setText(t("Title:"))
+        if hasattr(self, "title_entry"):
+            self.title_entry.setPlaceholderText(t("Stream title…"))
+        if hasattr(self, "reset_title_btn"):
+            self.reset_title_btn.setText(t("Reset"))
+            self.reset_title_btn.setToolTip(t("Reset to original Twitch title"))
+        if hasattr(self, "cuts_hint"):
+            self.cuts_hint.setText(t(CUT_HINT))
+        if hasattr(self, "strat_lbl"):
+            self.strat_lbl.setText(t("Strategy:"))
+        for key, label, _setting in STRATEGY_CHOICES:
+            if key in self.strategy_buttons:
+                self.strategy_buttons[key].setText(t(label))
+        if hasattr(self, "qual_lbl"):
+            self.qual_lbl.setText(t("Quality:"))
+        if hasattr(self, "quality_combo") and self.quality_combo.count() > 0:
+            best = resolve_format(self.source.formats, QUALITY_BEST) if self.source and getattr(self.source, "formats", None) else None
+            best_label = best.label if best else "best"
+            self.quality_combo.setItemText(0, t("Best available ({quality})", quality=best_label))
+        if hasattr(self, "chapters_row"):
+            if self.chapters_row.title_label:
+                self.chapters_row.title_label.setText(t("Add clips as chapters"))
+            if self.chapters_row.hint_label:
+                self.chapters_row.hint_label.setText(t("Each clip that passes the filter becomes a chapter."))
+            if getattr(self.chapters_row, "info", None):
+                info_txt = t("Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video files; the Premiere Pro outputs (Options → Premiere Pro) have their own switches.")
+                self.chapters_row.info.text = info_txt
+                self.chapters_row.info.setAccessibleDescription(info_txt)
+                if hasattr(self.chapters_row.info, "tooltip") and self.chapters_row.info.tooltip:
+                    self.chapters_row.info.tooltip.text = info_txt
+        filter_titles = {
+            "min_views": t("Min views"),
+            "min_duration": t("Min duration (s)"),
+            "top_n": t("Top N (0 = all)"),
+            "pad_before": t("Lead-in (s)"),
+        }
+        for name, lbl in getattr(self, "filter_labels", {}).items():
+            if name in filter_titles:
+                lbl.setText(filter_titles[name])
+        if hasattr(self, "sel_lbl"):
+            self.sel_lbl.setText(t("Selection:"))
+        if hasattr(self, "select_all_clips_btn"):
+            self.select_all_clips_btn.setText(t("Select all"))
+        if hasattr(self, "invert_clips_btn"):
+            self.invert_clips_btn.setText(t("Invert"))
+        if hasattr(self, "clear_clips_btn"):
+            self.clear_clips_btn.setText(t("Clear"))
+        if hasattr(self, "split_btn"):
+            self.split_btn.setText(t("Split at selected clip"))
+        self._update_clip_action_buttons()
+        if hasattr(self, "clip_model"):
+            self.clip_model.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(CLIP_COLUMNS) - 1)
+        if hasattr(self, "queue_btn"):
+            self.queue_btn.setText(t("Add to queue"))
+        if hasattr(self, "start_btn"):
+            self.start_btn.setText(t("Add && start"))
+        self.update_preview()
+        self.refresh_clips()

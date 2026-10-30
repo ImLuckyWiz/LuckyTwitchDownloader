@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: LuckyTwitch Downloader\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 06:05-0300\n"
+"POT-Creation-Date: 2026-10-30 06:43-0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -45,7 +45,7 @@ msgstr ""
 msgid "Streamer"
 msgstr ""
 
-#: qt_ui/dialogs.py
+#: qt_ui/dialogs.py qt_ui/tabs/plan.py
 msgid "Title"
 msgstr ""
 
@@ -138,7 +138,7 @@ msgstr ""
 msgid "Could not check for updates: {error}"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "Cut points"
 msgstr ""
 
@@ -198,7 +198,7 @@ msgstr ""
 msgid "LuckyTwitch {version} is out (you have {current})."
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "No VOD"
 msgstr ""
 
@@ -210,7 +210,7 @@ msgstr ""
 msgid "Open folder"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "Paste a VOD and press «Get info» first."
 msgstr ""
 
@@ -226,7 +226,7 @@ msgstr ""
 msgid "Preparing tools (yt-dlp, ffmpeg)…"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "Press «Get info» first."
 msgstr ""
 
@@ -254,11 +254,11 @@ msgstr ""
 msgid "Running"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "Select a clip"
 msgstr ""
 
-#: qt_ui/main_window.py
+#: qt_ui/main_window.py qt_ui/tabs/plan.py
 msgid "Select a clip in the table first."
 msgstr ""
 
@@ -483,7 +483,44 @@ msgid "Select interface language (English / Español)."
 msgstr ""
 
 #: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "   ·  {time} muted"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "  ({n} can't be placed: no offset)"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "  [chapters are OFF]"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid " · about {size}"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid " · {time} muted"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "1. Paste a link or search a streamer   ·   2. Mark where to cut   ·   3. Add to queue"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-format
+msgid "100% of VOD"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
 msgid "Add && start"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Add clips as chapters"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
@@ -491,11 +528,130 @@ msgid "Add to queue"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
+msgid "At"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Auto"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Best available ({quality})"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid ""
+"Boundaries in order, e.g.  0:00:00 - 0:30:00 - 1:30:00 - end   (end = end of the VOD).   To skip "
+"a section use «;» or a new line:  0:00:00 - 0:30:00 ; 2:00:00 - end"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Can't split here"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Chapter"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Clips → chapters"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Creator"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
 msgid "Download only selected clip"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Download {n} clip"
+msgid_plural "Download {n} clips"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/tabs/plan.py
+msgid "Duration"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Each clip that passes the filter becomes a chapter."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Fix the cut points to add this VOD"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Full VOD + split"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
 msgid "Invert"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Lead-in (s)"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Min duration (s)"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Min views"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid ""
+"Needs the Twitch API sign-in (the «Twitch API…» button). Chapters are written into the video "
+"files; the Premiere Pro outputs (Options → Premiere Pro) have their own switches."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "No clips loaded (sign in with the Twitch API… button, optional)."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "No offset"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Only the parts"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Optional: put the VOD's clips in the files as chapters."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Part {n}:  {start} → {end}   ({duration}){silenced}"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Quality:"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Quality: {quality} · Audio only: saved as .m4a or .mp3 (Options). Video-only extras are skipped."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Quality: {quality}{size}"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Reset"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Reset to original Twitch title"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
@@ -507,7 +663,119 @@ msgid "Select all"
 msgstr ""
 
 #: qt_ui/tabs/plan.py
+msgid "Select one clip"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Selection:"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "Skip Part {n}"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
 msgid "Split at selected clip"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Splitting works with a single clip: select just one."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Strategy:"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Stream title…"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "That clip has no position in the VOD."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "This VOD has no clips."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Timeline"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Title:"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Top N (0 = all)"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Untitled clip"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Views"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "Write the cut points above (press «Get info» first so «end» works)."
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "by {creator}"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "download only these parts"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+msgid "download the full VOD once, then split it"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "{count} · {duration} in total"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "{included} of {total} clips pass the filter → {chapters} chapters"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "{n} part"
+msgid_plural "{n} parts"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format, python-format
+msgid "{pct}% of VOD"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format, python-format
+msgid "{summary} · {mode} ({pct}% of VOD covered)"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "{views} views"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format
+msgid "· {time} muted"
+msgstr ""
+
+#: qt_ui/tabs/plan.py
+#, python-brace-format, python-format
+msgid "→ {how}   (parts cover {pct}% of the VOD)"
 msgstr ""
 
 #: qt_ui/tabs/queue.py
@@ -580,6 +848,212 @@ msgstr ""
 
 #: qt_ui/tabs/queue.py
 msgid "Start queue"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "+{n} more"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "At least one part has to stay."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Click a cut line (or hold the mouse next to it), then press Delete to remove it."
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "Clip at {time}"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "Cut here  ({time})"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "Cut line at {time}"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Fit"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Fit timeline to window"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Interactive VOD timeline"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Interactive timeline strip for cutting and isolating segments"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "Isolate this game{name}"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Keep this section"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Move the mouse over the timeline first, then press S to cut there."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Only a cut line between two parts can be removed (click the part to skip it instead)."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Overview of the whole VOD: drag the highlighted window to move along it"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Press «Get info» to see the VOD here."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Redo"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Redo last undone cut edit"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Redo the edit you took back  (Ctrl+Y)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Show muted"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Show the whole VOD  (0)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Skip this part"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "That section is skipped: click it in the parts row to keep it again."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "The cut points text has an error: fix it to edit here."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "There is already a cut line there."
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Undo"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Undo last cut edit"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Undo the last edit  (Ctrl+Z)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Zoom in"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Zoom in  (+)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Zoom out"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "Zoom out  (−)"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "at {time}"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "click to cut here (or press S)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "click to keep this section"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "click to skip this part"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "clip flag"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "double-click: make this game its own part (Shift: only this game)"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "drag to move"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "drag to move along the VOD"
+msgstr ""
+
+#: qt_ui/timeline.py
+msgid "drag to move, right-click to remove"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "muted by Twitch ({start} → {end})"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid ""
+"{game}: {duration} in total\n"
+"Click: make it its own part · Shift+click: keep only this game"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "{n} clip between {start} and {end}"
+msgid_plural "{n} clips between {start} and {end}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "{n} stretch"
+msgid_plural "{n} stretches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "{stretches} · {duration} silenced by Twitch"
+msgstr ""
+
+#: qt_ui/timeline.py
+#, python-brace-format
+msgid "… and {n} more (zoom in to see them)"
 msgstr ""
 
 #: qt_ui/titlebar.py

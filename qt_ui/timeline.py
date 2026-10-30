@@ -43,6 +43,7 @@ except ImportError:
     def isValid(obj: object) -> bool:  # noqa: N802
         return True
 
+from core.i18n import N_, t, tn
 from core.palette import ACCENT, ACCENT_HOVER, BG, BG2, BG3, ERR, FG, MUTED, OK, UI_FONT, WHITE
 from core.timeline import (
     CUT_COLOUR, EDGE_COLOUR, EDGE_TOL_PX, GAME_COLOURS, GAMES_H, GAP, HEIGHT, IDLE_HINT, MUTED_COLOUR, MUTED_H,
@@ -54,6 +55,7 @@ from luckytwitch_engine import (
     Edge, GameSegment, Range, Storyboard, add_cut, edges_of, fmt_hms, isolate_span, move_edge, nearest_edge,
     part_index_at, remove_cut, toggle_part,
 )
+from qt_ui import i18n_qt
 from qt_ui.icons import icon
 from qt_ui.widgets import Toggle, WrapLabel
 
@@ -201,7 +203,7 @@ class _LegendChip(QPushButton):
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setIcon(_dot_icon(game_colour(title)))
-        self.setToolTip(f"{title}: {fmt_hms(seconds)} in total\nClick: make it its own part · Shift+click: keep only this game")
+        self.setToolTip(t("{game}: {duration} in total\nClick: make it its own part · Shift+click: keep only this game", game=title, duration=fmt_hms(seconds)))
 
     def enterEvent(self, event) -> None:  # noqa: N802
         self.hovered.emit(self.title)
@@ -223,7 +225,7 @@ class TimelineMinimap(QWidget):
         self._grab: float | None = None  # seconds between the lens start and the mouse while dragging
         self.drawn_lens: tuple[float, float] | None = None
         self.setCursor(Qt.CursorShape.OpenHandCursor)
-        self.setToolTip("Overview of the whole VOD: drag the highlighted window to move along it")
+        self.setToolTip(t("Overview of the whole VOD: drag the highlighted window to move along it"))
 
     def _inner(self) -> float:
         return max(self.width() - 2 * PADX, 1.0)
@@ -452,29 +454,29 @@ class Timeline(QWidget):
         bar.setSpacing(4)
         self.btn_out = QPushButton()
         self.btn_out.setIcon(icon("minus", 16))
-        self.btn_out.setToolTip("Zoom out  (−)")
-        self.btn_out.setAccessibleName("Zoom out")
+        self.btn_out.setToolTip(t("Zoom out  (−)"))
+        self.btn_out.setAccessibleName(t("Zoom out"))
         self.btn_out.clicked.connect(self.zoom_out)
         self.btn_in = QPushButton()
         self.btn_in.setIcon(icon("plus", 16))
-        self.btn_in.setToolTip("Zoom in  (+)")
-        self.btn_in.setAccessibleName("Zoom in")
+        self.btn_in.setToolTip(t("Zoom in  (+)"))
+        self.btn_in.setAccessibleName(t("Zoom in"))
         self.btn_in.clicked.connect(self.zoom_in)
-        self.btn_fit = QPushButton("Fit")
+        self.btn_fit = QPushButton(t("Fit"))
         self.btn_fit.setIcon(icon("fit", 16))
-        self.btn_fit.setToolTip("Show the whole VOD  (0)")
-        self.btn_fit.setAccessibleName("Fit timeline to window")
+        self.btn_fit.setToolTip(t("Show the whole VOD  (0)"))
+        self.btn_fit.setAccessibleName(t("Fit timeline to window"))
         self.btn_fit.clicked.connect(self.zoom_fit)
-        self.btn_undo = QPushButton("Undo")
+        self.btn_undo = QPushButton(t("Undo"))
         self.btn_undo.setIcon(icon("undo", 16))
-        self.btn_undo.setToolTip("Undo the last edit  (Ctrl+Z)")
-        self.btn_undo.setAccessibleName("Undo last cut edit")
+        self.btn_undo.setToolTip(t("Undo the last edit  (Ctrl+Z)"))
+        self.btn_undo.setAccessibleName(t("Undo last cut edit"))
         self.btn_undo.setEnabled(False)
         self.btn_undo.clicked.connect(self.undo)
-        self.btn_redo = QPushButton("Redo")
+        self.btn_redo = QPushButton(t("Redo"))
         self.btn_redo.setIcon(icon("redo", 16))
-        self.btn_redo.setToolTip("Redo the edit you took back  (Ctrl+Y)")
-        self.btn_redo.setAccessibleName("Redo last undone cut edit")
+        self.btn_redo.setToolTip(t("Redo the edit you took back  (Ctrl+Y)"))
+        self.btn_redo.setAccessibleName(t("Redo last undone cut edit"))
         self.btn_redo.setEnabled(False)
         self.btn_redo.clicked.connect(self.redo)
         for b in (self.btn_out, self.btn_in, self.btn_fit):
@@ -491,9 +493,9 @@ class Timeline(QWidget):
         mbox = QHBoxLayout(self.muted_box)
         mbox.setContentsMargins(12, 0, 0, 0)
         mbox.setSpacing(6)
-        muted_title = QLabel("Show muted")
-        muted_title.setProperty("role", "muted")
-        mbox.addWidget(muted_title)
+        self.muted_title = QLabel(t("Show muted"))
+        self.muted_title.setProperty("role", "muted")
+        mbox.addWidget(self.muted_title)
         self.muted_switch = Toggle(checked=True)
         self.muted_switch.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.muted_switch.clicked.connect(self._toggle_muted)
@@ -507,9 +509,10 @@ class Timeline(QWidget):
         outer.addLayout(bar)
 
         self.canvas = TimelineCanvas(self)
-        self.canvas.setAccessibleName("Interactive VOD timeline")
-        self.canvas.setAccessibleDescription("Interactive timeline strip for cutting and isolating segments")
+        self.canvas.setAccessibleName(t("Interactive VOD timeline"))
+        self.canvas.setAccessibleDescription(t("Interactive timeline strip for cutting and isolating segments"))
         outer.addWidget(self.canvas)
+        i18n_qt.language_bus().changed.connect(self.refresh_language)
 
         self.minimap = TimelineMinimap(self)
         self.minimap.hide()  # only while zoomed in; it replaces the scroll bar then
@@ -618,7 +621,8 @@ class Timeline(QWidget):
         if self.muted:
             total = sum(e - s for s, e in self.muted)
             n = len(self.muted)
-            self.muted_info.setText(f"{n} stretch{'es' if n != 1 else ''} \u00b7 {fmt_hms(total)} silenced by Twitch")
+            stretches_txt = tn("{n} stretch", "{n} stretches", n)
+            self.muted_info.setText(t("{stretches} · {duration} silenced by Twitch", stretches=stretches_txt, duration=fmt_hms(total)))
             self.muted_switch.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.muted_box.show()
         else:
@@ -662,7 +666,7 @@ class Timeline(QWidget):
             self.legend_layout.addWidget(chip)
             self.legend_chips.append(chip)
         if len(totals) > LEGEND_MAX_CHIPS:
-            more = QLabel(f"+{len(totals) - LEGEND_MAX_CHIPS} more")
+            more = QLabel(t("+{n} more", n=len(totals) - LEGEND_MAX_CHIPS))
             more.setProperty("role", "muted")
             self.legend_layout.addWidget(more)
         self.legend_box.setVisible(bool(self.legend_chips))
@@ -683,7 +687,7 @@ class Timeline(QWidget):
         if not self._ready():
             return
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
             return
         key = game_key(title)
         spans = [(g.start, g.end) for g in self.segments if game_key(g.title or "") == key]
@@ -864,7 +868,7 @@ class Timeline(QWidget):
             self._pan = (x, self.vp.start)
             return
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
             return
         edge = self._edge_at(x)
         if edge is not None:
@@ -874,47 +878,47 @@ class Timeline(QWidget):
             self.invalidate()
             return
         self._selected = None
-        t = self.t_at(x)
+        t_pos = self.t_at(x)
         if zone == "thumbs":
-            self._cut_at(t)
+            self._cut_at(t_pos)
         elif zone == "parts":
-            self._toggle_part_at(t)
+            self._toggle_part_at(t_pos)
 
-    def _toggle_part_at(self, t: float) -> None:
+    def _toggle_part_at(self, t_pos: float) -> None:
         if self.ranges is None:
             return
-        new = toggle_part(self.ranges, t, self.duration)
+        new = toggle_part(self.ranges, t_pos, self.duration)
         if new is None:
-            self._say("At least one part has to stay.")
+            self._say(t("At least one part has to stay."))
             return
         self._push_history()
         self._apply(new)
 
-    def _cut_at(self, t: float, follow: bool = True) -> None:
-        """Cut at ``t`` (snapped). ``follow``: the new line sticks to the mouse while the button is down."""
+    def _cut_at(self, t_pos: float, follow: bool = True) -> None:
+        """Cut at ``t_pos`` (snapped). ``follow``: the new line sticks to the mouse while the button is down."""
         assert self.ranges is not None
-        t, kind = self._snap_with_kind(t)
-        new = add_cut(self.ranges, t)
+        t_pos, kind = self._snap_with_kind(t_pos)
+        new = add_cut(self.ranges, t_pos)
         if new is None:
-            if part_index_at(self.ranges, t) is None:
-                self._say("That section is skipped: click it in the parts row to keep it again.")
+            if part_index_at(self.ranges, t_pos) is None:
+                self._say(t("That section is skipped: click it in the parts row to keep it again."))
             else:
-                self._say("There is already a cut line there.")
+                self._say(t("There is already a cut line there."))
             return
         self._push_history()
         self._apply(new)
-        added = next((e for e in edges_of(new) if e.kind == "cut" and e.t == t), None)
+        added = next((e for e in edges_of(new) if e.kind == "cut" and e.t == t_pos), None)
         self._selected = (added.kind, added.index) if added is not None else None
         if follow:
             self._drag = added  # the new line follows the mouse while the button is down
-        self._set_snap_feedback(t, kind, ttl_ms=0 if follow else 1500)
+        self._set_snap_feedback(t_pos, kind, ttl_ms=0 if follow else 1500)
 
     def _on_double(self, x: float, y: float, shift: bool = False) -> None:
         if not self._ready() or zone_at(y) != "games":
             self._on_press(x, y, shift=shift)
             return
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
             return
         self.isolate_game_at(self.t_at(x), only=shift)
 
@@ -963,39 +967,39 @@ class Timeline(QWidget):
             self._show_context_menu(self.t_at(x), global_pos)
             return
         if edge.kind != "cut":
-            self._say("Only a cut line between two parts can be removed (click the part to skip it instead).")
+            self._say(t("Only a cut line between two parts can be removed (click the part to skip it instead)."))
             return
         self._push_history()
         self._selected = None
         self._apply(remove_cut(self.ranges, edge.index))
 
     # ------------------------------------------------------------------ right-click menu (E7)
-    def _build_context_menu(self, t: float) -> QMenu:
-        """The menu for a right-click on empty timeline at moment ``t`` (a cut line keeps removing itself instead)."""
-        t = max(0.0, min(t, float(self.duration)))
+    def _build_context_menu(self, at_time: float) -> QMenu:
+        """The menu for a right-click on empty timeline at moment ``at_time`` (a cut line keeps removing itself instead)."""
+        at_time = max(0.0, min(at_time, float(self.duration)))
         menu = QMenu(self.canvas)
         menu.setObjectName("timelineMenu")
         ranges = self.ranges
         editable = ranges is not None
-        snapped = self._snap(t)
+        snapped = self._snap(at_time)
         can_cut = editable and add_cut(ranges, snapped) is not None
-        act = menu.addAction(icon("scissors", 16), f"Cut here  ({fmt_hms(snapped)})")
+        act = menu.addAction(icon("scissors", 16), t("Cut here  ({time})", time=fmt_hms(snapped)))
         act.setEnabled(can_cut)
-        act.triggered.connect(lambda _=False, at=t: self._cut_at(at, follow=False))
-        kept = editable and part_index_at(ranges, t) is not None
-        act = menu.addAction(icon("x" if kept else "plus", 16), "Skip this part" if kept else "Keep this section")
+        act.triggered.connect(lambda _=False, at=at_time: self._cut_at(at, follow=False))
+        kept = editable and part_index_at(ranges, at_time) is not None
+        act = menu.addAction(icon("x" if kept else "plus", 16), t("Skip this part") if kept else t("Keep this section"))
         act.setEnabled(editable and (not kept or len(ranges) > 1))
-        act.triggered.connect(lambda _=False, at=t: self._toggle_part_at(at))
-        seg = self._segment_at(t)
+        act.triggered.connect(lambda _=False, at=at_time: self._toggle_part_at(at))
+        seg = self._segment_at(at_time)
         name = f" ({seg.title})" if seg and seg.title else ""
-        act = menu.addAction(icon("flag", 16), f"Isolate this game{name}")
+        act = menu.addAction(icon("flag", 16), t("Isolate this game{name}", name=name))
         act.setEnabled(editable and seg is not None)
         act.triggered.connect(lambda _=False, at=t: self.isolate_game_at(at))
         menu.addSeparator()
-        act = menu.addAction(icon("undo", 16), "Undo")
+        act = menu.addAction(icon("undo", 16), t("Undo"))
         act.setEnabled(bool(self._history))
         act.triggered.connect(self.undo)
-        act = menu.addAction(icon("redo", 16), "Redo")
+        act = menu.addAction(icon("redo", 16), t("Redo"))
         act.setEnabled(bool(self._future))
         act.triggered.connect(self.redo)
         return menu
@@ -1059,21 +1063,21 @@ class Timeline(QWidget):
 
     def cut_at_hover(self) -> None:
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
         elif self._hover_t is None:
-            self._say("Move the mouse over the timeline first, then press S to cut there.")
+            self._say(t("Move the mouse over the timeline first, then press S to cut there."))
         else:
             self._cut_at(self._hover_t, follow=False)
 
     def remove_selected_cut(self) -> None:
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
             return
         edge = self._edge_target()
         if edge is None:
-            self._say("Click a cut line (or hold the mouse next to it), then press Delete to remove it.")
+            self._say(t("Click a cut line (or hold the mouse next to it), then press Delete to remove it."))
         elif edge.kind != "cut":
-            self._say("Only a cut line between two parts can be removed (click the part to skip it instead).")
+            self._say(t("Only a cut line between two parts can be removed (click the part to skip it instead)."))
         else:
             self._push_history()
             self._selected = None
@@ -1082,7 +1086,7 @@ class Timeline(QWidget):
     def nudge_edge(self, direction: int, step: float) -> None:
         """Move the selected / nearest cut line ``step`` seconds (Left = -1, Right = +1). With none, pan instead."""
         if self.ranges is None:
-            self._say("The cut points text has an error: fix it to edit here.")
+            self._say(t("The cut points text has an error: fix it to edit here."))
             return
         edge = self._edge_target()
         if edge is None:
@@ -1103,7 +1107,7 @@ class Timeline(QWidget):
             self._selected = (moved.kind, moved.index)
             if not (self.vp.start <= moved.t <= self.vp.start + self.vp.span):
                 self.vp.pan_to(moved.t - self.vp.span / 2)
-            self._say(f"Cut line at {fmt_hms(moved.t)}")
+            self._say(t("Cut line at {time}", time=fmt_hms(moved.t)))
             _, kind = self._snap_with_kind(moved.t)
             self._set_snap_feedback(moved.t, kind, ttl_ms=1500)
         self.invalidate()
@@ -1139,12 +1143,12 @@ class Timeline(QWidget):
     def _flag_text(self, count: int, first: float, last: float) -> str:
         if count == 1:
             detail = self.clip_details.get(first, "")
-            return f"{detail}\nat {fmt_hms(first)}" if detail else f"Clip at {fmt_hms(first)}"
-        times = [t for t in self.clip_marks if first <= t <= last]
-        lines = [f"{count} clips between {fmt_hms(first)} and {fmt_hms(last)}"]
-        lines += [f"\u2022 {self.clip_details.get(t, fmt_hms(t))}" for t in times[:4]]
+            return f"{detail}\n" + t("at {time}", time=fmt_hms(first)) if detail else t("Clip at {time}", time=fmt_hms(first))
+        times = [t_val for t_val in self.clip_marks if first <= t_val <= last]
+        lines = [tn("{n} clip between {start} and {end}", "{n} clips between {start} and {end}", count, start=fmt_hms(first), end=fmt_hms(last))]
+        lines += [f"\u2022 {self.clip_details.get(t_val, fmt_hms(t_val))}" for t_val in times[:4]]
         if len(times) > 4:
-            lines.append(f"\u2026 and {len(times) - 4} more (zoom in to see them)")
+            lines.append(t("… and {n} more (zoom in to see them)", n=len(times) - 4))
         return "\n".join(lines)
 
     def _flag_at(self, x: float, y: float) -> str:
@@ -1162,29 +1166,29 @@ class Timeline(QWidget):
         if not self._ready() or self._drag is not None or self._pan is not None:
             return
         zone = zone_at(y)
-        t = self.t_at(x)
-        self._hover_t = max(0.0, min(t, float(self.duration)))
+        t_pos = self.t_at(x)
+        self._hover_t = max(0.0, min(t_pos, float(self.duration)))
         edge = self._edge_at(x) if zone != "ruler" else None
-        seg = self._segment_at(t)
-        where = f"{fmt_hms(max(0, min(t, self.duration)))}" + (f"  \u00b7  {seg.title}" if seg and seg.title else "")
-        mu = self._muted_at(t)
+        seg = self._segment_at(t_pos)
+        where = f"{fmt_hms(max(0, min(t_pos, self.duration)))}" + (f"  \u00b7  {seg.title}" if seg and seg.title else "")
+        mu = self._muted_at(t_pos)
         if mu is not None:
-            where += f"  \u00b7  muted by Twitch ({fmt_hms(mu[0])} \u2192 {fmt_hms(mu[1])})"
+            where += "  \u00b7  " + t("muted by Twitch ({start} → {end})", start=fmt_hms(mu[0]), end=fmt_hms(mu[1]))
         tip = self._flag_at(x, y) if zone == "ruler" else ""
         if edge is not None:
-            what = "drag to move" + (", right-click to remove" if edge.kind == "cut" else "")
+            what = t("drag to move, right-click to remove") if edge.kind == "cut" else t("drag to move")
             cursor = Qt.CursorShape.SizeHorCursor
         elif tip:
-            what, cursor = "clip flag", Qt.CursorShape.PointingHandCursor
+            what, cursor = t("clip flag"), Qt.CursorShape.PointingHandCursor
         elif zone == "ruler":
-            what, cursor = "drag to move along the VOD", Qt.CursorShape.SizeAllCursor
+            what, cursor = t("drag to move along the VOD"), Qt.CursorShape.SizeAllCursor
         elif zone == "games":
-            what, cursor = "double-click: make this game its own part (Shift: only this game)", Qt.CursorShape.ArrowCursor
+            what, cursor = t("double-click: make this game its own part (Shift: only this game)"), Qt.CursorShape.ArrowCursor
         elif zone == "thumbs":
-            what, cursor = "click to cut here (or press S)", Qt.CursorShape.CrossCursor
+            what, cursor = t("click to cut here (or press S)"), Qt.CursorShape.CrossCursor
         else:
-            kept = self.ranges is not None and part_index_at(self.ranges, t) is not None
-            what, cursor = ("click to skip this part" if kept else "click to keep this section"), Qt.CursorShape.PointingHandCursor
+            kept = self.ranges is not None and part_index_at(self.ranges, t_pos) is not None
+            what, cursor = (t("click to skip this part") if kept else t("click to keep this section")), Qt.CursorShape.PointingHandCursor
         if self.canvas.toolTip() != tip:
             self.canvas.setToolTip(tip)
         self.canvas.setCursor(cursor)
@@ -1198,7 +1202,7 @@ class Timeline(QWidget):
         self.canvas.setToolTip("")
         self.canvas.unsetCursor()
         if self._drag is None:
-            self.hint_label.setText(IDLE_HINT)
+            self.hint_label.setText(t(IDLE_HINT))
         self.invalidate()
 
     # ------------------------------------------------------------------ images
@@ -1366,7 +1370,7 @@ class Timeline(QWidget):
         if not self.duration:
             self._draw_text(
                 p, QRectF(0, 0, widget.width() or 400, HEIGHT),
-                "Press «Get info» to see the VOD here.", MUTED, 10, Qt.AlignmentFlag.AlignCenter,
+                t("Press «Get info» to see the VOD here."), MUTED, 10, Qt.AlignmentFlag.AlignCenter,
             )
             self._update_scrollbar()
             p.end()
@@ -1570,7 +1574,7 @@ class Timeline(QWidget):
         if self.ranges is None:
             self._draw_text(
                 p, track,
-                "The cut points text has an error: fix it to edit here.", ERR, 9, Qt.AlignmentFlag.AlignCenter,
+                t("The cut points text has an error: fix it to edit here."), ERR, 9, Qt.AlignmentFlag.AlignCenter,
             )
             return
         # skipped sections are hatched, so "left out" reads even without colour (E1)
@@ -1691,3 +1695,33 @@ class Timeline(QWidget):
         p.drawRect(box)
         p.drawPixmap(round(left), round(top), pm)
         self.drawn_hover_preview = True
+
+    def refresh_language(self) -> None:
+        """Update Timeline labels and tooltips when language changes."""
+        self.btn_out.setToolTip(t("Zoom out  (−)"))
+        self.btn_out.setAccessibleName(t("Zoom out"))
+        self.btn_in.setToolTip(t("Zoom in  (+)"))
+        self.btn_in.setAccessibleName(t("Zoom in"))
+        self.btn_fit.setText(t("Fit"))
+        self.btn_fit.setToolTip(t("Show the whole VOD  (0)"))
+        self.btn_fit.setAccessibleName(t("Fit timeline to window"))
+        self.btn_undo.setText(t("Undo"))
+        self.btn_undo.setToolTip(t("Undo the last edit  (Ctrl+Z)"))
+        self.btn_undo.setAccessibleName(t("Undo last cut edit"))
+        self.btn_redo.setText(t("Redo"))
+        self.btn_redo.setToolTip(t("Redo the edit you took back  (Ctrl+Y)"))
+        self.btn_redo.setAccessibleName(t("Redo last undone cut edit"))
+        if hasattr(self, "muted_title"):
+            self.muted_title.setText(t("Show muted"))
+        self.canvas.setAccessibleName(t("Interactive VOD timeline"))
+        self.canvas.setAccessibleDescription(t("Interactive timeline strip for cutting and isolating segments"))
+        self.minimap.setToolTip(t("Overview of the whole VOD: drag the highlighted window to move along it"))
+        if self.muted:
+            total = sum(e - s for s, e in self.muted)
+            n = len(self.muted)
+            stretches_txt = tn("{n} stretch", "{n} stretches", n)
+            self.muted_info.setText(t("{stretches} · {duration} silenced by Twitch", stretches=stretches_txt, duration=fmt_hms(total)))
+        if not self.duration:
+            self.hint_label.setText(t(IDLE_HINT))
+        self._rebuild_legend()
+        self.invalidate()
