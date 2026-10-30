@@ -105,10 +105,10 @@ def example(tab, key):
 
 
 # ------------------------------------------------------------------ structure
-def test_the_sidebar_has_the_seven_sections_and_starts_on_output(tab):
-    assert [k for k, _ in SECTIONS] == ["output", "cuts", "chapters", "premiere", "chat", "clips", "tools"]
+def test_the_sidebar_has_the_eight_sections_and_starts_on_output(tab):
+    assert [k for k, _ in SECTIONS] == ["output", "cuts", "chapters", "premiere", "chat", "clips", "interface", "tools"]
     assert [b.text() for b in tab.nav.buttons.values()] == [
-        "Output", "Cuts", "Chapters", "Premiere Pro", "Chat", "Clips", "Tools"]
+        "Output", "Cuts", "Chapters", "Premiere Pro", "Chat", "Clips", "Interface", "Tools"]
     assert set(tab.nav.buttons) == set(tab.sections)
     assert tab.visible_sections() == ["output"] and tab.nav.current == "output"
 

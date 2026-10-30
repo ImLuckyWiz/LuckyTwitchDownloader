@@ -1,3 +1,12 @@
+## v2.11.0
+
+LuckyTwitch Downloader **v2.11.0** introduces a dedicated **Interface** section in the Options tab for interface language and future appearance customizations.
+
+### What's new in 2.11.0:
+- **Dedicated Interface Section in Options:** Moved the Language selector from Tools into its own dedicated **Interface** section in the Options sidebar navigation.
+- **Foundation for UI Customization:** Prepares the layout for future appearance and theme settings.
+- **Full Localization:** Complete English and Spanish localization for the new section and card headings, with instant dynamic retranslation and bilingual settings search.
+
 ## v2.10.0
 
 LuckyTwitch Downloader **v2.10.0** delivers complete, production-ready Spanish (Español) localization across the entire application, with zero untranslated strings, bilingual settings search, localized installer, and full Spanish documentation.

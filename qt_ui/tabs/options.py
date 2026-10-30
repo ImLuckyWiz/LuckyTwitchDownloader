@@ -53,6 +53,7 @@ SECTIONS = [
     ("premiere", N_("Premiere Pro")),
     ("chat", N_("Chat")),
     ("clips", N_("Clips")),
+    ("interface", N_("Interface")),
     ("tools", N_("Tools")),
 ]
 
@@ -137,6 +138,7 @@ class OptionsTab(QWidget):
         self._section_premiere(self.sections["premiere"])
         self._section_chat(self.sections["chat"])
         self._section_clips(self.sections["clips"])
+        self._section_interface(self.sections["interface"])
         self._section_tools(self.sections["tools"])
 
         self.nav.selected.connect(self.show_section)
@@ -647,6 +649,35 @@ class OptionsTab(QWidget):
         row.add_control(self._spin("clip_pad_after", 0, 600, 6))
         self._unit(row, "s")
 
+    # ------------------------------------------------------------------ Interface
+    def _section_interface(self, f: QWidget) -> None:
+        self._heading(f, N_("Interface"), N_("Language and appearance settings."))
+
+        self.interface_card = self._card(f, N_("Interface"), N_("Language and appearance settings."))
+        self.lang_row = self.interface_card.add_row(t("Language"), t("Select interface language (English / Español)."), divider=False)
+        from core.ui_state import load_ui_state, save_ui_state
+        self.lang_combo = ComboBox()
+        for code, label in i18n_qt.language_choices():
+            self.lang_combo.addItem(label, code)
+        self.select_language_setting(i18n_qt.current_setting())
+
+        def _on_lang_changed(i: int):
+            code = self.lang_combo.itemData(i)
+            if code and code != i18n_qt.current_setting():
+                i18n_qt.apply_language(code)  # live: no restart; windows refresh through the language bus
+                st = load_ui_state()
+                st.language = code
+                save_ui_state(st)
+                if not hasattr(self.window(), "refresh_language"):  # an Options tab used on its own
+                    self.refresh_language()
+
+        self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
+        self.lang_row.add_control(self.lang_combo)
+        self._register_setting(
+            self.lang_row, "language", "interface", self.interface_card,
+            raw_title="Language", raw_hint="Select interface language (English / Español)."
+        )
+
     # ------------------------------------------------------------------ Tools
     def _section_tools(self, f: QWidget) -> None:
         self._heading(f, N_("Tools"), N_("yt-dlp and ffmpeg do the downloading and cutting."))
@@ -707,27 +738,6 @@ class OptionsTab(QWidget):
         self.check_app_updates_btn.clicked.connect(self.check_app_updates_requested.emit)
         self.check_now_row.add_control(self.check_app_updates_btn)
         self.refresh_app_update_state()
-
-        self.interface_card = self._card(f, N_("Interface"), N_("Language and appearance settings."))
-        self.lang_row = self.interface_card.add_row(t("Language"), t("Select interface language (English / Español)."), divider=False)
-        from core.ui_state import load_ui_state, save_ui_state
-        self.lang_combo = ComboBox()
-        for code, label in i18n_qt.language_choices():
-            self.lang_combo.addItem(label, code)
-        self.select_language_setting(i18n_qt.current_setting())
-
-        def _on_lang_changed(i: int):
-            code = self.lang_combo.itemData(i)
-            if code and code != i18n_qt.current_setting():
-                i18n_qt.apply_language(code)  # live: no restart; windows refresh through the language bus
-                st = load_ui_state()
-                st.language = code
-                save_ui_state(st)
-                if not hasattr(self.window(), "refresh_language"):  # an Options tab used on its own
-                    self.refresh_language()
-
-        self.lang_combo.currentIndexChanged.connect(_on_lang_changed)
-        self.lang_row.add_control(self.lang_combo)
 
         link_card = self._card(
             f, N_("Links from web pages"),

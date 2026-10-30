@@ -96,7 +96,7 @@ def main(out_dir: Path | None = None, lang: str | None = None) -> int:
         # 5. Options Sections
         win.tabs.setCurrentIndex(2)
         if hasattr(win, "tab_options") and hasattr(win.tab_options, "side_nav"):
-            for sec_key in ("output", "cuts", "chat", "tools"):
+            for sec_key in ("output", "cuts", "chat", "interface", "tools"):
                 win.tab_options.side_nav.select(sec_key)
                 capture(win, target_dir / f"{size_name}_options_{sec_key}.png")
 
